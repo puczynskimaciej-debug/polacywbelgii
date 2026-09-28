@@ -2,6 +2,10 @@ module.exports = function (eleventyConfig) {
   const markdown = require("markdown-it")({ html: false, linkify: true, typographer: true });
   eleventyConfig.addPassthroughCopy("src/style.css");
   eleventyConfig.addPassthroughCopy("src/script.js");
+  eleventyConfig.addPassthroughCopy("src/ads.js");
+  eleventyConfig.addPassthroughCopy("src/ads-i18n.js");
+  eleventyConfig.addPassthroughCopy("src/ads.css");
+  eleventyConfig.addFilter("json", value => JSON.stringify(value));
   eleventyConfig.addPassthroughCopy({ "src/Images": "images" });
   eleventyConfig.addPassthroughCopy({ "admin-app": "admin" });
   eleventyConfig.addFilter("renderMarkdown", (value) => markdown.render(value || ""));

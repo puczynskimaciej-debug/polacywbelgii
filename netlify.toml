@@ -13,10 +13,10 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "same-origin"
     Cache-Control = "no-store"
-    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://api.github.com https://github.com; img-src 'self' data: blob: https://raw.githubusercontent.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com"
+    Content-Security-Policy = "default-src 'self'; connect-src 'self'; img-src 'self' data: blob: https://raw.githubusercontent.com https://avatars.githubusercontent.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
 [[headers]]
-  for = "/.netlify/functions/oauth"
+  for = "/.netlify/functions/cms-*"
   [headers.values]
     Cache-Control = "no-store"
 

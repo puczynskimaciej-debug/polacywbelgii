@@ -6,7 +6,15 @@
   "scripts": {
     "dev": "eleventy --serve",
     "build": "eleventy",
-    "test:responsive": "node tests/responsive-audit.mjs"
+    "test:responsive": "node tests/responsive-audit.mjs",
+    "pretest": "npm run build",
+    "test": "node --test tests/ads.test.mjs",
+    "lint": "eslint .",
+    "ads:migrate": "node scripts/ads-migrate.js",
+    "cms:migrate": "node scripts/cms-migrate.js",
+    "cms:admin": "node scripts/cms-account.js",
+    "cms:reset-password": "node scripts/cms-account.js --reset",
+    "deploy:check": "node scripts/deployment-check.js"
   },
   "keywords": [],
   "author": "",
@@ -14,9 +22,15 @@
   "type": "commonjs",
   "devDependencies": {
     "@11ty/eleventy": "^3.1.6",
+    "@eslint/js": "^10.0.1",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
     "playwright-core": "^1.62.0"
   },
   "dependencies": {
-    "markdown-it": "^14.3.0"
+    "js-yaml": "^4.3.2",
+    "markdown-it": "^14.3.0",
+    "pg": "^8.23.0"
   }
 }

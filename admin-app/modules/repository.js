@@ -54,7 +54,7 @@ export class ContentRepository {
   }
 
   async upload(file) {
-    if (file.size > 5 * 1024 * 1024) throw new Error("Obraz może mieć maksymalnie 5 MB.");
+    if (file.size > 4 * 1024 * 1024) throw new Error("Obraz może mieć maksymalnie 4 MB.");
     if (!file.type.startsWith("image/")) throw new Error("Wybrany plik nie jest obrazem.");
     const extension = file.name.match(/\.[A-Za-z0-9]+$/)?.[0].toLowerCase() || "";
     const name = `${Date.now()}-${slugify(file.name.replace(/\.[^.]+$/, ""))}${extension}`;

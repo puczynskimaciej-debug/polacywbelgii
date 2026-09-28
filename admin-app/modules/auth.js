@@ -1,53 +1,9 @@
-const TOKEN_KEY = "pbe_github_token";
-const STATE_KEY = "pbe_oauth_state";
-
-export class GitHubAuth {
-  constructor(config) {
-    this.config = config;
-  }
-
-  token() {
-    return sessionStorage.getItem(TOKEN_KEY);
-  }
-
-  login(redirectUri) {
-    if (!this.config.clientId || this.config.clientId.startsWith("UZUPELNIJ_")) {
-      throw new Error("Najpierw ustaw GitHub Client ID w pliku admin-app/config.js.");
-    }
-    const state = crypto.randomUUID();
-    sessionStorage.setItem(STATE_KEY, state);
-    const query = new URLSearchParams({
-      client_id: this.config.clientId,
-      redirect_uri: redirectUri,
-      scope: this.config.scope,
-      state
-    });
-    location.assign(`https://github.com/login/oauth/authorize?${query}`);
-  }
-
-  async completeCallback(exchangeEndpoint, redirectUri) {
-    const query = new URLSearchParams(location.search);
-    const code = query.get("code");
-    if (!code) return false;
-    const expectedState = sessionStorage.getItem(STATE_KEY);
-    if (!expectedState || query.get("state") !== expectedState) {
-      throw new Error("Nieprawidłowy stan OAuth. Rozpocznij logowanie ponownie.");
-    }
-    sessionStorage.removeItem(STATE_KEY);
-    history.replaceState({}, document.title, "/admin/");
-    const response = await fetch(exchangeEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, redirect_uri: redirectUri })
-    });
-    const payload = await response.json();
-    if (!response.ok || !payload.access_token) throw new Error(payload.error || "Nie udało się zalogować przez GitHub.");
-    sessionStorage.setItem(TOKEN_KEY, payload.access_token);
-    return true;
-  }
-
-  logout() {
-    sessionStorage.removeItem(TOKEN_KEY);
-    location.assign("/admin/");
-  }
+import { cmsRequest } from './client.js';
+export class CmsAuth {
+  async session() { return (await cmsRequest('cms-auth', { action: 'session' })).user; }
+  async login(email, password) { return (await cmsRequest('cms-auth', { action: 'login' }, 'POST', { email, password })).user; }
+  async logout() { await cmsRequest('cms-auth', { action: 'logout' }, 'POST', {}); location.assign('/admin/'); }
+  async changePassword(currentPassword, password) { return cmsRequest('cms-auth', { action: 'password' }, 'POST', { currentPassword, password }); }
+  async users() { return (await cmsRequest('cms-auth', { action: 'users' })).users; }
+  async saveUser(user) { return cmsRequest('cms-auth', { action: 'users' }, user.id ? 'PUT' : 'POST', user); }
 }

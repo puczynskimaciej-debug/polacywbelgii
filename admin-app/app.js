@@ -1,59 +1,58 @@
 import { cmsConfig } from "./config.js";
-import { GitHubAuth } from "./modules/auth.js";
-import { GitHubApi } from "./modules/github-api.js";
+import { CmsAuth } from "./modules/auth.js";
+import { ContentApi } from "./modules/content-api.js";
 import { ContentRepository } from "./modules/repository.js";
 
-const state = { api: null, repository: null, user: null, isAdmin: false, home: null, homeSha: null, site: null, siteSha: null, articles: [], media: [], history: [], users: [], invitations: [], uploadTarget: null, previewLanguage: "pl" };
-const auth = new GitHubAuth(cmsConfig.github);
+const state = { api: null, repository: null, user: null, isAdmin: false, home: null, homeSha: null, site: null, siteSha: null, articles: [], media: [], history: [], users: [], editingUser: null, uploadTarget: null, previewLanguage: "pl" };
+const auth = new CmsAuth();
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 
 async function initialize() {
+  sessionStorage.removeItem('pbe_github_token');
+  sessionStorage.removeItem('pbe_oauth_state');
   try {
-    if (location.search.includes("code=")) {
-      showLoading();
-      await auth.completeCallback(cmsConfig.oauthEndpoint, cmsConfig.oauthRedirectUri);
-    }
-    if (!auth.token()) return showAuth();
     showLoading();
-    state.api = new GitHubApi({ token: auth.token(), ...cmsConfig.github });
-    const repositoryInfo = await state.api.repository();
-    if (!repositoryInfo.permissions?.push) throw new Error("To konto GitHub nie ma prawa zapisu do repozytorium.");
-    state.isAdmin = Boolean(repositoryInfo.permissions?.admin);
-    state.user = await githubUser();
+    state.user = await auth.session();
+    state.isAdmin = state.user.role === 'admin';
+    if (state.user.mustChangePassword) return showPassword(true);
+    state.api = new ContentApi();
     state.repository = new ContentRepository(state.api, cmsConfig.paths);
-    await loadContent();
     showApp();
+    if (state.isAdmin) { state.users = await auth.users(); renderUsers(); }
+    try { await loadContent(); } catch (error) { notify(error.message, true); }
   } catch (error) {
-    sessionStorage.clear();
-    showAuth(error.message);
+    showAuth(error.code === 'unauthorized' ? '' : error.message);
   }
-}
-
-async function githubUser() {
-  const response = await fetch("https://api.github.com/user", { headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${auth.token()}`, "X-GitHub-Api-Version": "2022-11-28" } });
-  if (!response.ok) throw new Error("Nie udało się odczytać konta GitHub.");
-  return response.json();
 }
 
 async function loadContent() {
   const [home, site, articles, media] = await Promise.all([state.repository.home(), state.repository.site(), state.repository.articles(), state.repository.media()]);
   [state.home, state.homeSha, state.site, state.siteSha, state.articles, state.media] = [home.data, home.sha, site.data, site.sha, articles, media];
-  if (state.isAdmin) [state.users, state.invitations, state.history] = await Promise.all([state.api.collaborators(), state.api.invitations(), state.api.commits()]);
+  if (state.isAdmin) state.history = await state.api.commits();
   renderAll();
 }
 
 function showAuth(error = "") {
+  $$('dialog[open]').forEach(dialog => dialog.close());
+  $('#password-view').hidden = true;
   $("#loading-view").hidden = true; $("#app-view").hidden = true; $("#auth-view").hidden = false;
   const box = $("#auth-error"); box.textContent = error; box.hidden = !error;
 }
-function showLoading() { $("#auth-view").hidden = true; $("#app-view").hidden = true; $("#loading-view").hidden = false; }
+function showLoading() { $('#password-view').hidden = true; $("#auth-view").hidden = true; $("#app-view").hidden = true; $("#loading-view").hidden = false; }
 function showApp() {
+  $('#password-view').hidden = true;
   $("#auth-view").hidden = true; $("#loading-view").hidden = true; $("#app-view").hidden = false;
-  $("#current-user").textContent = state.user.name || state.user.login;
-  $("#repository-name").textContent = `${cmsConfig.github.owner}/${cmsConfig.github.repo}`;
-  $("#user-avatar").src = state.user.avatar_url;
+  $("#current-user").textContent = state.user.name;
+  $("#repository-name").textContent = state.isAdmin ? 'Administrator' : 'Edytor';
   $$(".admin-only").forEach((element) => element.hidden = !state.isAdmin);
+}
+function showPassword(required = false) {
+  $$('dialog[open]').forEach(dialog => dialog.close());
+  $('#auth-view').hidden = $('#loading-view').hidden = $('#app-view').hidden = true;
+  $('#password-view').hidden = false; $('#password-cancel').hidden = required;
+  $('#password-note').textContent = required ? 'Ustaw własne hasło, aby rozpocząć pracę w panelu.' : 'Po zmianie hasła pozostałe sesje tego konta zostaną wylogowane.';
+  $('#password-error').textContent = ''; $('#account-password-form').reset();
 }
 function notify(text, error = false) {
   const box = $("#notice"); box.textContent = text; box.className = `message${error ? " message--error" : ""}`; box.hidden = false;
@@ -91,13 +90,17 @@ function renderHistory() {
 }
 function renderUsers() {
   if (!state.isAdmin) return;
-  $("#users-list").innerHTML = state.users.map((user) => {
-    const isOwner = user.login.toLowerCase() === cmsConfig.github.owner.toLowerCase();
-    const role = user.permission === "admin" ? "admin" : "push";
-    return `<div class="table-row"><div class="history-author"><img class="history-avatar" src="${user.avatar_url}" alt=""><div><h3>${escapeHtml(user.login)}</h3><p>${isOwner ? "Właściciel repozytorium" : role === "admin" ? "Administrator" : "Edytor"}</p></div></div><div class="row-actions">${isOwner ? "<small>Pełny dostęp</small>" : `<select class="role-select" data-user-role="${escapeHtml(user.login)}"><option value="push" ${role === "push" ? "selected" : ""}>Edytor</option><option value="admin" ${role === "admin" ? "selected" : ""}>Administrator</option></select><button class="ghost danger" data-remove-user="${escapeHtml(user.login)}">Usuń</button>`}</div></div>`;
-  }).join("");
-  $("#invitations-card").hidden = state.invitations.length === 0;
-  $("#invitations-list").innerHTML = state.invitations.map((invitation) => `<div class="table-row"><div><h3>${escapeHtml(invitation.invitee?.login || invitation.email || "Zaproszony użytkownik")}</h3><p>Oczekuje na przyjęcie · ${invitation.permissions === "admin" ? "Administrator" : "Edytor"}</p></div><button class="ghost danger" data-cancel-invitation="${invitation.id}">Anuluj</button></div>`).join("");
+  $("#users-list").innerHTML = state.users.map(user => `<div class="table-row"><div><h3>${escapeHtml(user.name)}</h3><p>${escapeHtml(user.email)} · ${user.role === 'admin' ? 'Administrator' : 'Edytor'} · ${user.active ? 'Aktywne' : 'Zablokowane'}${user.mustChangePassword ? ' · Wymagana zmiana hasła' : ''}</p></div><button class="secondary" data-edit-user="${escapeHtml(user.id)}">Edytuj</button></div>`).join('');
+}
+function openUser(user = null) {
+  state.editingUser = user; const form = $('#user-form'); form.reset();
+  $('#user-dialog-title').textContent = user ? 'Edytuj konto' : 'Dodaj osobę';
+  for (const key of ['name', 'email', 'role']) if (user) form.elements[key].value = user[key];
+  form.elements.active.value = String(user?.active ?? true);
+  form.elements.password.required = !user;
+  form.elements.password.disabled = user?.id === state.user.id;
+  $('#user-password-note').textContent = user ? 'Pozostaw hasło puste, aby je zachować. Nowe hasło tymczasowe wyloguje użytkownika i wymusi jego zmianę.' : 'Przekaż hasło tymczasowe użytkownikowi bezpiecznym kanałem. Przy pierwszym logowaniu ustawi własne hasło.';
+  $('#user-error').textContent = ''; $('#user-dialog').showModal();
 }
 function switchView(name) { $$(".view").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === name)); $$(".nav-item").forEach((button) => button.classList.toggle("is-active", button.dataset.view === name)); $(".sidebar").classList.remove("is-open"); }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
@@ -136,8 +139,26 @@ function markdownPreview(markdown) {
 }
 function inlineMarkdown(value) { return value.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>"); }
 
-$("#github-login").addEventListener("click", () => { try { auth.login(cmsConfig.oauthRedirectUri); } catch (error) { showAuth(error.message); } });
-$("#logout-button").addEventListener("click", () => auth.logout());
+$('#login-form').addEventListener('submit', async event => {
+  event.preventDefault(); const form = event.target; const button = event.submitter; button.disabled = true;
+  try { await auth.login(form.elements.email.value, form.elements.password.value); form.elements.password.value = ''; await initialize(); }
+  catch (error) { showAuth(error.message); } finally { button.disabled = false; }
+});
+async function logout() { try { await auth.logout(); } catch (error) { notify(error.message, true); } }
+$('#logout-button').addEventListener('click', logout);
+$('#password-logout').addEventListener('click', logout);
+$('#change-password-button').onclick = () => showPassword(false);
+$('#password-cancel').onclick = () => showApp();
+$('#account-password-form').onsubmit = async event => {
+  event.preventDefault(); const form = event.target; const button = event.submitter;
+  if (form.elements.password.value !== form.elements.confirmPassword.value) { $('#password-error').textContent = 'Hasła nie są zgodne.'; return; }
+  button.disabled = true;
+  try { await auth.changePassword(form.elements.currentPassword.value, form.elements.password.value); form.reset(); await initialize(); }
+  catch (error) { $('#password-error').textContent = error.message; } finally { button.disabled = false; }
+};
+document.addEventListener('cms-session-required', event => {
+  if (event.detail === 'passwordChangeRequired') showPassword(true); else showAuth('Sesja wygasła. Zaloguj się ponownie.');
+});
 $("#menu-toggle").addEventListener("click", () => $(".sidebar").classList.toggle("is-open"));
 $$(".nav-item").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
 $$("[data-language-tab]").forEach((button) => button.addEventListener("click", () => { $$("[data-language-tab]").forEach((tab) => tab.classList.toggle("is-active", tab === button)); $$("[data-language-pane]").forEach((pane) => pane.classList.toggle("is-active", pane.dataset.languagePane === button.dataset.languageTab)); }));
@@ -156,27 +177,31 @@ $("#article-form").addEventListener("submit", async (event) => {
 });
 $("#media-input").addEventListener("change", async (event) => {
   const file=event.target.files[0]; if(!file)return;
-  try { const uploaded=await state.repository.upload(file); if(state.uploadTarget) state.uploadTarget.value=uploaded.path; state.media=await state.repository.media(); renderAll(); notify("Obraz zapisany w repozytorium."); } catch(error){notify(error.message,true);} finally{state.uploadTarget=null;event.target.value="";}
+  try { const uploaded=await state.repository.upload(file); if(state.uploadTarget) state.uploadTarget.value=uploaded.path; state.media=await state.repository.media(); renderAll(); notify("Obraz zapisany."); } catch(error){notify(error.message,true);} finally{state.uploadTarget=null;event.target.value="";}
 });
 document.addEventListener("click", async (event) => {
   const action=event.target.closest("[data-action]")?.dataset.action;
   if(action==="new-article")openArticle(); if(action==="add-news"){state.home.news.push({title:"",category:"",description:"",image:"",link:"/artykuly/"});renderRepeater("news",state.home.news);} if(action==="add-notice"){state.home.notices.push({title:"",category:"",date:"",description:"",contact:""});renderRepeater("notices",state.home.notices);} if(action==="upload-media")uploadImage(); if(action==="pick-article-image")uploadImage($("#article-form").image);
   if(action==="preview-article"){state.previewLanguage="pl";renderArticlePreview("pl");$("#preview-dialog").showModal();}
-  if(action==="new-user"&&state.isAdmin)$("#user-dialog").showModal();
+  if(action==="new-user"&&state.isAdmin)openUser();
+  const editUser=event.target.closest("[data-edit-user]");if(editUser&&state.isAdmin)openUser(state.users.find(user=>user.id===editUser.dataset.editUser));
   if(action==="refresh-history"){try{state.history=await state.api.commits();renderHistory();notify("Historia została odświeżona.");}catch(error){notify(error.message,true);}}
   const remove=event.target.closest("[data-remove]"); if(remove&&confirm("Usunąć ten element?")){const type=remove.dataset.remove;state.home[type].splice(Number(remove.closest("[data-index]").dataset.index),1);renderRepeater(type,state.home[type]);}
   const newsUpload=event.target.closest("[data-news-upload]"); if(newsUpload)uploadImage($(`#news-editor [data-index="${newsUpload.dataset.newsUpload}"] [data-field="image"]`));
   const edit=event.target.closest("[data-edit-article]"); if(edit)openArticle(state.articles.find((item)=>item.slug===edit.dataset.editArticle));
-  const removeArticle=event.target.closest("[data-delete-article]"); if(removeArticle&&confirm("Trwale usunąć artykuł z GitHub?")){try{const article=state.articles.find((item)=>item.slug===removeArticle.dataset.deleteArticle);await state.repository.deleteArticle(article);state.articles=await state.repository.articles();renderAll();notify("Artykuł usunięty.");}catch(error){notify(error.message,true);}}
-  const removeMedia=event.target.closest("[data-delete-media]"); if(removeMedia&&confirm("Trwale usunąć obraz z GitHub?")){try{const file=state.media.find((item)=>item.path===removeMedia.dataset.deleteMedia);await state.repository.deleteMedia(file);state.media=await state.repository.media();renderAll();notify("Obraz usunięty.");}catch(error){notify(error.message,true);}}
+  const removeArticle=event.target.closest("[data-delete-article]"); if(removeArticle&&confirm("Trwale usunąć artykuł?")){try{const article=state.articles.find((item)=>item.slug===removeArticle.dataset.deleteArticle);await state.repository.deleteArticle(article);state.articles=await state.repository.articles();renderAll();notify("Artykuł usunięty.");}catch(error){notify(error.message,true);}}
+  const removeMedia=event.target.closest("[data-delete-media]"); if(removeMedia&&confirm("Trwale usunąć obraz?")){try{const file=state.media.find((item)=>item.path===removeMedia.dataset.deleteMedia);await state.repository.deleteMedia(file);state.media=await state.repository.media();renderAll();notify("Obraz usunięty.");}catch(error){notify(error.message,true);}}
   const previewLanguage=event.target.closest("[data-preview-language]");if(previewLanguage)renderArticlePreview(previewLanguage.dataset.previewLanguage);
-  const removeUser=event.target.closest("[data-remove-user]");if(removeUser&&state.isAdmin&&confirm(`Odebrać dostęp użytkownikowi ${removeUser.dataset.removeUser}?`)){try{await state.api.removeCollaborator(removeUser.dataset.removeUser);await refreshUsers();notify("Dostęp użytkownika został odebrany.");}catch(error){notify(error.message,true);}}
-  const cancelInvitation=event.target.closest("[data-cancel-invitation]");if(cancelInvitation&&state.isAdmin&&confirm("Anulować to zaproszenie?")){try{await state.api.cancelInvitation(cancelInvitation.dataset.cancelInvitation);await refreshUsers();notify("Zaproszenie zostało anulowane.");}catch(error){notify(error.message,true);}}
   if(event.target.closest("[data-close]"))event.target.closest("dialog").close();
 });
-document.addEventListener("change",async(event)=>{const role=event.target.closest("[data-user-role]");if(!role||!state.isAdmin)return;try{await state.api.setCollaborator(role.dataset.userRole,role.value);await refreshUsers();notify("Rola użytkownika została zmieniona.");}catch(error){notify(error.message,true);renderUsers();}});
-$("#user-form").addEventListener("submit",async(event)=>{event.preventDefault();const button=event.submitter;setBusy(button,true);const values=formData(event.target);try{await state.api.setCollaborator(values.username.trim(),values.permission);event.target.reset();$("#user-dialog").close();await refreshUsers();notify("Zaproszenie zostało wysłane przez GitHub.");}catch(error){notify(error.message,true);}finally{setBusy(button,false);}});
-async function refreshUsers(){[state.users,state.invitations]=await Promise.all([state.api.collaborators(),state.api.invitations()]);renderUsers();}
+$('#user-form').addEventListener('submit', async event => {
+  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  const values = formData(event.target);
+  try {
+    await auth.saveUser({ ...values, active: values.active === 'true', id: state.editingUser?.id, version: state.editingUser?.version });
+    event.target.reset(); $('#user-dialog').close(); state.users = await auth.users(); renderUsers(); notify('Konto zapisane.');
+  } catch (error) { $('#user-error').textContent = error.message; } finally { setBusy(button, false); }
+});
 function setBusy(button,busy){if(!button)return;button.disabled=busy;if(busy){button.dataset.label=button.textContent;button.textContent="Zapisywanie…";}else if(button.dataset.label)button.textContent=button.dataset.label;}
 
 initialize();

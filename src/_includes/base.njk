@@ -9,7 +9,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/ads.css">
+  <script src="/ads-config.js" defer></script>
+  <script src="/ads-i18n.js" defer></script>
   <script src="/script.js" defer></script>
+  <script src="/ads.js" defer></script>
 </head>
 <body data-page="{{ pageKey }}">
   <a class="skip-link" href="#main">Przejdź do treści</a>
@@ -34,9 +38,9 @@
             <span class="sr-only" data-i18n="lang.choose">Wybierz język</span>
           </button>
           <div class="language-menu" id="language-menu">
-            <button type="button" data-lang="pl"><img src="/images/flags/pl.svg" alt=""> <span>Polski</span></button>
-            <button type="button" data-lang="nl"><img src="/images/flags/be.svg" alt=""> <span>Nederlands</span></button>
-            <button type="button" data-lang="fr"><img src="/images/flags/fr.svg" alt=""> <span>Français</span></button>
+            {% for key, language in languages %}
+            <button type="button" data-lang="{{ key }}"><img src="{{ language.flag }}" alt=""> <span>{{ language.name }}</span></button>
+            {% endfor %}
           </div>
         </div>
       </nav>

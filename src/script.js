@@ -82,11 +82,10 @@ const translations = {
   }
 };
 
-const languageData = {
-  pl: { code: "PL", flag: "/images/flags/pl.svg", locale: "pl-PL" },
-  nl: { code: "NL", flag: "/images/flags/be.svg", locale: "nl-BE" },
-  fr: { code: "FR", flag: "/images/flags/fr.svg", locale: "fr-BE" }
-};
+const languageData = window.siteLanguages;
+for (const language of Object.keys(languageData)) {
+  translations[language] = { ...(translations[language] || {}), ...(window.adTranslations[language] || window.adTranslations.pl) };
+}
 
 const pageTitles = {
   pl: { home: "Strona główna", articles: "Artykuły", contact: "Kontakt" },
@@ -108,6 +107,9 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-i18n-html]").forEach((element) => {
     if (!originalContent.has(element)) originalContent.set(element, element.innerHTML);
     element.innerHTML = dictionary[element.dataset.i18nHtml] ?? originalContent.get(element);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(element => {
+    element.setAttribute('aria-label', dictionary[element.dataset.i18nAria] || element.getAttribute('aria-label'));
   });
   const articleBody = document.querySelector(".prose[data-i18n-html]");
   const translatedBody = document.querySelector(`template[data-article-translation="${selected}"]`);
@@ -133,7 +135,7 @@ function applyLanguage(language) {
 
   document.documentElement.lang = selected;
   const articleHeading = document.querySelector(".single-article__header h1");
-  const pageTitle = articleHeading?.textContent || pageTitles[selected][document.body.dataset.page];
+  const pageTitle = articleHeading?.textContent || (document.body.dataset.page === 'order' ? dictionary['ads.order'] : pageTitles[selected]?.[document.body.dataset.page]);
   if (selected === "pl") document.title = originalDocumentTitle;
   else if (pageTitle) document.title = `${pageTitle} | Polacy w Belgii`;
   document.querySelector(".language-picker__button img").src = languageData[selected].flag;
@@ -142,6 +144,7 @@ function applyLanguage(language) {
     button.classList.toggle("is-active", button.dataset.lang === selected)
   );
   localStorage.setItem("siteLanguage", selected);
+  document.dispatchEvent(new CustomEvent("languagechange", { detail: selected }));
 }
 
 const toggle = document.querySelector(".nav-toggle");

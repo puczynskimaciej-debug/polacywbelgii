@@ -1,0 +1,42 @@
+---
+layout: base.njk
+title: Zamów ogłoszenie | Polacy w Belgii
+description: Zamów reklamę na portalu Polacy w Belgii.
+pageKey: order
+permalink: /zamow-ogloszenie/
+---
+<section class="section"><div class="container ad-order">
+  <h1 data-i18n="ads.order">Zamów ogłoszenie</h1>
+  <p data-i18n="ads.intro">Wybierz rynek i termin. Po wysłaniu zamówienie trafi do redakcji do akceptacji. Na tym etapie nie pobieramy płatności online.</p>
+  <noscript>Formularz wymaga JavaScript. / JavaScript is required.</noscript>
+  <p id="ad-message" role="status" aria-live="polite"></p>
+  <form id="ad-order-form">
+    <fieldset id="ad-fields" disabled>
+      <div class="ad-form-grid">
+        <label><span data-i18n="ads.market">Język / rynek</span><select name="language">{% for key, language in languages %}<option value="{{ key }}">{{ language.name }}</option>{% endfor %}</select></label>
+        <label><span data-i18n="ads.type">Rodzaj reklamy</span><select name="type"><option>STANDARD</option><option>TOP</option></select></label>
+        <label><span data-i18n="ads.start">Pierwszy dzień</span><input type="date" name="startDate" required></label>
+        <label><span data-i18n="ads.end">Ostatni dzień (włącznie)</span><input type="date" name="endDate" required></label>
+      </div>
+      <div class="ad-calendar-heading"><button type="button" id="ad-month-prev" data-i18n-aria="ads.previousMonth" aria-label="Poprzedni miesiąc">←</button><label><span data-i18n="ads.month">Kalendarz dostępności</span><input type="month" id="ad-month" required></label><button type="button" id="ad-month-next" data-i18n-aria="ads.nextMonth" aria-label="Następny miesiąc">→</button></div>
+      <p data-i18n="ads.legend">Zielony: dostępne · żółty: ostatnie miejsca · szary: niedostępne. Kliknij pierwszy, a następnie ostatni dzień. Liczby oznaczają wolne miejsca.</p>
+      <div id="ad-calendar" class="ad-calendar"></div>
+      <p id="ad-price" class="ad-price" aria-live="polite"></p>
+      <p data-i18n="ads.pendingInfo">Oczekujące zamówienia rezerwują miejsca do decyzji redakcji.</p>
+      <div class="ad-form-grid">
+        <label><span data-i18n="ads.company">Firma / reklamodawca</span><input name="company" maxlength="120" required autocomplete="organization"></label>
+        <label><span data-i18n="ads.title">Tytuł reklamy</span><input name="title" maxlength="100" required></label>
+        <label class="ad-wide"><span data-i18n="ads.description">Krótki opis</span><textarea name="description" maxlength="400" required rows="3"></textarea></label>
+        <label><span data-i18n="ads.image">Grafika / logo (PNG, JPEG, WebP, do 500 KB)</span><input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp" required></label>
+        <label><span data-i18n="ads.url">Adres strony reklamy</span><input name="url" type="url" maxlength="2048" required placeholder="https://"></label>
+        <label><span data-i18n="ads.customerName">Imię i nazwisko zamawiającego</span><input name="customerName" maxlength="120" required autocomplete="name"></label>
+        <label><span data-i18n="ads.email">E-mail kontaktowy</span><input name="email" type="email" maxlength="254" required autocomplete="email"></label>
+        <label><span data-i18n="ads.phone">Telefon (opcjonalnie)</span><input name="phone" type="tel" maxlength="40" autocomplete="tel"></label>
+      </div>
+      <label class="ad-honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+      <label class="ad-consent"><input name="consent" type="checkbox" required><span data-i18n="ads.consent">Zgadzam się na przetwarzanie podanych danych w celu obsługi tego zamówienia.</span></label>
+      <button class="button" id="ad-review" data-i18n="ads.review" disabled>Sprawdź podsumowanie</button>
+    </fieldset>
+  </form>
+  <section id="ad-summary" hidden><h2 data-i18n="ads.summary">Podsumowanie</h2><div id="ad-summary-content"></div><button class="button" id="ad-send" data-i18n="ads.send">Wyślij zamówienie</button> <button type="button" id="ad-back" data-i18n="ads.back">Wróć do edycji</button></section>
+</div></section>

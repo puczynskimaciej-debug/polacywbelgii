@@ -126,24 +126,22 @@ async function configureCmsMock(page) {
   const articleNames = ["test.md", "test-praca.md", "test-weekend.md"];
   const articles = Object.fromEntries(await Promise.all(articleNames.map(async (name) => [name, await readFile(path.resolve("src", "content", "articles", name), "utf8")])));
 
-  await page.addInitScript(() => sessionStorage.setItem("pbe_github_token", "responsive-test-token"));
-  await page.route("https://api.github.com/**", async (route) => {
+  const user = { id: '11111111-1111-4111-8111-111111111111', name: 'Test Administrator', email: 'admin@example.com', role: 'admin', active: true, mustChangePassword: false, version: 1 };
+  await page.route('**/.netlify/functions/cms-auth?*', async route => {
+    const action = new URL(route.request().url()).searchParams.get('action');
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify(action === 'users' ? { users: [user] } : { user }) });
+  });
+  await page.route('**/.netlify/functions/cms-content?*', async route => {
     const url = new URL(route.request().url());
-    const pathname = decodeURIComponent(url.pathname);
-    const json = (payload, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(payload) });
-    if (pathname === "/user") return json({ login: "test-admin", name: "Test Administrator", avatar_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" });
-    if (pathname === "/repos/puczynskimaciej-debug/poradnik-polaka-w-belgii") return json({ permissions: { push: true, admin: true } });
-    if (pathname.endsWith("/contents/src/_data/home.json")) return json(githubFile("home.json", home));
-    if (pathname.endsWith("/contents/src/_data/site.json")) return json(githubFile("site.json", site));
-    if (pathname.endsWith("/contents/src/content/articles")) return json(articleNames.map((name) => ({ type: "file", name, path: `src/content/articles/${name}`, sha: `sha-${name}` })));
-    for (const [name, content] of Object.entries(articles)) if (pathname.endsWith(`/contents/src/content/articles/${name}`)) return json(githubFile(name, content));
-    if (pathname.endsWith("/contents/src/Images/uploads")) return json([]);
-    if (pathname.endsWith("/commits")) return json([{ sha: "1234567890abcdef", html_url: "https://github.com/example/commit/123", author: { login: "test-admin", avatar_url: "" }, commit: { message: "CMS: testowa zmiana treści", author: { name: "Test Administrator", date: "2026-07-25T12:00:00Z" } } }]);
-    if (pathname.endsWith("/collaborators")) return json([{ login: "puczynskimaciej-debug", avatar_url: "", type: "User" }, { login: "test-editor", avatar_url: "", type: "User" }]);
-    if (pathname.endsWith("/collaborators/puczynskimaciej-debug/permission")) return json({ permission: "admin", role_name: "admin" });
-    if (pathname.endsWith("/collaborators/test-editor/permission")) return json({ permission: "write", role_name: "push" });
-    if (pathname.endsWith("/invitations")) return json([]);
-    return json({ message: `Unhandled mock: ${pathname}` }, 404);
+    const filename = url.searchParams.get('path');
+    const json = (payload, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(payload) });
+    if (filename === 'src/_data/home.json') return json(githubFile('home.json', home));
+    if (filename === 'src/_data/site.json') return json(githubFile('site.json', site));
+    if (filename === 'src/content/articles') return json(articleNames.map(name => ({ type: 'file', name, path: `src/content/articles/${name}`, sha: `sha-${name}` })));
+    for (const [name, content] of Object.entries(articles)) if (filename === `src/content/articles/${name}`) return json(githubFile(name, content));
+    if (filename === 'src/Images/uploads') return json([]);
+    if (url.searchParams.get('action') === 'history') return json([{ sha: '1234567890abcdef', html_url: 'https://github.com/example/commit/123', commit: { message: 'CMS: testowa zmiana treści', author: { name: 'Test Administrator', date: '2026-07-25T12:00:00Z' } } }]);
+    return json({ message: `Unhandled mock: ${filename}` }, 404);
   });
 }
 

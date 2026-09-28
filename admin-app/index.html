@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/admin/admin.css">
   <link rel="stylesheet" href="/admin/cms-extra.css">
   <script type="module" src="/admin/app.js"></script>
+  <script type="module" src="/admin/ads.js"></script>
 </head>
 <body>
   <div id="auth-view" class="auth-shell">
@@ -18,16 +19,29 @@
       <a class="admin-brand" href="/"><span><b>PL</b><small>BE</small></span><strong>Polacy <em>w Belgii</em></strong></a>
       <p class="kicker">Własny CMS</p>
       <h1>Panel redakcji</h1>
-      <p class="muted">Zaloguj się kontem GitHub posiadającym prawo zapisu do repozytorium strony.</p>
-      <button id="github-login" class="primary github-login" type="button">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C16.7 5 17.7 5.3 17.7 5.3c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.8 5.4-5.5 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6A11.5 11.5 0 0 0 12 .7Z"/></svg>
-        Zaloguj przez GitHub
-      </button>
+      <p class="muted">Zaloguj się swoim adresem e-mail i hasłem.</p>
+      <form id="login-form">
+        <label>E-mail<input name="email" type="email" maxlength="254" required autocomplete="username"></label>
+        <label>Hasło<input name="password" type="password" maxlength="128" required autocomplete="current-password"></label>
+        <button class="primary" type="submit">Zaloguj się</button>
+      </form>
+      <p class="muted login-help">Nie masz konta lub nie pamiętasz hasła? Skontaktuj się z administratorem portalu.</p>
       <p id="auth-error" class="message message--error" hidden></p>
     </div>
   </div>
 
-  <div id="loading-view" class="auth-shell" hidden><div class="auth-card loading-card"><span class="spinner"></span><h2>Łączenie z GitHubem…</h2><p class="muted">Sprawdzamy konto i uprawnienia do repozytorium.</p></div></div>
+  <div id="loading-view" class="auth-shell" hidden><div class="auth-card loading-card"><span class="spinner"></span><h2>Logowanie…</h2><p class="muted">Sprawdzamy sesję i uprawnienia.</p></div></div>
+
+  <div id="password-view" class="auth-shell" hidden><div class="auth-card">
+    <h1>Zmień hasło</h1><p class="muted" id="password-note"></p>
+    <form id="account-password-form">
+      <label>Obecne hasło<input name="currentPassword" type="password" maxlength="128" required autocomplete="current-password"></label>
+      <label>Nowe hasło (15–128 znaków)<input name="password" type="password" minlength="15" maxlength="128" required autocomplete="new-password"></label>
+      <label>Powtórz nowe hasło<input name="confirmPassword" type="password" minlength="15" maxlength="128" required autocomplete="new-password"></label>
+      <p id="password-error" role="alert"></p><button class="primary" type="submit">Zapisz hasło</button>
+    </form>
+    <button class="ghost" type="button" id="password-cancel">Wróć do panelu</button><button class="ghost" type="button" id="password-logout">Wyloguj</button>
+  </div></div>
 
   <div id="app-view" class="app-shell" hidden>
     <aside class="sidebar">
@@ -36,6 +50,7 @@
         <button class="nav-item is-active" data-view="dashboard">⌂ <span>Podsumowanie</span></button>
         <button class="nav-item" data-view="home">▦ <span>Strona główna</span></button>
         <button class="nav-item" data-view="articles">▤ <span>Artykuły</span></button>
+        <button class="nav-item" data-view="ads">▣ <span>Reklamy</span></button>
         <button class="nav-item" data-view="contact">✉ <span>Kontakt i SEO</span></button>
         <button class="nav-item" data-view="media">▧ <span>Biblioteka mediów</span></button>
         <button class="nav-item admin-only" data-view="history">↺ <span>Historia zmian</span></button>
@@ -47,20 +62,21 @@
     <main class="workspace">
       <header class="topbar">
         <button id="menu-toggle" class="menu-toggle" aria-label="Otwórz menu">☰</button>
-        <img id="user-avatar" class="avatar" alt="">
+
         <div><strong id="current-user"></strong><small id="repository-name"></small></div>
+        <button id="change-password-button" class="ghost" type="button">Zmień hasło</button>
         <button id="logout-button" class="ghost">Wyloguj</button>
       </header>
       <div id="notice" class="message" hidden></div>
 
       <section class="view is-active" data-panel="dashboard">
-        <div class="page-heading"><div><p class="kicker">GitHub CMS</p><h1>Podsumowanie</h1></div></div>
+        <div class="page-heading"><div><p class="kicker">Panel redakcji</p><h1>Podsumowanie</h1></div></div>
         <div class="stats">
           <article><span>Artykuły</span><strong id="article-count">—</strong></article>
           <article><span>Kafelki newsów</span><strong id="news-count">—</strong></article>
           <article><span>Obrazy</span><strong id="media-count">—</strong></article>
         </div>
-        <div class="welcome-card"><div><p class="kicker">Publikowanie</p><h2>Każdy zapis tworzy commit w GitHub</h2><p>Netlify wykryje zmianę i automatycznie opublikuje nową wersję witryny.</p></div><button class="primary" data-action="new-article">Dodaj artykuł</button></div>
+        <div class="welcome-card"><div><p class="kicker">Publikowanie</p><h2>Publikuj treści portalu</h2><p>Po zapisaniu artykułu lub zmian na stronie rozpocznie się automatyczna publikacja.</p></div><button class="primary" data-action="new-article">Dodaj artykuł</button></div>
       </section>
 
       <section class="view" data-panel="home">
@@ -79,6 +95,21 @@
         <div class="table-card"><div id="articles-list"></div></div>
       </section>
 
+      <section class="view" data-panel="ads">
+        <div class="page-heading"><h1>Reklamy</h1><button type="button" class="primary" id="ads-new">Dodaj ręcznie</button></div>
+        <p id="ads-notice" role="status" aria-live="polite"></p>
+        <div class="editor-card"><h2>Cennik / dzień</h2><p>Ceny w EUR. Wyłączenie zamówień nie wyłącza wcześniej zaakceptowanych reklam.</p><form id="ads-settings"><div id="ads-prices"></div><button class="primary">Zapisz ceny</button></form></div>
+        <div class="editor-card"><h2>Zamówienia</h2><p>Oczekujące i zaakceptowane zamówienia rezerwują miejsca. Statusy zaplanowane, aktywne i zakończone wynikają automatycznie z dat. Akceptacja pozwala na emisję; nie oznacza potwierdzenia płatności.</p>
+          <form id="ads-filters" class="form-grid">
+            <label>Język<select name="language"><option value="">Wszystkie</option></select></label>
+            <label>Typ<select name="type"><option value="">Wszystkie</option><option>TOP</option><option>STANDARD</option></select></label>
+            <label>Status<select name="status"><option value="">Wszystkie</option><option value="pending">Oczekuje</option><option value="approved">Zaakceptowane (wszystkie)</option><option value="scheduled">Zaplanowane</option><option value="active">Aktywne</option><option value="ended">Zakończone</option><option value="rejected">Odrzucone</option><option value="cancelled">Anulowane</option></select></label>
+            <label>Okres od<input type="date" name="from"></label><label>Okres do<input type="date" name="to"></label>
+          </form><button type="button" class="secondary" id="ads-refresh">Odśwież</button>
+          <div id="ads-orders"></div>
+        </div>
+      </section>
+
       <section class="view" data-panel="contact">
         <div class="page-heading"><div><p class="kicker">Ustawienia</p><h1>Kontakt i SEO</h1></div><button class="primary" form="site-form">Zapisz</button></div>
         <form id="site-form">
@@ -91,23 +122,42 @@
       </section>
 
       <section class="view" data-panel="media">
-        <div class="page-heading"><div><p class="kicker">Obrazy w repozytorium</p><h1>Biblioteka mediów</h1></div><button class="primary" data-action="upload-media">+ Wgraj obraz</button></div>
+        <div class="page-heading"><div><p class="kicker">Biblioteka</p><h1>Biblioteka mediów</h1></div><button class="primary" data-action="upload-media">+ Wgraj obraz</button></div>
         <div id="media-grid" class="media-grid"></div>
       </section>
 
       <section class="view admin-only" data-panel="history">
-        <div class="page-heading"><div><p class="kicker">GitHub</p><h1>Historia zmian</h1></div><button class="secondary" data-action="refresh-history">Odśwież</button></div>
+        <div class="page-heading"><div><p class="kicker">Publikowanie</p><h1>Historia zmian</h1></div><button class="secondary" data-action="refresh-history">Odśwież</button></div>
         <div class="table-card"><div id="history-list"><p>Ładowanie historii…</p></div></div>
       </section>
 
-      <section class="view" data-panel="users">
+      <section class="view admin-only" data-panel="users">
         <div class="page-heading"><div><p class="kicker">Tylko administrator</p><h1>Użytkownicy i role</h1></div><button class="primary" data-action="new-user">+ Dodaj osobę</button></div>
-        <div class="editor-card"><p class="muted">Edytor może zarządzać całą treścią i mediami. Administrator ma dodatkowo dostęp do użytkowników i ról repozytorium.</p></div>
+        <div class="editor-card"><p class="muted">Edytor zarządza treściami, mediami i reklamami. Administrator dodatkowo tworzy konta, zmienia role, ustawia hasła tymczasowe i blokuje dostęp.</p></div>
         <div class="table-card"><div id="users-list"></div></div>
-        <div class="table-card" id="invitations-card" hidden><h2>Oczekujące zaproszenia</h2><div id="invitations-list"></div></div>
       </section>
     </main>
   </div>
+
+  <dialog id="ads-dialog">
+    <form id="ads-edit">
+      <div class="dialog-heading"><h2>Reklama</h2><button type="button" class="icon-button" id="ads-close" aria-label="Zamknij">×</button></div>
+      <p id="ads-edit-error" role="alert"></p><p id="ads-order-meta"></p>
+      <div class="form-grid">
+        <label>Język<select name="language"></select></label><label>Typ<select name="type"><option>STANDARD</option><option>TOP</option></select></label>
+        <label>Pierwszy dzień<input name="startDate" type="date" required></label><label>Ostatni dzień (włącznie)<input name="endDate" type="date" required></label>
+        <label>Firma<input name="company" maxlength="120" required></label><label>Tytuł<input name="title" maxlength="100" required></label>
+        <label class="wide">Opis<textarea name="description" maxlength="400" required></textarea></label>
+        <label>Grafika PNG/JPEG/WebP do 500 KB<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></label><img id="ads-image-preview" alt="Podgląd reklamy" width="180" hidden>
+        <label>Adres reklamy<input name="url" type="url" maxlength="2048" required></label><label>Zamawiający<input name="customerName" maxlength="120" required></label>
+        <label>E-mail<input name="email" type="email" maxlength="254" required></label><label>Telefon<input name="phone" maxlength="40"></label>
+        <label>Status<select name="status"><option value="pending">Oczekuje</option><option value="approved">Zaakceptowane</option><option value="rejected">Odrzucone</option><option value="cancelled">Anulowane</option></select></label>
+        <label id="ads-free-label">Bezpłatna / barter<select name="complimentary"><option value="false">Nie — aktualny cennik</option><option value="true">Tak — 0 EUR</option></select></label>
+      </div>
+      <p id="ads-edit-price"></p><p>Przy zapisie sprawdzamy każdy dzień. Zmiana terminu zachowuje historyczną stawkę dzienną i przelicza sumę. Język i typ istniejącego zamówienia są stałe.</p>
+      <button class="primary" id="ads-save">Zapisz reklamę</button>
+    </form>
+  </dialog>
 
   <dialog id="article-dialog">
     <form id="article-form">
@@ -130,11 +180,15 @@
 
   <dialog id="user-dialog">
     <form id="user-form">
-      <div class="dialog-heading"><div><p class="kicker">GitHub collaborator</p><h2>Dodaj osobę</h2></div><button class="icon-button" type="button" data-close>×</button></div>
-      <label>Nazwa użytkownika GitHub<input name="username" required autocomplete="off"></label>
-      <label>Rola<select name="permission"><option value="push">Edytor</option><option value="admin">Administrator</option></select></label>
-      <p class="muted">GitHub wyśle użytkownikowi zaproszenie do repozytorium.</p>
-      <div class="dialog-actions"><button class="ghost" type="button" data-close>Anuluj</button><button class="primary" type="submit">Wyślij zaproszenie</button></div>
+      <div class="dialog-heading"><div><p class="kicker">Konto CMS</p><h2 id="user-dialog-title">Dodaj osobę</h2></div><button class="icon-button" type="button" data-close>×</button></div>
+      <p id="user-error" role="alert"></p>
+      <label>Imię i nazwisko<input name="name" maxlength="120" required autocomplete="off"></label>
+      <label>E-mail<input name="email" type="email" maxlength="254" required autocomplete="off"></label>
+      <label>Rola<select name="role"><option value="editor">Edytor</option><option value="admin">Administrator</option></select></label>
+      <label>Dostęp<select name="active"><option value="true">Aktywny</option><option value="false">Zablokowany</option></select></label>
+      <label>Hasło tymczasowe (15–128 znaków)<input name="password" type="password" minlength="15" maxlength="128" autocomplete="new-password"></label>
+      <p class="muted" id="user-password-note"></p>
+      <div class="dialog-actions"><button class="ghost" type="button" data-close>Anuluj</button><button class="primary" type="submit">Zapisz konto</button></div>
     </form>
   </dialog>
   <input id="media-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" hidden>
