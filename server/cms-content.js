@@ -45,7 +45,7 @@ function validateContent(filename, content) {
 }
 async function github(endpoint, options = {}) {
   const token = process.env.CMS_GITHUB_TOKEN;
-  const repository = process.env.CMS_GITHUB_REPOSITORY || 'puczynskimaciej-debug/poradnik-polaka-w-belgii';
+  const repository = process.env.CMS_GITHUB_REPOSITORY || 'puczynskimaciej-debug/polacywbelgii';
   if (!token || !/^[\w.-]+\/[\w.-]+$/.test(repository)) fail('contentConfiguration', 503);
   const response = await fetch(`https://api.github.com/repos/${repository}${endpoint}`, {
     method: options.method || 'GET', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json' },
