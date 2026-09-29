@@ -41,6 +41,20 @@
       "date": "Lipiec 2026",
       "description": "Drugi, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
       "contact": "Dane kontaktowe są przykładowe"
+    },
+    {
+      "title": "Testowe ogłoszenie redakcyjne",
+      "category": "Test: redakcja",
+      "date": "Wrzesień",
+      "description": "Trzeci, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+      "contact": "Tel: 123-456-789"
+    },
+    {
+      "title": "Testowe ogłoszenie redakcyjne",
+      "category": "Test: odbiorca",
+      "date": "Wrzesień",
+      "description": "Czwarty, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+      "contact": "https://www.google.com/"
     }
   ]
 }
