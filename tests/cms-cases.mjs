@@ -108,7 +108,7 @@ export function registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, origin
       const result = await content('PUT', { path: 'src/content/articles/test.md', repo: 'attacker/repo', branch: 'bad' }, { content: Buffer.from(markdown).toString('base64'), branch: 'bad' });
       assert.equal(result.status, 200); assert.equal(observed.options.headers.Authorization, 'Bearer server_only_test_token');
       assert.equal(JSON.parse(observed.options.body).branch, 'main');
-      assert.match(observed.url, /puczynskimaciej-debug\/poradnik-polaka-w-belgii\/contents/);
+      assert.match(observed.url, /puczynskimaciej-debug\/polacywbelgii\/contents/);
       assert.ok(!JSON.stringify(result).includes('server_only_test_token'));
     } finally { globalThis.fetch = originalFetch; }
   });
