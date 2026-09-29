@@ -47,10 +47,10 @@ async function open(order) {
   for (const [key, value] of Object.entries(input)) { const control = form.elements.namedItem(key); if (control) control.value = value; }
   form.elements.language.disabled = form.elements.type.disabled = Boolean(order);
   for (const key of ['startDate', 'endDate']) { form.elements[key].readOnly = isShowcase(order); form.elements[key].closest('label').hidden = isShowcase(order); }
-  const textOnly=order?.kind==='text';
+  const textOnly=!order || order.kind==='text';
   for(const key of ['company','title','url','customerName','imageFile']) { form.elements[key].required=!textOnly && (key!=='imageFile'||!order); form.elements[key].closest('label').hidden=textOnly; }
   $('#ads-contact-label').hidden=!textOnly; form.elements.contact.required=textOnly;
-  form.elements.imageFile.required = !order;
+  form.elements.imageFile.required = !textOnly && !order;
   $('#ads-free-label').hidden = Boolean(order);
   $('#ads-order-meta').textContent = order ? `${order.id} · ${labels[order.effectiveStatus]} · ${order.source === 'manual' ? 'Dodane ręcznie' : 'Zamówienie klienta'} · ${order.days} dni × ${money(order.dailyPrice)} = ${money(order.totalPrice)}` : 'Nowa reklama';
   $('#ads-edit-error').textContent = ''; $('#ads-image-preview').hidden = !order || textOnly;
@@ -86,7 +86,7 @@ $('#ads-edit').onsubmit = async event => {
       if (file.size > 512000 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw { code: 'image' };
       image = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
     }
-    await api('admin-order', editing ? 'PUT' : 'POST', { ...values, kind: editing?.kind, imageFile: undefined, image, language: editing?.language || values.language, type: editing?.type || values.type, id: editing?.id, version: editing?.version, complimentary: values.complimentary === 'true' });
+    await api('admin-order', editing ? 'PUT' : 'POST', { ...values, kind: editing ? editing.kind : 'text', imageFile: undefined, image, language: editing?.language || values.language, type: editing?.type || values.type, id: editing?.id, version: editing?.version, complimentary: values.complimentary === 'true' });
     $('#ads-dialog').close(); await load(); $('#ads-notice').textContent = 'Reklama zapisana.';
   } catch (error) { $('#ads-edit-error').textContent = errorText(error); } finally { button.disabled = false; }
 };

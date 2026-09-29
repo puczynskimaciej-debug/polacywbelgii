@@ -10,8 +10,8 @@
   }
   function element(tag, value, className) { const node = document.createElement(tag); if (value) node.textContent = value; if (className) node.className = className; return node; }
   function card(ad) {
-    const item = element('article', '', 'ad-card');
-    if (ad.kind === 'text') { item.classList.add('ad-card--text'); item.append(element('small', t('sponsored')), element('p', ad.description, 'ad-copy'), element('p', ad.contact, 'ad-contact')); return item; }
+    const item = element('article', '', 'listing-card');
+    if (ad.kind === 'text') { item.classList.add('listing-card--text'); item.append(element('small', t('sponsored')), element('p', ad.description, 'listing-copy'), element('p', ad.contact, 'listing-contact')); return item; }
     const link = element('a'); link.href = ad.url; link.rel = 'sponsored noopener'; link.target = '_blank';
     const image = element('img'); image.src = ad.image; image.alt = ad.company; image.loading = 'lazy';
     link.append(image, element('small', `${t('sponsored')} · ${ad.company}`), element('h3', ad.title), element('p', ad.description));
@@ -19,18 +19,20 @@
   }
   let publicVersion = 0;
   async function loadAds(clear = false) {
-    if (!$('#ads-top')) return;
+    if (!$('#listing-top')) return;
     const version = ++publicVersion;
-    if (clear) for (const id of ['#ads-top', '#ads-standard']) { $(id).hidden = true; $(id).querySelector('[data-ad-list]').replaceChildren(); }
+    if (clear) for (const id of ['#listing-top', '#ogloszenia']) { $(id).hidden = id === '#listing-top'; const list = $(id).querySelector('[data-ad-list]'); list.replaceChildren(); delete list.dataset.content; }
     try {
       const { ads } = await api('public', { language: document.documentElement.lang });
       if (version !== publicVersion) return;
       for (const type of ['TOP', 'STANDARD']) {
         const list = $(`[data-ad-list="${type}"]`);
         const items = ads.filter(ad => ad.type === type);
-        list.replaceChildren(...items.map(card)); list.closest('section').hidden = !items.length;
+        const signature = JSON.stringify(items);
+        if (list.dataset.content !== signature) { list.replaceChildren(...items.map(card)); list.dataset.content = signature; }
+        list.closest('section').hidden = type === 'TOP' && !items.length;
       }
-    } catch { if (version === publicVersion) for (const id of ['#ads-top', '#ads-standard']) $(id).hidden = true; }
+    } catch { /* Keep the last loaded content during temporary connection failures. */ }
   }
   loadAds();
   let paused = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -51,7 +53,7 @@
         if (direction > 0) track.append(...items.slice(0, 2)); else track.prepend(...items.slice(-2));
         if (!reduced) for (const node of track.children) {
           const old = oldPositions.get(node); const current = node.getBoundingClientRect();
-          node.animate([{ transform: `translate(${old.x - current.x}px, ${old.y - current.y}px)` }, { transform: 'translate(0, 0)' }], { duration: 650, easing: 'ease-in-out' });
+          node.animate([{ transform: `translate(${old.x - current.x}px, ${old.y - current.y}px)` }, { transform: 'translate(0, 0)' }], { duration: 1200, easing: 'ease-in-out' });
         }
       }
     };
@@ -59,7 +61,7 @@
     setInterval(() => {
       if (paused || document.hidden || track.matches(':hover') || track.contains(document.activeElement)) return;
       move(1);
-    }, 6000);
+    }, 10000);
   }
   setInterval(() => loadAds(), 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAds(); });

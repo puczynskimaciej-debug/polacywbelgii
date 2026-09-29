@@ -1,11 +1,12 @@
 module.exports = function (eleventyConfig) {
+  eleventyConfig.addGlobalData('buildVersion', process.env.COMMIT_REF || String(Date.now()));
   const markdown = require("markdown-it")({ html: false, linkify: true, typographer: true });
   eleventyConfig.addPassthroughCopy("src/style.css");
   eleventyConfig.addPassthroughCopy("src/script.js");
-  eleventyConfig.addPassthroughCopy("src/ads.js");
+  eleventyConfig.addPassthroughCopy({ "src/ads.js": "listings.js" });
   eleventyConfig.addPassthroughCopy("src/order-modal.js");
-  eleventyConfig.addPassthroughCopy("src/ads-i18n.js");
-  eleventyConfig.addPassthroughCopy("src/ads.css");
+  eleventyConfig.addPassthroughCopy({ "src/ads-i18n.js": "listings-i18n.js" });
+  eleventyConfig.addPassthroughCopy({ "src/ads.css": "listings.css" });
   eleventyConfig.addFilter("json", value => JSON.stringify(value));
   eleventyConfig.addFilter("jsjson", value => JSON.stringify(value).replace(/</g, "\\u003c"));
   eleventyConfig.addPassthroughCopy({ "src/Images": "images" });

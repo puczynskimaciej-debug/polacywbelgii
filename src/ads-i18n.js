@@ -1,7 +1,7 @@
 window.adTranslations = {
   pl: {
     'ads.previous':'Poprzednie reklamy', 'ads.next':'Następne reklamy', 'ads.previousMonth':'Poprzedni miesiąc', 'ads.nextMonth':'Następny miesiąc',
-    'ads.order':'Zamów ogłoszenie', 'ads.top':'Polecane firmy', 'ads.sponsors':'Reklamy', 'ads.sponsored':'Reklama', 'ads.pause':'Wstrzymaj', 'ads.play':'Wznów',
+    'ads.order':'Zamów ogłoszenie', 'ads.top':'Wyróżnione ogłoszenia', 'ads.sponsors':'Ogłoszenia', 'ads.sponsored':'Ogłoszenie', 'ads.pause':'Wstrzymaj', 'ads.play':'Wznów',
     'ads.intro':'Wybierz rynek i termin. Po wysłaniu zamówienie trafi do redakcji do akceptacji. Na tym etapie nie pobieramy płatności online.',
     'ads.market':'Język / rynek', 'ads.type':'Rodzaj reklamy', 'ads.start':'Pierwszy dzień', 'ads.end':'Ostatni dzień (włącznie)', 'ads.month':'Kalendarz dostępności',
     'ads.legend':'Zielony: dostępne · żółty: ostatnie miejsca · szary: niedostępne. Kliknij pierwszy, a następnie ostatni dzień. Liczby oznaczają wolne miejsca.',
@@ -11,7 +11,7 @@ window.adTranslations = {
   },
   fr: {
     'ads.previous':'Publicités précédentes', 'ads.next':'Publicités suivantes', 'ads.previousMonth':'Mois précédent', 'ads.nextMonth':'Mois suivant',
-    'ads.order':'Commander une annonce', 'ads.top':'Entreprises à découvrir', 'ads.sponsors':'Publicités', 'ads.sponsored':'Publicité', 'ads.pause':'Pause', 'ads.play':'Reprendre',
+    'ads.order':'Commander une annonce', 'ads.top':'Annonces à la une', 'ads.sponsors':'Annonces', 'ads.sponsored':'Annonce', 'ads.pause':'Pause', 'ads.play':'Reprendre',
     'ads.intro':'Choisissez le marché et les dates. Votre commande sera soumise à la rédaction pour approbation. Aucun paiement en ligne à cette étape.',
     'ads.market':'Langue / marché', 'ads.type':'Type de publicité', 'ads.start':'Premier jour', 'ads.end':'Dernier jour (inclus)', 'ads.month':'Calendrier des disponibilités',
     'ads.legend':'Vert : disponible · jaune : dernières places · gris : indisponible. Cliquez sur le premier puis le dernier jour. Les chiffres indiquent les places restantes.',
@@ -21,7 +21,7 @@ window.adTranslations = {
   },
   nl: {
     'ads.previous':'Vorige advertenties', 'ads.next':'Volgende advertenties', 'ads.previousMonth':'Vorige maand', 'ads.nextMonth':'Volgende maand',
-    'ads.order':'Advertentie bestellen', 'ads.top':'Uitgelichte bedrijven', 'ads.sponsors':'Advertenties', 'ads.sponsored':'Advertentie', 'ads.pause':'Pauzeren', 'ads.play':'Hervatten',
+    'ads.order':'Advertentie bestellen', 'ads.top':'Uitgelichte advertenties', 'ads.sponsors':'Advertenties', 'ads.sponsored':'Advertentie', 'ads.pause':'Pauzeren', 'ads.play':'Hervatten',
     'ads.intro':'Kies de markt en de datums. De redactie beoordeelt uw bestelling. In deze stap wordt geen online betaling gevraagd.',
     'ads.market':'Taal / markt', 'ads.type':'Advertentietype', 'ads.start':'Eerste dag', 'ads.end':'Laatste dag (inclusief)', 'ads.month':'Beschikbaarheidskalender',
     'ads.legend':'Groen: beschikbaar · geel: laatste plaatsen · grijs: niet beschikbaar. Klik op de eerste en daarna de laatste dag. Cijfers tonen de resterende plaatsen.',

@@ -199,13 +199,13 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     for (const language of ['pl', 'fr']) await call('admin-order', 'POST', sample({ language, title: `Visible ${language}`, type: 'TOP' }), {}, true);
     await call('admin-order','POST',sample({kind:'text',type:'TOP',description:'Usługi dla mieszkańców Belgii. '.repeat(10),contact:'Telefon: +32 123 456'}),{},true);
     for (let i = 0; i < 9; i++) await call('admin-order', 'POST', sample({ title: `Standard ${i}` }), {}, true);
-    await page.goto('http://127.0.0.1:8089/'); await page.waitForSelector('#ads-top .ad-card');
-    assert.match(await page.locator('#ads-top').textContent(), /Visible pl/);
-    assert.equal(await page.locator('#ads-top .ad-card').count(),2);
-    assert.ok(await page.evaluate(()=>document.querySelector('#ads-top').getBoundingClientRect().bottom<=document.querySelector('.hero').getBoundingClientRect().top));
+    await page.goto('http://127.0.0.1:8089/'); await page.waitForSelector('#listing-top .listing-card');
+    assert.match(await page.locator('#listing-top').textContent(), /Visible pl/);
+    assert.equal(await page.locator('#listing-top .listing-card').count(),2);
+    assert.ok(await page.evaluate(()=>document.querySelector('#listing-top').getBoundingClientRect().bottom<=document.querySelector('.hero').getBoundingClientRect().top));
     await page.locator('.language-picker__button').click(); await page.locator('[data-lang="fr"]').click();
-    await page.waitForFunction(() => document.querySelector('#ads-top').textContent.includes('Visible fr'));
-    assert.doesNotMatch(await page.locator('#ads-top').textContent(), /Visible pl/);
+    await page.waitForFunction(() => document.querySelector('#listing-top').textContent.includes('Visible fr'));
+    assert.doesNotMatch(await page.locator('#listing-top').textContent(), /Visible pl/);
     await page.locator('.hero a[href="/zamow-ogloszenie/"]').click();
     await page.locator('#order-form').waitFor();
     assert.equal(new URL(page.url()).pathname,'/');
@@ -214,7 +214,10 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     assert.equal(await page.locator('[name=languages][value=pl]').isChecked(),true);
     await page.locator('#order-close').click();
     await page.locator('.language-picker__button').click(); await page.locator('[data-lang="pl"]').click();
-    await page.waitForSelector('#ads-standard .ad-card');
+    await page.waitForSelector('#ogloszenia .listing-card');
+    assert.equal(await page.locator('.notice-grid').count(), 0);
+    assert.equal(await page.locator('#ogloszenia [data-ad-list="STANDARD"]').count(), 1);
+    assert.match(await page.locator('script[src*="listings.js"]').getAttribute('src'), /\?v=.+/);
     for (const width of [360, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -241,6 +244,11 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     await page.locator('#ads-save').click();
     await page.waitForFunction(() => !document.querySelector('#ads-dialog').open);
     assert.equal((await store.orders()).find(order => order.title === 'Browser advert').status, 'approved');
+    await page.locator('#ads-new').click();
+    assert.equal(await page.locator('#ads-edit [name="company"]').isVisible(), false);
+    assert.equal(await page.locator('#ads-edit [name="contact"]').isVisible(), true);
+    assert.equal(await page.locator('#ads-edit [name="imageFile"]').isVisible(), false);
+    await page.locator('#ads-close').click();
     for (const width of [360, 768, 1440]) { await page.setViewportSize({ width, height: 900 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); await page.screenshot({ path: `test-results/ads-cms-${width}.png`, fullPage: true }); }
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

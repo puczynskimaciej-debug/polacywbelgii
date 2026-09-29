@@ -1,14 +1,14 @@
-.ad-section[hidden], #ad-summary[hidden], #ad-order-form[hidden] { display:none; }
-.ad-section h2 { margin-bottom:24px; }
-.ad-top-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)); gap:24px; }
-.ad-top-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-#ads-top { padding:24px 0; }
-#ads-top h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; margin-bottom:12px; }
-.ad-card--text { padding:22px; display:flex; flex-direction:column; gap:14px; }
-.ad-card--text .ad-copy { white-space:pre-wrap; overflow-wrap:anywhere; font-size:1rem; margin:0; }
-.ad-card--text .ad-contact { border-top:1px solid var(--line); padding-top:12px; margin-top:auto; font-weight:600; white-space:pre-wrap; overflow-wrap:anywhere; }
-#ads-top .ad-card img { width:90px; height:90px; float:left; margin:0 18px 8px 0; }
-#ads-top .ad-card h3 { font-size:1.1rem; }
+.listing-section[hidden], #ad-summary[hidden], #ad-order-form[hidden] { display:none; }
+.listing-section h2 { margin-bottom:24px; }
+.listing-top-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)); gap:24px; }
+.listing-top-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#listing-top { padding:24px 0; }
+#listing-top h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; margin-bottom:12px; }
+.listing-card--text { padding:22px; display:flex; flex-direction:column; gap:14px; }
+.listing-card--text .listing-copy { white-space:pre-wrap; overflow-wrap:anywhere; font-size:1rem; margin:0; }
+.listing-card--text .listing-contact { border-top:1px solid var(--line); padding-top:12px; margin-top:auto; font-weight:600; white-space:pre-wrap; overflow-wrap:anywhere; }
+#listing-top .listing-card img { width:90px; height:90px; float:left; margin:0 18px 8px 0; }
+#listing-top .listing-card h3 { font-size:1.1rem; }
 body.order-open { overflow:hidden; }
 #order-dialog { width:min(820px,calc(100% - 24px)); max-height:90dvh; padding:32px; border:0; border-radius:20px; color:var(--ink); box-shadow:0 24px 100px #001b3d40; }
 #order-dialog::backdrop { background:#091d38b8; backdrop-filter:blur(4px); }
@@ -36,20 +36,20 @@ body.order-open { overflow:hidden; }
 #order-confirm p { white-space:pre-wrap; overflow-wrap:anywhere; margin:16px 0; }
 #order-confirm button { margin-right:12px; }
 #order-dialog [hidden] { display:none!important; }
-@media(max-width:600px) { #order-dialog { padding:20px; } .order-options { grid-template-columns:1fr; gap:0; } .order-options fieldset { margin-bottom:0!important; } .ad-top-grid { grid-template-columns:1fr; } }
-.ad-card { min-width:0; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:white; }
-.ad-card a { display:block; height:100%; text-decoration:none; padding:16px; overflow-wrap:anywhere; }
-.ad-card img { width:100%; height:130px; object-fit:contain; background:var(--cream); border-radius:10px; margin-bottom:12px; }
-.ad-card h3 { font-size:1.05rem; margin:8px 0; }
-.ad-card p { font-size:.86rem; }
-.ad-card small { color:var(--muted); }
-.ad-top-grid .ad-card { border-top:4px solid var(--blue); box-shadow:var(--shadow); }
-.ad-top-grid img { height:220px; }
-.ad-top-grid h3 { font-size:1.5rem; }
+@media(max-width:600px) { #order-dialog { padding:20px; } .order-options { grid-template-columns:1fr; gap:0; } .order-options fieldset { margin-bottom:0!important; } .listing-top-grid { grid-template-columns:1fr; } }
+.listing-card { min-width:0; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:white; }
+.listing-card a { display:block; height:100%; text-decoration:none; padding:16px; overflow-wrap:anywhere; }
+.listing-card img { width:100%; height:130px; object-fit:contain; background:var(--cream); border-radius:10px; margin-bottom:12px; }
+.listing-card h3 { font-size:1.05rem; margin:8px 0; }
+.listing-card p { font-size:.86rem; }
+.listing-card small { color:var(--muted); }
+.listing-top-grid .listing-card { border-top:4px solid var(--blue); box-shadow:var(--shadow); }
+.listing-top-grid img { height:220px; }
+.listing-top-grid h3 { font-size:1.5rem; }
 .ad-controls { display:flex; gap:10px; justify-content:flex-end; margin-bottom:12px; }
 .ad-controls button,.ad-calendar-heading button,#ad-back { padding:10px 18px; border:1px solid var(--line); border-radius:10px; background:white; cursor:pointer; color:var(--navy); }
-.ad-standard-grid { display:grid; grid-auto-flow:column; grid-template-rows:repeat(2,auto); grid-auto-columns:calc((100% - 64px)/5); gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:12px; }
-.ad-standard-grid .ad-card { scroll-snap-align:start; }
+.listing-standard-grid { display:grid; grid-auto-flow:column; grid-template-rows:repeat(2,auto); grid-auto-columns:calc((100% - 64px)/5); gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:12px; }
+.listing-standard-grid .listing-card { scroll-snap-align:start; }
 .ad-order { max-width:900px; }
 .ad-order h1,.ad-order p,.ad-order h2 { margin-bottom:20px; }
 .ad-order fieldset { border:0; padding:0; min-width:0; }
@@ -71,7 +71,7 @@ body.order-open { overflow:hidden; }
 .ad-order .ad-honeypot { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
 .ad-order button:disabled { opacity:.55; cursor:not-allowed; }
 #ad-summary-content { overflow-wrap:anywhere; }
-#ad-summary-content .ad-card { margin:20px 0; max-width:480px; }
+#ad-summary-content .listing-card { margin:20px 0; max-width:480px; }
 #ad-message { overflow-wrap:anywhere; color:var(--blue-dark); }
-@media(max-width:1050px) { .ad-standard-grid { grid-auto-columns:calc((100% - 32px)/3); } }
-@media(max-width:650px) { .ad-standard-grid { grid-auto-columns:80%; } .ad-form-grid { grid-template-columns:1fr; } .ad-day { font-size:.75rem; } .ad-calendar-heading { gap:6px; } .ad-calendar-heading button { padding:10px; } }
+@media(max-width:1050px) { .listing-standard-grid { grid-auto-columns:calc((100% - 32px)/3); } }
+@media(max-width:650px) { .listing-standard-grid { grid-auto-columns:80%; } .ad-form-grid { grid-template-columns:1fr; } .ad-day { font-size:.75rem; } .ad-calendar-heading { gap:6px; } .ad-calendar-heading button { padding:10px; } }

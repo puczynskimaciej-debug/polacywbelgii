@@ -12,6 +12,11 @@
   included_files = ["node_modules/pg*/**", "node_modules/postgres-*/**", "node_modules/split2/**", "node_modules/xtend/**", "node_modules/@netlify/database/**", "node_modules/@netlify/runtime-utils/**", "node_modules/@neondatabase/serverless/**", "node_modules/waddler/**", "node_modules/ws/**", "node_modules/js-yaml/**", "node_modules/argparse/**"]
 
 [[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
   for = "/admin/*"
   [headers.values]
     X-Frame-Options = "DENY"

@@ -50,7 +50,7 @@
         <button class="nav-item is-active" data-view="dashboard">⌂ <span>Podsumowanie</span></button>
         <button class="nav-item" data-view="home">▦ <span>Strona główna</span></button>
         <button class="nav-item" data-view="articles">▤ <span>Artykuły</span></button>
-        <button class="nav-item" data-view="ads">▣ <span>Reklamy</span></button>
+        <button class="nav-item" data-view="ads">▣ <span>Ogłoszenia</span></button>
         <button class="nav-item" data-view="contact">✉ <span>Kontakt i SEO</span></button>
         <button class="nav-item" data-view="media">▧ <span>Biblioteka mediów</span></button>
         <button class="nav-item admin-only" data-view="history">↺ <span>Historia zmian</span></button>
@@ -87,7 +87,8 @@
             <label>Nadtytuł<input name="eyebrow" required></label><label class="wide">Tytuł<input name="title" required></label><label class="wide">Opis<textarea name="description" rows="3" required></textarea></label>
           </div></div>
           <div class="editor-card"><div class="card-heading"><h2>Kafelki z newsami</h2><button class="secondary" type="button" data-action="add-news">+ Dodaj kafelek</button></div><div id="news-editor" class="repeater"></div></div>
-          <div class="editor-card"><div class="card-heading"><h2>Ogłoszenia</h2><button class="secondary" type="button" data-action="add-notice">+ Dodaj ogłoszenie</button></div><div id="notices-editor" class="repeater"></div></div>
+          <p>Ogłoszeniami na stronie głównej zarządzasz w zakładce „Ogłoszenia”.</p>
+          <div hidden><div id="notices-editor" class="repeater"></div></div>
         </form>
       </section>
 
@@ -97,7 +98,7 @@
       </section>
 
       <section class="view" data-panel="ads">
-        <div class="page-heading"><h1>Reklamy</h1><button type="button" class="primary" id="ads-new">Dodaj ręcznie</button></div>
+        <div class="page-heading"><h1>Ogłoszenia</h1><button type="button" class="primary" id="ads-new">Dodaj ręcznie</button></div>
         <p id="ads-notice" role="status" aria-live="polite"></p>
         <div class="editor-card"><h2>Cennik / dzień</h2><p>Ceny w EUR. Wyłączenie zamówień nie wyłącza wcześniej zaakceptowanych reklam.</p><form id="ads-settings"><div id="ads-prices"></div><button class="primary">Zapisz ceny</button></form></div>
         <div class="editor-card"><h2>Zamówienia</h2><p>Oczekujące i zaakceptowane zamówienia rezerwują miejsca. Statusy zaplanowane, aktywne i zakończone wynikają automatycznie z dat. Akceptacja pozwala na emisję; nie oznacza potwierdzenia płatności.</p>

@@ -5,7 +5,7 @@ description: Praktyczne informacje, wiadomości i ogłoszenia dla Polaków miesz
 pageKey: home
 ---
 
-<section class="section ad-section" id="ads-top" hidden><div class="container"><h2 data-i18n="ads.top">Polecane firmy</h2><div class="ad-top-grid" data-ad-list="TOP"></div></div></section>
+<section class="section listing-section" id="listing-top" hidden><div class="container"><h2 data-i18n="ads.top">Polecane firmy</h2><div class="listing-top-grid" data-ad-list="TOP"></div></div></section>
 
 <section class="hero">
   <div class="container hero__content">
@@ -56,27 +56,10 @@ pageKey: home
       </div>
       <button class="button" type="button" data-order-open data-i18n="ads.order">Zamów ogłoszenie</button>
     </div>
-    <div class="notice-grid">
-      {% for notice in home.notices %}
-      <article class="notice">
-        <div class="notice__top">
-          <span class="tag" data-i18n="notices.{{ loop.index0 }}.category">{{ notice.category }}</span>
-          <time data-i18n="notices.{{ loop.index0 }}.date">{{ notice.date }}</time>
-        </div>
-        <h3 data-i18n="notices.{{ loop.index0 }}.title">{{ notice.title }}</h3>
-        <p data-i18n="notices.{{ loop.index0 }}.description">{{ notice.description }}</p>
-        {% if notice.contact %}<p class="notice__contact">{{ notice.contact }}</p>{% endif %}
-      </article>
-      {% endfor %}
-    </div>
+    <div class="ad-controls"><button type="button" data-ad-prev data-i18n-aria="ads.previous" aria-label="Poprzednie ogłoszenia">←</button><button type="button" data-ad-pause data-i18n="ads.pause">Wstrzymaj</button><button type="button" data-ad-next data-i18n-aria="ads.next" aria-label="Następne ogłoszenia">→</button></div>
+    <div class="listing-standard-grid" data-ad-list="STANDARD" tabindex="0"></div>
   </div>
 </section>
-
-<section class="section section--tint ad-section" id="ads-standard" hidden><div class="container">
-  <div class="section-heading"><h2 data-i18n="ads.sponsors">Reklamy</h2><a href="/zamow-ogloszenie/" data-i18n="ads.order">Zamów ogłoszenie</a></div>
-  <div class="ad-controls"><button type="button" data-ad-prev data-i18n-aria="ads.previous" aria-label="Poprzednie reklamy">←</button><button type="button" data-ad-pause data-i18n="ads.pause">Wstrzymaj</button><button type="button" data-ad-next data-i18n-aria="ads.next" aria-label="Następne reklamy">→</button></div>
-  <div class="ad-standard-grid" data-ad-list="STANDARD" tabindex="0"></div>
-</div></section>
 
 <section class="cta">
   <div class="container cta__inner">
