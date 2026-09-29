@@ -1,6 +1,6 @@
-const { currentUser } = require('../../server/cms-auth');
-const { reply, readJson, fail, handleError } = require('../../server/http');
-const { allowedPath, validateContent, github } = require('../../server/cms-content');
+const { currentUser } = require('../cms-auth');
+const { reply, readJson, fail, handleError } = require('../http');
+const { allowedPath, validateContent, github } = require('../cms-content');
 exports.handler = async event => {
   try {
     const user = await currentUser(event);

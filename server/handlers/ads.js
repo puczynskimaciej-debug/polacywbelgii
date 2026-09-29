@@ -1,9 +1,9 @@
 const { randomUUID, createHash } = require('node:crypto');
-const domain = require('../../server/ads-domain');
-const store = require('../../server/ads-store');
+const domain = require('../ads-domain');
+const store = require('../ads-store');
 const languages = require('../../src/_data/languages.json');
-const { currentUser } = require('../../server/cms-auth');
-const { HttpError } = require('../../server/http');
+const { currentUser } = require('../cms-auth');
+const { HttpError } = require('../http');
 
 async function authorize(event) {
   await currentUser(event);

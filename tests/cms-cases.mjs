@@ -6,9 +6,25 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 import deployment from '../server/deployment.js';
-import health from '../netlify/functions/health.js';
+import health from '../server/handlers/health.js';
+import { adapt } from '../server/netlify-adapter.mjs';
 
 export function registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, originalFetch, origin, adminPassword, adminCookie }) {
+  test('modern Netlify adapter preserves cookies, request bodies and binary responses', async () => {
+    const endpoint = adapt(cmsAuth.handler);
+    const response = await endpoint(new Request(`${origin}/.netlify/functions/cms-auth?action=session`, { headers: { cookie: adminCookie() } }), { ip: '127.0.0.1' });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).user.role, 'admin');
+    const bytes = Buffer.from([137, 80, 78, 71]);
+    const binary = adapt(async event => {
+      assert.equal(event.body, 'payload');
+      assert.equal(event.headers['x-nf-client-connection-ip'], '192.0.2.1');
+      return { statusCode: 200, headers: { 'Content-Type': 'image/png', 'Set-Cookie': 'session=test; HttpOnly; Secure' }, body: bytes.toString('base64'), isBase64Encoded: true };
+    });
+    const image = await binary(new Request(`${origin}/image`, { method: 'POST', body: 'payload' }), { ip: '192.0.2.1' });
+    assert.deepEqual(Buffer.from(await image.arrayBuffer()), bytes);
+    assert.equal(image.headers.get('set-cookie'), 'session=test; HttpOnly; Secure');
+  });
   const password = 'Temporary test password 123!';
   const newPassword = 'Personal new password 456!';
   async function request(action, method = 'GET', input, cookie, headers = {}) {

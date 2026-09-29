@@ -1,5 +1,11 @@
 # CMS: e-mail i hasło
 
+## Netlify Database
+
+Projekt zawiera `@netlify/database` i migrację `netlify/database/migrations/20260928130000_portal/migration.sql`. Netlify tworzy bazę oraz stosuje migracje podczas wdrożenia. Podgląd `cms-check` używa osobnej gałęzi bazy. Funkcje korzystają z aktualnego API Request/Response i SDK pobierającego połączenie właściwe dla danego wdrożenia; starszy tryb Lambda nie zapewnia automatycznej konfiguracji bazy. Jawne `DATABASE_URL` nadal służy do zewnętrznego PostgreSQL i testów lokalnych.
+
+Konfiguracja pakowania w `netlify.toml` dołącza zależności bazy także przy publikacji z Windows. Kod obsługi endpointów znajduje się w `server/handlers`, a wejścia funkcji w `netlify/functions/*.mjs`.
+
 Użytkownik otwiera `/admin/` i wpisuje e-mail oraz hasło. Nie potrzebuje konta GitHub. Administrator dodaje konta w sekcji **Użytkownicy i role**, nadaje role **Edytor / Administrator** i może zablokować dostęp.
 
 ## Co pozostaje w tle

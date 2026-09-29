@@ -10,9 +10,9 @@ import EmbeddedPostgres from 'embedded-postgres';
 import { chromium } from 'playwright-core';
 import domain from '../server/ads-domain.js';
 import store from '../server/ads-store.js';
-import ads from '../netlify/functions/ads.js';
-import cmsAuth from '../netlify/functions/cms-auth.js';
-import cmsContent from '../netlify/functions/cms-content.js';
+import ads from '../server/handlers/ads.js';
+import cmsAuth from '../server/handlers/cms-auth.js';
+import cmsContent from '../server/handlers/cms-content.js';
 import auth from '../server/cms-auth.js';
 import { registerCmsTests } from './cms-cases.mjs';
 

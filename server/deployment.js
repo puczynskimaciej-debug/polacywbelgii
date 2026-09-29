@@ -1,8 +1,8 @@
-const { database } = require('./ads-store');
+const { database, databaseConnectionString } = require('./ads-store');
 const REQUIRED_TABLES = ['ads_settings', 'ad_orders', 'ad_rate_limits', 'cms_users', 'cms_sessions', 'cms_login_limits', 'cms_audit'];
 async function readiness() {
   const checks = {
-    databaseConfigured: Boolean(process.env.DATABASE_URL || process.env.NETLIFY_DB_URL),
+    databaseConfigured: Boolean(databaseConnectionString()),
     originConfigured: false,
     publishingConfigured: Boolean(process.env.CMS_GITHUB_TOKEN),
     databaseReachable: false,

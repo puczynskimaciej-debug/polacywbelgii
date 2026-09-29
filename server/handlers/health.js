@@ -1,5 +1,5 @@
-const { readiness } = require('../../server/deployment');
-const { reply } = require('../../server/http');
+const { readiness } = require('../deployment');
+const { reply } = require('../http');
 exports.handler = async event => {
   if (event.httpMethod !== 'GET') return reply(405, { ready: false });
   const { ready } = await readiness();

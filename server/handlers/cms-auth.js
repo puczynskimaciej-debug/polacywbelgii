@@ -1,6 +1,6 @@
-const auth = require('../../server/cms-auth');
-const { database } = require('../../server/ads-store');
-const { reply, fail, readJson, handleError } = require('../../server/http');
+const auth = require('../cms-auth');
+const { database } = require('../ads-store');
+const { reply, fail, readJson, handleError } = require('../http');
 exports.handler = async event => {
   try {
     const action = event.queryStringParameters?.action || 'session';
