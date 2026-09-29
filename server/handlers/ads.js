@@ -100,6 +100,7 @@ exports.handler = async event => {
       if (!admin && (body.expectedDailyPrice !== price.dailyPrice || body.expectedTotalPrice !== price.totalPrice)) domain.fail('priceChanged', 409);
       const order = { ...content, ...price, id: old?.id || randomUUID(), language: input.language, type: input.type, startDate: input.startDate, endDate: input.endDate, status: nextStatus, version: (old?.version || 0) + 1, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), source: old?.source || (admin ? 'manual' : 'public'), paymentStatus: old?.paymentStatus || (admin && input.complimentary ? 'not_required' : 'unpaid'), paymentId: old?.paymentId || null, paymentProvider: old?.paymentProvider || null, paidAt: old?.paidAt || null, requestId: old?.requestId || (!admin ? body.requestId : null), fingerprint: old?.fingerprint || (!admin ? body.fingerprint : null) };
       if (old?.groupId) { order.groupId=old.groupId; order.batchRequestId=old.batchRequestId; }
+      if (old?.demoSet) order.demoSet = old.demoSet;
       await client.query('INSERT INTO ad_orders(id,data) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET data=EXCLUDED.data', [order.id, order]);
       return admin ? { ...order, effectiveStatus: domain.status(order) } : { id: order.id, status: order.status, totalPrice: order.totalPrice, currency: order.currency };
     });

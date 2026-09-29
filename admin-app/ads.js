@@ -3,6 +3,7 @@ const $ = selector => document.querySelector(selector);
 const labels = { pending: 'Oczekuje', approved: 'Zaakceptowane', scheduled: 'Zaplanowane', active: 'Aktywne', ended: 'Zakończone', rejected: 'Odrzucone', cancelled: 'Anulowane' };
 const errors = { unavailable: 'API reklam jest niedostępne. Sprawdź DATABASE_URL i migrację bazy.', unauthorized: 'Brak uprawnień. Zaloguj się ponownie.', dates: 'Niepoprawny zakres dat (maks. 366 dni, do 2 lat naprzód).', settings: 'Wprowadź poprawne ceny. Włączony rynek wymaga cen większych od zera.', validation: 'Sprawdź dane formularza.', image: 'Wymagany poprawny PNG/JPEG/WebP do 500 KB.', conflict: 'Ktoś zmienił dane. Odśwież listę przed ponowną edycją.', full: 'Brak miejsc:', immutableMarket: 'Nie można zmienić języka ani typu istniejącego zamówienia.', market: 'Niepoprawny rynek.' };
 let configuration, orders = [], editing = null;
+const isShowcase = order => order?.demoSet === 'showcase-2026-09-29' && order.source === 'manual' && order.paymentStatus === 'not_required';
 const money = value => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(value / 100);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const errorText = error => (errors[error.code] || error.message || 'Nie udało się zapisać.') + (error.details ? ' ' + error.details.map(day => `${day.date}: zajęte ${day.used}/${day.capacity}`).join(', ') : '');
@@ -25,10 +26,11 @@ async function load() {
 }
 function render() {
   const filter = Object.fromEntries(new FormData($('#ads-filters')));
-  const filtered = orders.filter(order => (!filter.language || filter.language === order.language) && (!filter.type || filter.type === order.type) && (!filter.status || (filter.status === 'approved' ? order.status === 'approved' : filter.status === order.effectiveStatus)) && (!filter.from || order.endDate >= filter.from) && (!filter.to || order.startDate <= filter.to));
-  $('#ads-orders').innerHTML = filtered.map(order => `<div class="table-row"><div><h3>${escape(order.title)}</h3><p>${escape(order.company)} · ${escape(order.language.toUpperCase())} · ${escape(order.type)} · ${labels[order.effectiveStatus]}</p><p>${escape(order.startDate)} — ${escape(order.endDate)} · ${order.days} dni × ${money(order.dailyPrice)} = ${money(order.totalPrice)}</p></div><button class="secondary" data-ad-edit="${escape(order.id)}">Szczegóły / edycja</button></div>`).join('') || '<p>Brak zamówień spełniających kryteria.</p>';
+  const filtered = orders.filter(order => (!filter.language || filter.language === order.language) && (!filter.type || filter.type === order.type) && (!filter.status || (filter.status === 'approved' ? order.status === 'approved' : filter.status === order.effectiveStatus)) && (!filter.from || isShowcase(order) || order.endDate >= filter.from) && (!filter.to || order.startDate <= filter.to));
+  $('#ads-orders').innerHTML = filtered.map(order => `<div class="table-row"><div><h3>${escape(order.title)}</h3><p>${escape(order.company)} · ${escape(order.language.toUpperCase())} · ${escape(order.type)} · ${labels[order.effectiveStatus]}</p><p>${escape(order.startDate)} — ${isShowcase(order) ? 'Bezterminowo (pokazowe)' : escape(order.endDate)} · ${order.days} dni × ${money(order.dailyPrice)} = ${money(order.totalPrice)}</p></div><button class="secondary" data-ad-edit="${escape(order.id)}">Szczegóły / edycja</button></div>`).join('') || '<p>Brak zamówień spełniających kryteria.</p>';
 }
 function editPrice() {
+  if (isShowcase(editing)) { $('#ads-edit-price').textContent = 'Bezterminowo (pokazowe). Aby ukryć, wybierz status Anulowane.'; return; }
   const form = $('#ads-edit'); const input = Object.fromEntries(new FormData(form));
   const days = (Date.parse(input.endDate) - Date.parse(input.startDate)) / 86400000 + 1;
   const price = editing ? editing.dailyPrice : input.complimentary === 'true' ? 0 : configuration.data.markets[input.language]?.prices[input.type];
@@ -44,6 +46,7 @@ async function open(order) {
   const input = order || { language: Object.keys(configuration.languages)[0], type: 'STANDARD', status: 'approved', startDate: configuration.today, endDate: configuration.today };
   for (const [key, value] of Object.entries(input)) { const control = form.elements.namedItem(key); if (control) control.value = value; }
   form.elements.language.disabled = form.elements.type.disabled = Boolean(order);
+  for (const key of ['startDate', 'endDate']) { form.elements[key].readOnly = isShowcase(order); form.elements[key].closest('label').hidden = isShowcase(order); }
   const textOnly=order?.kind==='text';
   for(const key of ['company','title','url','customerName','imageFile']) { form.elements[key].required=!textOnly && (key!=='imageFile'||!order); form.elements[key].closest('label').hidden=textOnly; }
   $('#ads-contact-label').hidden=!textOnly; form.elements.contact.required=textOnly;

@@ -54,6 +54,22 @@ after(async () => {
   await stopped;
 });
 
+test('showcase ads stay active until cancelled and retain their marker after CMS edits', async () => {
+  await reset();
+  const created = await call('admin-order', 'POST', sample({ complimentary: true }), {}, true);
+  assert.equal(created.status, 201);
+  const order = { ...created.data, demoSet: 'showcase-2026-09-29' };
+  await store.database().query('UPDATE ad_orders SET data=$1 WHERE id=$2', [order, order.id]);
+  assert.equal(domain.status(order, '2035-01-01'), 'active');
+  assert.equal(domain.status({ ...order, demoSet: undefined }, '2035-01-01'), 'ended');
+  assert.equal(domain.availability([order], domain.defaults(), 'pl', 'STANDARD', '2035-01-01', '2035-01-01')[0].used, 1);
+  const edited = await call('admin-order', 'PUT', { ...order, status: 'cancelled' }, {}, true);
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.demoSet, order.demoSet);
+  assert.equal(domain.status(edited.data, '2035-01-01'), 'cancelled');
+  assert.equal(domain.availability([edited.data], domain.defaults(), 'pl', 'STANDARD', '2035-01-01', '2035-01-01')[0].used, 0);
+});
+
 test('inclusive dates, leap years, Brussels timezone, strict inputs and privacy', () => {
   assert.equal(domain.dates('2028-02-28', '2028-03-01').length, 3);
   assert.equal(domain.dates('2026-11-10', '2026-11-19').length, 10);

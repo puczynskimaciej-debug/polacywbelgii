@@ -28,15 +28,17 @@ function marketFor(settings, language, type) {
   if (!Object.hasOwn(languages, language) || !Object.hasOwn(settings.markets, language) || !Object.hasOwn(settings.types, type)) fail('market');
   return settings.markets[language];
 }
+function isShowcase(order) { return order.demoSet === 'showcase-2026-09-29' && order.source === 'manual' && order.paymentStatus === 'not_required'; }
 function status(order, day = today()) {
   if (order.status !== 'approved') return order.status;
+  if (isShowcase(order)) return day < order.startDate ? 'scheduled' : 'active';
   return day < order.startDate ? 'scheduled' : day > order.endDate ? 'ended' : 'active';
 }
 function availability(orders, settings, language, type, start, end, excludeId) {
   marketFor(settings, language, type);
   const capacity = settings.types[type].capacity;
   return dates(start, end).map(date => {
-    const used = orders.filter(o => o.id !== excludeId && o.language === language && o.type === type && ['pending', 'approved'].includes(o.status) && o.startDate <= date && o.endDate >= date).length;
+    const used = orders.filter(o => o.id !== excludeId && o.language === language && o.type === type && ['pending', 'approved'].includes(o.status) && o.startDate <= date && (isShowcase(o) || o.endDate >= date)).length;
     return { date, used, capacity, remaining: Math.max(0, capacity - used) };
   });
 }
@@ -72,4 +74,4 @@ function creative(input) {
   return result;
 }
 function publicAd(order) { return Object.fromEntries(['id', 'kind', 'contact', 'company', 'title', 'description', 'image', 'url', 'type', 'language'].map(key => [key, order[key]])); }
-module.exports = { AdError, fail, today, dates, defaults, validateSettings, marketFor, status, availability, quote, creative, publicAd };
+module.exports = { AdError, fail, today, dates, defaults, validateSettings, marketFor, isShowcase, status, availability, quote, creative, publicAd };
