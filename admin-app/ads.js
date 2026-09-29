@@ -20,7 +20,7 @@ async function load() {
       select.innerHTML = (form.id === 'ads-filters' ? '<option value="">Wszystkie</option>' : '') + Object.entries(settings.languages).map(([key, language]) => `<option value="${escape(key)}">${escape(language.name)}</option>`).join('');
       if ([...select.options].some(option => option.value === previous)) select.value = previous;
     }
-    render(); $('#ads-notice').textContent = '';
+    applyLanguage(); render(); $('#ads-notice').textContent = '';
   } catch (error) { $('#ads-notice').textContent = errorText(error); }
 }
 function render() {
@@ -44,10 +44,13 @@ async function open(order) {
   const input = order || { language: Object.keys(configuration.languages)[0], type: 'STANDARD', status: 'approved', startDate: configuration.today, endDate: configuration.today };
   for (const [key, value] of Object.entries(input)) { const control = form.elements.namedItem(key); if (control) control.value = value; }
   form.elements.language.disabled = form.elements.type.disabled = Boolean(order);
+  const textOnly=order?.kind==='text';
+  for(const key of ['company','title','url','customerName','imageFile']) { form.elements[key].required=!textOnly && (key!=='imageFile'||!order); form.elements[key].closest('label').hidden=textOnly; }
+  $('#ads-contact-label').hidden=!textOnly; form.elements.contact.required=textOnly;
   form.elements.imageFile.required = !order;
   $('#ads-free-label').hidden = Boolean(order);
   $('#ads-order-meta').textContent = order ? `${order.id} · ${labels[order.effectiveStatus]} · ${order.source === 'manual' ? 'Dodane ręcznie' : 'Zamówienie klienta'} · ${order.days} dni × ${money(order.dailyPrice)} = ${money(order.totalPrice)}` : 'Nowa reklama';
-  $('#ads-edit-error').textContent = ''; $('#ads-image-preview').hidden = !order;
+  $('#ads-edit-error').textContent = ''; $('#ads-image-preview').hidden = !order || textOnly;
   if (order) $('#ads-image-preview').src = order.image;
   editPrice(); $('#ads-dialog').showModal();
 }
@@ -80,7 +83,10 @@ $('#ads-edit').onsubmit = async event => {
       if (file.size > 512000 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw { code: 'image' };
       image = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
     }
-    await api('admin-order', editing ? 'PUT' : 'POST', { ...values, imageFile: undefined, image, language: editing?.language || values.language, type: editing?.type || values.type, id: editing?.id, version: editing?.version, complimentary: values.complimentary === 'true' });
+    await api('admin-order', editing ? 'PUT' : 'POST', { ...values, kind: editing?.kind, imageFile: undefined, image, language: editing?.language || values.language, type: editing?.type || values.type, id: editing?.id, version: editing?.version, complimentary: values.complimentary === 'true' });
     $('#ads-dialog').close(); await load(); $('#ads-notice').textContent = 'Reklama zapisana.';
   } catch (error) { $('#ads-edit-error').textContent = errorText(error); } finally { button.disabled = false; }
 };
+
+function applyLanguage() {const language=document.querySelector('#cms-language').value;$('#ads-filters').elements.language.value=language;document.querySelectorAll('#ads-prices fieldset').forEach((f,i)=>f.hidden=Object.keys(configuration.languages)[i]!==language);}
+document.addEventListener('cmslanguagechange',()=>{if(configuration){applyLanguage();render();}});

@@ -1,5 +1,7 @@
 # CMS: e-mail i hasło
 
+Przełącznik „Edytowany język” wybiera treści PL/NL/FR. Polska wersja pozostaje w głównych polach `home.json` i `site.json`, a niezależne wersje niderlandzka i francuska w `locales.nl` oraz `locales.fr`. Każda wersja ma własny hero, listy informacji i ogłoszeń, kontakt i SEO. Edytor artykułu otwiera zakładkę wybranego języka. Media i konta użytkowników pozostają wspólne. Publiczna strona korzysta z tych danych zamiast stałych tłumaczeń treści redakcyjnych.
+
 ## Netlify Database
 
 Projekt zawiera `@netlify/database` i migrację `netlify/database/migrations/20260928130000_portal/migration.sql`. Netlify tworzy bazę oraz stosuje migracje podczas wdrożenia. Podgląd `cms-check` używa osobnej gałęzi bazy. Funkcje korzystają z aktualnego API Request/Response i SDK pobierającego połączenie właściwe dla danego wdrożenia; starszy tryb Lambda nie zapewnia automatycznej konfiguracji bazy. Jawne `DATABASE_URL` nadal służy do zewnętrznego PostgreSQL i testów lokalnych.

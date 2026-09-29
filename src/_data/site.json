@@ -18,5 +18,51 @@
       "title": "Kontakt — Polacy w Belgii",
       "description": "Skontaktuj się z redakcją serwisu Polacy w Belgii."
     }
+  },
+  "locales": {
+    "nl": {
+      "contact": {
+        "email": "kontakt@polacywbelgii.eu",
+        "area": "Heel België",
+        "heading": "Dicht bij de Poolse gemeenschap",
+        "description": "We beantwoorden berichten op werkdagen. We geven geen individueel juridisch of medisch advies."
+      },
+      "seo": {
+        "home": {
+          "title": "Polacy w Belgii — informacje, artykuły i ogłoszenia",
+          "description": "Praktyczne informacje, wiadomości i ogłoszenia dla Polaków mieszkających w Belgii."
+        },
+        "articles": {
+          "title": "Artykuły i poradniki dla Polaków w Belgii",
+          "description": "Poradniki i aktualności dla Polaków mieszkających i pracujących w Belgii."
+        },
+        "contact": {
+          "title": "Kontakt — Polacy w Belgii",
+          "description": "Skontaktuj się z redakcją serwisu Polacy w Belgii."
+        }
+      }
+    },
+    "fr": {
+      "contact": {
+        "email": "kontakt@polacywbelgii.eu",
+        "area": "Toute la Belgique",
+        "heading": "Proches de la communauté polonaise",
+        "description": "Nous répondons les jours ouvrables. Nous ne fournissons pas de conseils juridiques ou médicaux individuels."
+      },
+      "seo": {
+        "home": {
+          "title": "Polacy w Belgii — informacje, artykuły i ogłoszenia",
+          "description": "Praktyczne informacje, wiadomości i ogłoszenia dla Polaków mieszkających w Belgii."
+        },
+        "articles": {
+          "title": "Artykuły i poradniki dla Polaków w Belgii",
+          "description": "Poradniki i aktualności dla Polaków mieszkających i pracujących w Belgii."
+        },
+        "contact": {
+          "title": "Kontakt — Polacy w Belgii",
+          "description": "Skontaktuj się z redakcją serwisu Polacy w Belgii."
+        }
+      }
+    }
   }
 }

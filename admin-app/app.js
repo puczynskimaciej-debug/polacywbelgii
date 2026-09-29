@@ -3,7 +3,7 @@ import { CmsAuth } from "./modules/auth.js";
 import { ContentApi } from "./modules/content-api.js";
 import { ContentRepository } from "./modules/repository.js";
 
-const state = { api: null, repository: null, user: null, isAdmin: false, home: null, homeSha: null, site: null, siteSha: null, articles: [], media: [], history: [], users: [], editingUser: null, uploadTarget: null, previewLanguage: "pl" };
+const state = { api: null, repository: null, user: null, isAdmin: false, home: null, homeSha: null, site: null, siteSha: null, articles: [], media: [], history: [], users: [], editingUser: null, uploadTarget: null, previewLanguage: "pl", language: "pl", homeAll: null, siteAll: null };
 const auth = new CmsAuth();
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -30,6 +30,7 @@ async function loadContent() {
   const [home, site, articles, media] = await Promise.all([state.repository.home(), state.repository.site(), state.repository.articles(), state.repository.media()]);
   [state.home, state.homeSha, state.site, state.siteSha, state.articles, state.media] = [home.data, home.sha, site.data, site.sha, articles, media];
   if (state.isAdmin) state.history = await state.api.commits();
+  state.homeAll=state.home; state.siteAll=state.site; selectContentLanguage();
   renderAll();
 }
 
@@ -62,6 +63,16 @@ function renderAll() {
   $("#article-count").textContent = state.articles.length; $("#news-count").textContent = state.home.news.length; $("#media-count").textContent = state.media.length;
   renderHome(); renderArticles(); renderSite(); renderMedia(); renderHistory(); renderUsers();
 }
+function selectContentLanguage() {
+  for (const key of ['home','site']) { const root=state[key+'All']; if(!root)continue; if(state.language==='pl')state[key]=root; else { root.locales ||= {}; root.locales[state.language] ||= structuredClone(Object.fromEntries(Object.entries(root).filter(([k])=>k!=='locales'))); state[key]=root.locales[state.language]; } }
+}
+function captureLanguageDraft() {
+ if(!state.home)return;
+ const form=$('#home-form'); Object.assign(state.home.hero,{eyebrow:form.eyebrow.value,title:form.title.value,description:form.description.value}); state.home.news=readRepeater('news');state.home.notices=readRepeater('notices');
+ const siteForm=$('#site-form'); for(const key of ['email','area','heading','description'])state.site.contact[key]=siteForm.elements['contact.'+key].value;
+ $$('[data-seo]').forEach(field=>{const [page,key]=field.dataset.seo.split('.');state.site.seo[page][key]=field.value;});
+}
+$('#cms-language').onchange=event=>{captureLanguageDraft();state.language=event.target.value;selectContentLanguage();renderAll();document.dispatchEvent(new CustomEvent('cmslanguagechange',{detail:state.language}));};
 function renderHome() {
   const form = $("#home-form"); form.eyebrow.value = state.home.hero.eyebrow; form.title.value = state.home.hero.title; form.description.value = state.home.hero.description;
   renderRepeater("news", state.home.news); renderRepeater("notices", state.home.notices);
@@ -72,7 +83,7 @@ function renderRepeater(type, items) {
 }
 function readRepeater(type) { return $$(`#${type}-editor .repeat-item`).map((row) => Object.fromEntries($$("[data-field]", row).map((field) => [field.dataset.field, field.value.trim()]))); }
 function renderArticles() {
-  $("#articles-list").innerHTML = state.articles.length ? state.articles.map((article) => `<div class="table-row"><div><h3>${escapeHtml(article.title)}</h3><p>${escapeHtml(article.category || "Bez kategorii")} · ${formatDate(article.date)}</p></div><div class="row-actions"><button class="secondary" data-edit-article="${article.slug}">Edytuj</button><button class="ghost danger" data-delete-article="${article.slug}">Usuń</button></div></div>`).join("") : "<p>Nie ma jeszcze artykułów.</p>";
+  $("#articles-list").innerHTML = state.articles.length ? state.articles.map((article) => `<div class="table-row"><div><h3>${escapeHtml((state.language === "pl" ? article.title : article[`title_${state.language}`]) || "Brak wersji w tym jezyku: " + article.title)}</h3><p>${escapeHtml(article.category || "Bez kategorii")} · ${formatDate(article.date)}</p></div><div class="row-actions"><button class="secondary" data-edit-article="${article.slug}">Edytuj</button><button class="ghost danger" data-delete-article="${article.slug}">Usuń</button></div></div>`).join("") : "<p>Nie ma jeszcze artykułów.</p>";
 }
 function renderSite() {
   const form = $("#site-form"); form.elements["contact.email"].value = state.site.contact.email; form.elements["contact.area"].value = state.site.contact.area; form.elements["contact.heading"].value = state.site.contact.heading; form.elements["contact.description"].value = state.site.contact.description;
@@ -111,7 +122,7 @@ function formData(form) { return Object.fromEntries(new FormData(form).entries()
 function openArticle(article = null) {
   const form = $("#article-form"); form.reset(); $("#article-dialog-title").textContent = article ? "Edytuj artykuł" : "Nowy artykuł";
   const values = article || { date: new Date().toISOString() }; Object.entries(values).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = key === "date" ? String(value).slice(0,16) : value || ""; });
-  form.slug.value = article?.slug || ""; $("#article-dialog").showModal();
+  form.slug.value = article?.slug || ""; $("#article-dialog").showModal(); document.querySelector(`[data-language-tab="${state.language}"]`).click();
 }
 async function uploadImage(target = null) { state.uploadTarget = target; $("#media-input").click(); }
 function renderArticlePreview(language = state.previewLanguage) {
@@ -165,11 +176,11 @@ $$("[data-language-tab]").forEach((button) => button.addEventListener("click", (
 
 $("#home-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
-  try { state.home = { hero: { eyebrow: event.target.eyebrow.value.trim(), title: event.target.title.value.trim(), description: event.target.description.value.trim() }, news: readRepeater("news"), notices: readRepeater("notices") }; const result = await state.repository.saveHome(state.home, state.homeSha); state.homeSha = result.content.sha; notify("Zapisano. Netlify rozpocznie publikację."); renderAll(); } catch(error) { notify(error.message,true); } finally { setBusy(button,false); }
+  try { Object.assign(state.home, { hero: { eyebrow: event.target.eyebrow.value.trim(), title: event.target.title.value.trim(), description: event.target.description.value.trim() }, news: readRepeater("news"), notices: readRepeater("notices") }); const result = await state.repository.saveHome(state.homeAll, state.homeSha); state.homeSha = result.content.sha; notify("Zapisano. Netlify rozpocznie publikację."); renderAll(); } catch(error) { notify(error.message,true); } finally { setBusy(button,false); }
 });
 $("#site-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button,true);
-  try { state.site.contact = { email:event.target.elements["contact.email"].value.trim(), area:event.target.elements["contact.area"].value.trim(), heading:event.target.elements["contact.heading"].value.trim(), description:event.target.elements["contact.description"].value.trim() }; $$("[data-seo]").forEach((field) => { const [page,key]=field.dataset.seo.split("."); state.site.seo[page][key]=field.value.trim(); }); const result=await state.repository.saveSite(state.site,state.siteSha); state.siteSha=result.content.sha; notify("Ustawienia kontaktu i SEO zapisane."); } catch(error){notify(error.message,true);} finally{setBusy(button,false);}
+  try { state.site.contact = { email:event.target.elements["contact.email"].value.trim(), area:event.target.elements["contact.area"].value.trim(), heading:event.target.elements["contact.heading"].value.trim(), description:event.target.elements["contact.description"].value.trim() }; $$("[data-seo]").forEach((field) => { const [page,key]=field.dataset.seo.split("."); state.site.seo[page][key]=field.value.trim(); }); const result=await state.repository.saveSite(state.siteAll,state.siteSha); state.siteSha=result.content.sha; notify("Ustawienia kontaktu i SEO zapisane."); } catch(error){notify(error.message,true);} finally{setBusy(button,false);}
 });
 $("#article-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button=event.submitter; setBusy(button,true); const values=formData(event.target); const original=state.articles.find((article)=>article.slug===values.slug);

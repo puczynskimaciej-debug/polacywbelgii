@@ -1,5 +1,13 @@
 # System reklam — konfiguracja i obsługa
 
+## Zamówienie w popupie
+
+Przyciski zamawiania otwierają dialog bez opuszczania strony. Język interfejsu odpowiada językowi strony, a języki publikacji są osobnym wyborem PL/NL/FR, z polskim na pierwszym miejscu. Zamawiający wybiera format i do 90 pojedynczych dni, następnie podaje tekst (400 znaków na język), wspólny kontakt publiczny (160 znaków) i prywatny e-mail. Obraz, nazwa firmy i adres WWW nie są wymagane dla nowych ogłoszeń tekstowych.
+
+`order-batch` rezerwuje wszystkie języki i dni w jednej transakcji. Każdy język/dzień ma osobną pozycję w CMS i wspólny `groupId`. Ponowienie identycznego żądania nie tworzy duplikatu. Serwer ponownie sprawdza cennik i dostępność, a prywatny e-mail nie trafia do publicznego API. Zamówienia pozostają nieopłacone i oczekujące; płatności online nie są podłączone.
+
+TOP wyświetla dwie kolumny nad hero (jedną na telefonie). W CMS wybór edytowanego języka filtruje zamówienia i cennik. Istniejące reklamy obrazkowe pozostają obsługiwane.
+
 ## Architektura
 
 Eleventy nadal generuje stronę, artykuły i istniejący CMS używają GitHub Contents API. Reklamy korzystają z Netlify Function `ads` oraz **prywatnego PostgreSQL**. Danych klientów nie zapisujemy do publicznego repozytorium. Każde wywołanie administracyjne sprawdza sesję konta CMS (e-mail i hasło). Logowanie oraz konta są opisane w [CMS.md](CMS.md). GitHub jest wyłącznie magazynem treści obsługiwanym przez backend.

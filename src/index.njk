@@ -5,6 +5,8 @@ description: Praktyczne informacje, wiadomości i ogłoszenia dla Polaków miesz
 pageKey: home
 ---
 
+<section class="section ad-section" id="ads-top" hidden><div class="container"><h2 data-i18n="ads.top">Polecane firmy</h2><div class="ad-top-grid" data-ad-list="TOP"></div></div></section>
+
 <section class="hero">
   <div class="container hero__content">
     <span class="eyebrow" data-i18n="home.eyebrow">{{ home.hero.eyebrow }}</span>
@@ -18,7 +20,7 @@ pageKey: home
   </div>
 </section>
 
-<section class="section ad-section" id="ads-top" hidden><div class="container"><h2 data-i18n="ads.top">Polecane firmy</h2><div class="ad-top-grid" data-ad-list="TOP"></div></div></section>
+
 
 <section class="section" aria-labelledby="news-heading">
   <div class="container">
@@ -52,6 +54,7 @@ pageKey: home
         <span class="eyebrow" data-i18n="home.community">Tablica społeczności</span>
         <h2 id="notices-heading" data-i18n="home.notices">Ogłoszenia</h2>
       </div>
+      <button class="button" type="button" data-order-open data-i18n="ads.order">Zamów ogłoszenie</button>
     </div>
     <div class="notice-grid">
       {% for notice in home.notices %}

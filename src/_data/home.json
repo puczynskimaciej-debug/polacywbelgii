@@ -56,5 +56,127 @@
       "description": "Czwarty, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
       "contact": "https://www.google.com/"
     }
-  ]
+  ],
+  "locales": {
+    "nl": {
+      "hero": {
+        "eyebrow": "Testversie van de website",
+        "title": "Testwebsite voor Polen in België",
+        "description": "Dit is voorbeeldinhoud voor het hoofdgedeelte. Het toont ruimte voor een belangrijke boodschap, een korte beschrijving en links naar artikels en berichten."
+      },
+      "news": [
+        {
+          "title": "Testbericht over de eerste dagen in België",
+          "category": "Test: administratie",
+          "description": "Een voorbeeldbeschrijving van een kaart over documenten en de eerste stappen na een verhuizing.",
+          "image": "/images/placeholders/start-belgia.svg",
+          "link": "/artykuly/test/"
+        },
+        {
+          "title": "Testbericht over werk",
+          "category": "Test: werk",
+          "description": "Een voorbeeldtekst over een werkdag, verplichtingen en het organiseren van documenten.",
+          "image": "/images/placeholders/praca-belgia.svg",
+          "link": "/artykuly/test-praca/"
+        },
+        {
+          "title": "Testidee voor het weekend",
+          "category": "Test: vrije tijd",
+          "description": "Een lichte placeholder die toont hoe een kaart over evenementen, gezin en vrije tijd eruitziet.",
+          "image": "/images/placeholders/weekend-belgia.svg",
+          "link": "/artykuly/test-weekend/"
+        }
+      ],
+      "notices": [
+        {
+          "title": "Testbericht voor de gemeenschap",
+          "category": "Test: gemeenschap",
+          "date": "Juli 2026",
+          "description": "Dit is voorbeeldinhoud. Hier kan later informatie over een evenement of lokaal initiatief verschijnen.",
+          "contact": "test@polacywbelgii.eu"
+        },
+        {
+          "title": "Testbericht van de redactie",
+          "category": "Test: redactie",
+          "date": "Juli 2026",
+          "description": "Een tweede, onafhankelijke placeholder om een langer bericht op de startpagina te testen.",
+          "contact": "Dane kontaktowe są przykładowe"
+        },
+        {
+          "title": "Testowe ogłoszenie redakcyjne",
+          "category": "Test: redakcja",
+          "date": "Wrzesień",
+          "description": "Trzeci, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "contact": "Tel: 123-456-789"
+        },
+        {
+          "title": "Testowe ogłoszenie redakcyjne",
+          "category": "Test: odbiorca",
+          "date": "Wrzesień",
+          "description": "Czwarty, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "contact": "https://www.google.com/"
+        }
+      ]
+    },
+    "fr": {
+      "hero": {
+        "eyebrow": "Version test du site",
+        "title": "Site test pour les Polonais en Belgique",
+        "description": "Ceci est un contenu d’exemple pour la section principale. Il montre l’emplacement d’un message important, d’une courte présentation et des liens vers les articles et annonces."
+      },
+      "news": [
+        {
+          "title": "Actualité test sur les premiers jours en Belgique",
+          "category": "Test : démarches",
+          "description": "Une description d’exemple pour une carte consacrée aux documents et aux premières démarches.",
+          "image": "/images/placeholders/start-belgia.svg",
+          "link": "/artykuly/test/"
+        },
+        {
+          "title": "Actualité test sur le travail",
+          "category": "Test : travail",
+          "description": "Un exemple de texte sur une journée de travail, les obligations et l’organisation des documents.",
+          "image": "/images/placeholders/praca-belgia.svg",
+          "link": "/artykuly/test-praca/"
+        },
+        {
+          "title": "Idée test pour le week-end",
+          "category": "Test : loisirs",
+          "description": "Un placeholder léger montrant une carte consacrée aux événements, à la famille et aux loisirs.",
+          "image": "/images/placeholders/weekend-belgia.svg",
+          "link": "/artykuly/test-weekend/"
+        }
+      ],
+      "notices": [
+        {
+          "title": "Annonce communautaire test",
+          "category": "Test : communauté",
+          "date": "Juillet 2026",
+          "description": "Ceci est un contenu d’exemple. Une information sur un événement ou une initiative locale pourra apparaître ici.",
+          "contact": "test@polacywbelgii.eu"
+        },
+        {
+          "title": "Annonce test de la rédaction",
+          "category": "Test : rédaction",
+          "date": "Juillet 2026",
+          "description": "Un deuxième placeholder indépendant permettant de tester un message plus long sur la page d’accueil.",
+          "contact": "Dane kontaktowe są przykładowe"
+        },
+        {
+          "title": "Testowe ogłoszenie redakcyjne",
+          "category": "Test: redakcja",
+          "date": "Wrzesień",
+          "description": "Trzeci, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "contact": "Tel: 123-456-789"
+        },
+        {
+          "title": "Testowe ogłoszenie redakcyjne",
+          "category": "Test: odbiorca",
+          "date": "Wrzesień",
+          "description": "Czwarty, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "contact": "https://www.google.com/"
+        }
+      ]
+    }
+  }
 }

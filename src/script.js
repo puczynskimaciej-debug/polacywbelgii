@@ -144,7 +144,30 @@ function applyLanguage(language) {
     button.classList.toggle("is-active", button.dataset.lang === selected)
   );
   localStorage.setItem("siteLanguage", selected);
+  applyCmsContent(selected);
   document.dispatchEvent(new CustomEvent("languagechange", { detail: selected }));
+}
+
+function applyCmsContent(language) {
+  const data=window.cmsLocalized;if(!data)return;
+  const home=language==='pl'?data.home:data.home.locales?.[language];
+  const site=language==='pl'?data.site:data.site.locales?.[language];
+  const set=(key,value)=>{document.querySelectorAll(`[data-i18n="${key}"]`).forEach(e=>e.textContent=value||'');};
+  if(home && document.body.dataset.page==='home'){
+    for(const key of ['eyebrow','title','description'])set('home.'+key,home.hero[key]);
+    for(const [group,selector] of [['news','.news-grid'],['notices','.notice-grid']]){
+      const container=document.querySelector(selector);if(!container)continue;
+      container.replaceChildren(...home[group].map(item=>{
+        const card=document.createElement('article');card.className=group==='news'?'news-card':'notice';
+        const add=(tag,value,className)=>{const e=document.createElement(tag);e.textContent=value||'';if(className)e.className=className;return e;};
+        if(group==='news'){const image=document.createElement('img');image.src=item.image;image.alt='';image.loading='lazy';const body=document.createElement('div');body.className='news-card__body';const link=add('a',translations[language]['common.more']||'Dowiedz się więcej','card-link');link.href=item.link;body.append(add('span',item.category,'tag'),add('h3',item.title),add('p',item.description),link);card.append(image,body);}
+        else {const top=document.createElement('div');top.className='notice__top';top.append(add('span',item.category,'tag'),add('time',item.date));card.append(top,add('h3',item.title),add('p',item.description),add('p',item.contact,'notice__contact'));}return card;
+      }));
+    }
+  }
+  if(site){set('contact.heading',site.contact.heading);set('contact.text',site.contact.description);set('contact.belgium',site.contact.area);const email=document.querySelector('.contact-detail a');if(email){email.textContent=site.contact.email;email.href='mailto:'+site.contact.email;}
+    const seo=site.seo?.[document.body.dataset.page];if(seo){document.title=seo.title;document.querySelector('meta[name=description]')?.setAttribute('content',seo.description);}
+  }
 }
 
 const toggle = document.querySelector(".nav-toggle");

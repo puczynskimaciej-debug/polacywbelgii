@@ -163,20 +163,40 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
   try {
     const page = await browser.newPage(); const errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:8089/zamow-ogloszenie/');
-    await page.waitForFunction(() => !document.querySelector('#ad-fields').disabled);
-    for (const [name, value] of Object.entries({ company: 'Browser Company', title: 'Browser advert', description: 'Test description', url: 'https://example.com', customerName: 'Jan', email: 'jan@example.com' })) await page.locator(`#ad-order-form [name="${name}"]`).fill(value);
-    await page.locator('[name="imageFile"]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from(image.split(',')[1], 'base64') });
-    await page.locator('[name="consent"]').check();
-    await page.locator('#ad-review').click(); await page.locator('#ad-send').click();
-    await page.waitForFunction(() => document.querySelector('#ad-message').textContent.includes('Zamówienie zapisane'));
-    assert.equal((await store.orders()).length, 1);
+    await page.locator('#order-form').waitFor({state:'visible'});
+    assert.equal(await page.locator('#order-calendar-step').isVisible(),false);
+    await page.locator('[name=type][value=STANDARD]').check();
+    await page.locator('[name=languages][value=fr]').check();
+    await page.locator('#order-calendar button:not([disabled])').first().click();
+    await page.locator('[data-copy=pl]').fill('Browser advert');
+    await page.locator('[data-copy=fr]').fill('Annonce française');
+    await page.locator('#order-form [name=contact]').fill('+32 123 456');
+    await page.locator('#order-form [name=email]').fill('private@example.com');
+    await page.locator('#order-form [name=consent]').check();
+    await page.locator('#order-review').click();
+    const submitted=page.waitForResponse(response=>response.url().includes('action=order-batch'));
+    await page.locator('#order-confirm .button').click();
+    const submittedResponse=await submitted;assert.equal(submittedResponse.status(),201,await submittedResponse.text());
+    await page.waitForFunction(() => document.querySelector('#order-confirm').textContent.includes('Zamówienie zapisane'));
+    assert.equal((await store.orders()).length,2);
+    await page.locator('#order-close').click();
     for (const language of ['pl', 'fr']) await call('admin-order', 'POST', sample({ language, title: `Visible ${language}`, type: 'TOP' }), {}, true);
+    await call('admin-order','POST',sample({kind:'text',type:'TOP',description:'Usługi dla mieszkańców Belgii. '.repeat(10),contact:'Telefon: +32 123 456'}),{},true);
     for (let i = 0; i < 9; i++) await call('admin-order', 'POST', sample({ title: `Standard ${i}` }), {}, true);
     await page.goto('http://127.0.0.1:8089/'); await page.waitForSelector('#ads-top .ad-card');
     assert.match(await page.locator('#ads-top').textContent(), /Visible pl/);
+    assert.equal(await page.locator('#ads-top .ad-card').count(),2);
+    assert.ok(await page.evaluate(()=>document.querySelector('#ads-top').getBoundingClientRect().bottom<=document.querySelector('.hero').getBoundingClientRect().top));
     await page.locator('.language-picker__button').click(); await page.locator('[data-lang="fr"]').click();
     await page.waitForFunction(() => document.querySelector('#ads-top').textContent.includes('Visible fr'));
     assert.doesNotMatch(await page.locator('#ads-top').textContent(), /Visible pl/);
+    await page.locator('.hero a[href="/zamow-ogloszenie/"]').click();
+    await page.locator('#order-form').waitFor();
+    assert.equal(new URL(page.url()).pathname,'/');
+    assert.equal(await page.locator('#order-title').textContent(),'Publier une annonce');
+    assert.equal(await page.locator('[name=languages]').first().inputValue(),'pl');
+    assert.equal(await page.locator('[name=languages][value=pl]').isChecked(),true);
+    await page.locator('#order-close').click();
     await page.locator('.language-picker__button').click(); await page.locator('[data-lang="pl"]').click();
     await page.waitForSelector('#ads-standard .ad-card');
     for (const width of [360, 768, 1440]) {
@@ -185,7 +205,7 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
       await page.screenshot({ path: `test-results/ads-home-${width}.png`, fullPage: true });
     }
     await page.goto('http://127.0.0.1:8089/zamow-ogloszenie/');
-    await page.waitForSelector('.ad-day');
+    await page.locator('#order-form').waitFor(); await page.locator('[name=type][value=TOP]').check(); await page.waitForSelector('#order-calendar button');
     for (const width of [360, 768, 1440]) { await page.setViewportSize({ width, height: 900 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); await page.screenshot({ path: `test-results/ads-order-${width}.png`, fullPage: true }); }
     // Isolate the advertising CMS module while preserving the actual CMS HTML/CSS and API.
     await page.route('**/admin/app.js', route => route.fulfill({ contentType: 'text/javascript', body: "document.querySelector('#auth-view').hidden=true;document.querySelector('#app-view').hidden=false;document.querySelectorAll('.view').forEach(p=>p.classList.toggle('is-active',p.dataset.panel==='ads'));" }));
@@ -194,7 +214,7 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     await page.waitForSelector('[data-ad-edit]');
     await page.locator('#ads-filters [name="status"]').selectOption('pending');
     assert.equal(await page.locator('[data-ad-edit]').count(), 1);
-    await page.locator('[data-ad-edit]').click();
+    await page.locator('[data-ad-edit]').first().click();
     await page.locator('#ads-dialog').waitFor({ state: 'visible' });
     for (const width of [360, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
@@ -208,6 +228,19 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     for (const width of [360, 768, 1440]) { await page.setViewportSize({ width, height: 900 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); await page.screenshot({ path: `test-results/ads-cms-${width}.png`, fullPage: true }); }
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
+});
+
+test('multi-language orders are atomic, idempotent and keep customer email private', async () => {
+  await reset();
+  const body={requestId:randomUUID(),type:'TOP',dates:[day,plus(2)],variants:[{language:'pl',text:'Polskie ogłoszenie'},{language:'fr',text:'Annonce française'}],contact:'+32 123',email:'private@example.com',consent:true,expectedTotalPrice:4000};
+  const first=await call('order-batch','POST',body); assert.equal(first.status,201);assert.equal(first.data.totalPrice,4000);
+  const retry=await call('order-batch','POST',body);assert.equal(retry.data.id,first.data.id);assert.equal((await store.orders()).length,4);
+  await call('admin-order','POST',sample({type:'TOP',language:'fr',startDate:plus(2),endDate:plus(2)}),{},true);
+  const blocked=await call('order-batch','POST',{...body,requestId:randomUUID()});assert.equal(blocked.status,409);assert.equal((await store.orders()).length,5);
+  const pl=(await store.orders()).find(o=>o.language==='pl'&&o.startDate===day);
+  const approved=await call('admin-order','PUT',{...pl,status:'approved'}, {},true);assert.equal(approved.status,200);
+  const pub=await call('public','GET',null,{language:'pl'});assert.equal(pub.data.ads[0].contact,'+32 123');assert.ok(!JSON.stringify(pub.data).includes('private@example.com'));
+  assert.equal((await call('order-batch','POST',{...body,requestId:randomUUID(),variants:[{language:'nl',text:'x'.repeat(401)}]})).status,400);
 });
 
 registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, originalFetch, origin, adminPassword, adminCookie: () => adminCookie });

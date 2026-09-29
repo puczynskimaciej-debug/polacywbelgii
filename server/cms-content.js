@@ -35,6 +35,14 @@ function validateContent(filename, content) {
     safeUrl(data.image || '');
   } else {
     let data; try { data = JSON.parse(text); } catch { fail('validation'); }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) fail('validation');
+    if (data.locales !== undefined) {
+      if (!data.locales || typeof data.locales !== 'object' || Array.isArray(data.locales)) fail('validation');
+      for (const [language, localized] of Object.entries(data.locales)) {
+        if (!['nl','fr'].includes(language) || !localized || localized.locales !== undefined) fail('validation');
+        validateContent(filename, Buffer.from(JSON.stringify(localized)).toString('base64'));
+      }
+    }
     const strings = (obj, keys) => obj && keys.every(key => typeof obj[key] === 'string');
     if (filename.endsWith('/home.json')) {
       if (!strings(data?.hero, ['eyebrow', 'title', 'description']) || !Array.isArray(data.news) || !Array.isArray(data.notices) || data.news.length > 100 || data.notices.length > 100) fail('validation');

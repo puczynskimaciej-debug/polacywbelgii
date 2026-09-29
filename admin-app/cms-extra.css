@@ -34,4 +34,7 @@
 .history-author span { color: var(--muted); font-size: .8rem; }
 .commit-link { color: var(--blue); font-weight: 700; text-decoration: none; }
 .role-select { width: auto; min-width: 145px; margin: 0; }
+.cms-language { display:flex; flex-direction:column; gap:4px; font-size:.75rem; min-width:130px; margin:0; }
+.cms-language select { margin:0; padding:6px 10px; }
+.topbar { height:auto; min-height:80px; flex-wrap:wrap; gap:12px; padding-top:12px; padding-bottom:12px; }
 .login-help{font-size:.85rem;line-height:1.6;margin-top:22px}.auth-card form{margin-top:24px}#password-error,#user-error{color:#a62b29;overflow-wrap:anywhere}#password-view .ghost{margin-top:18px}#users-list p{overflow-wrap:anywhere}@media(max-width:500px){.topbar{height:auto;min-height:72px;gap:6px;flex-wrap:wrap;padding:12px}.topbar .ghost{padding:0 8px;font-size:.78rem}.topbar div{font-size:.8rem}}

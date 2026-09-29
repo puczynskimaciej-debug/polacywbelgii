@@ -27,7 +27,7 @@ exports.handler = async event => {
     if (method === 'GET') {
       if (action === 'image' || action === 'admin-detail') {
         const order = await store.order(query.id);
-        if (!order || (action === 'image' && domain.status(order) !== 'active')) domain.fail('notFound', 404);
+        if (!order || (action === 'image' && (domain.status(order) !== 'active' || order.kind === 'text'))) domain.fail('notFound', 404);
         if (action === 'admin-detail') return reply(200, { ...order, effectiveStatus: domain.status(order) });
         const [prefix, bytes] = order.image.split(',');
         return { statusCode: 200, isBase64Encoded: true, headers: { 'Content-Type': prefix.slice(5).split(';')[0], 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, body: bytes };
@@ -38,7 +38,7 @@ exports.handler = async event => {
       if (action === 'config' || action === 'admin-settings') return reply(200, { ...settings, languages, today: domain.today() });
       if (action === 'public') {
         if (!Object.hasOwn(languages, query.language)) domain.fail('market');
-        return reply(200, { ads: (await store.orders(undefined, false)).filter(order => order.language === query.language && domain.status(order) === 'active').map(order => ({ ...domain.publicAd(order), image: `/.netlify/functions/ads?action=image&id=${order.id}` })) });
+        return reply(200, { ads: (await store.orders(undefined, false)).filter(order => order.language === query.language && domain.status(order) === 'active').map(order => ({ ...domain.publicAd(order), image: order.kind === 'text' ? '' : `/.netlify/functions/ads?action=image&id=${order.id}` })) });
       }
       if (action === 'availability') {
         const price = domain.quote(settings.data, query);
@@ -48,6 +48,7 @@ exports.handler = async event => {
       if (action === 'admin-orders') return reply(200, { orders: (await store.orders(undefined, false)).map(order => ({ ...order, effectiveStatus: domain.status(order) })) });
       domain.fail('notFound', 404);
     }
+    if (action === 'order-batch' && method === 'POST') return reply(201, await require('../ads-batch').reserve(body, event.headers['x-nf-client-connection-ip']));
     if (action === 'admin-settings' && method === 'PUT') {
       const next = domain.validateSettings(body.data);
       return reply(200, await store.transaction(async (client, settings) => {
@@ -98,6 +99,7 @@ exports.handler = async event => {
       // Require confirmation again if prices changed after the visible summary.
       if (!admin && (body.expectedDailyPrice !== price.dailyPrice || body.expectedTotalPrice !== price.totalPrice)) domain.fail('priceChanged', 409);
       const order = { ...content, ...price, id: old?.id || randomUUID(), language: input.language, type: input.type, startDate: input.startDate, endDate: input.endDate, status: nextStatus, version: (old?.version || 0) + 1, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), source: old?.source || (admin ? 'manual' : 'public'), paymentStatus: old?.paymentStatus || (admin && input.complimentary ? 'not_required' : 'unpaid'), paymentId: old?.paymentId || null, paymentProvider: old?.paymentProvider || null, paidAt: old?.paidAt || null, requestId: old?.requestId || (!admin ? body.requestId : null), fingerprint: old?.fingerprint || (!admin ? body.fingerprint : null) };
+      if (old?.groupId) { order.groupId=old.groupId; order.batchRequestId=old.batchRequestId; }
       await client.query('INSERT INTO ad_orders(id,data) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET data=EXCLUDED.data', [order.id, order]);
       return admin ? { ...order, effectiveStatus: domain.status(order) } : { id: order.id, status: order.status, totalPrice: order.totalPrice, currency: order.currency };
     });

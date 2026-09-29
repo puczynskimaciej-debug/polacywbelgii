@@ -61,6 +61,7 @@
 
     <main class="workspace">
       <header class="topbar">
+        <label class="cms-language">Edytowany język<select id="cms-language"><option value="pl">Polski</option><option value="nl">Nederlands</option><option value="fr">Français</option></select></label>
         <button id="menu-toggle" class="menu-toggle" aria-label="Otwórz menu">☰</button>
 
         <div><strong id="current-user"></strong><small id="repository-name"></small></div>
@@ -148,6 +149,7 @@
         <label>Pierwszy dzień<input name="startDate" type="date" required></label><label>Ostatni dzień (włącznie)<input name="endDate" type="date" required></label>
         <label>Firma<input name="company" maxlength="120" required></label><label>Tytuł<input name="title" maxlength="100" required></label>
         <label class="wide">Opis<textarea name="description" maxlength="400" required></textarea></label>
+        <label class="wide" id="ads-contact-label" hidden>Kontakt publiczny<input name="contact" maxlength="160"></label>
         <label>Grafika PNG/JPEG/WebP do 500 KB<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></label><img id="ads-image-preview" alt="Podgląd reklamy" width="180" hidden>
         <label>Adres reklamy<input name="url" type="url" maxlength="2048" required></label><label>Zamawiający<input name="customerName" maxlength="120" required></label>
         <label>E-mail<input name="email" type="email" maxlength="254" required></label><label>Telefon<input name="phone" maxlength="40"></label>

@@ -187,6 +187,17 @@ export function registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, origin
       assert.equal(await page.evaluate(() => document.cookie), '');
       assert.equal(await page.evaluate(() => sessionStorage.getItem('pbe_github_token')), null);
       await page.waitForFunction(() => document.querySelector('#article-count').textContent === '3');
+      await page.locator('#cms-language').selectOption('fr');
+      await page.locator('[data-view="home"]').click();
+      await page.locator('#home-form [name="title"]').fill('Accueil modifié');
+      const beforeHome=JSON.parse(files.get('src/_data/home.json'));
+      await page.locator('[form="home-form"]').click();
+      await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('Zapisano'));
+      const afterHome=JSON.parse(files.get('src/_data/home.json'));
+      assert.equal(afterHome.locales.fr.hero.title,'Accueil modifié');
+      assert.equal(afterHome.hero.title,beforeHome.hero.title);
+      assert.deepEqual(afterHome.locales.nl,beforeHome.locales.nl);
+      await page.locator('#cms-language').selectOption('pl');
       await page.locator('[data-view="articles"]').click(); await page.locator('[data-edit-article="test"]').click();
       await page.locator('#article-form [name="title"]').fill('Artykuł zapisany bez konta GitHub');
       await page.locator('#article-form [type="submit"]').click(); await page.waitForFunction(() => !document.querySelector('#article-dialog').open);
