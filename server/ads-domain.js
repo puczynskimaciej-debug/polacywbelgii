@@ -56,12 +56,12 @@ function text(value, max, required = true) {
 }
 function creative(input) {
   if (input.kind === 'text') {
-    const description = text(input.description, 400);
+    const description = text(input.description, 1000);
     const email = text(input.email, 254);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail('validation');
     return { kind: 'text', description, contact: text(input.contact, 160), email, company: '', title: description.slice(0, 70), image: '', url: '', phone: '', customerName: '' };
   }
-  const result = { company: text(input.company, 120), title: text(input.title, 100), description: text(input.description, 400), url: text(input.url, 2048), email: text(input.email, 254), phone: text(input.phone || '', 40, false), customerName: text(input.customerName, 120) };
+  const result = { company: text(input.company, 120), title: text(input.title, 100), description: text(input.description, 1000), url: text(input.url, 2048), email: text(input.email, 254), phone: text(input.phone || '', 40, false), customerName: text(input.customerName, 120) };
   try { const url = new URL(result.url); if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) fail('validation'); } catch { fail('validation'); }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result.email)) fail('validation');
   const image = input.image;

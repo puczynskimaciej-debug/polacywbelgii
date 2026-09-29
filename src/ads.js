@@ -9,9 +9,20 @@
     return data;
   }
   function element(tag, value, className) { const node = document.createElement(tag); if (value) node.textContent = value; if (className) node.className = className; return node; }
+  const detail = document.createElement('dialog'); detail.className = 'listing-detail'; detail.setAttribute('aria-label', 'Ogłoszenie'); document.body.append(detail);
+  function showDetail(ad, trigger) {
+    const lang = document.documentElement.lang;
+    const close = element('button', { pl: 'Zamknij', fr: 'Fermer', nl: 'Sluiten' }[lang] || 'Zamknij', 'button'); close.type = 'button'; close.onclick = () => detail.close();
+    detail.replaceChildren(element('h2', t('sponsored')), element('p', ad.description, 'listing-copy'), element('p', ad.contact, 'listing-contact'), close);
+    detail.onclose = () => trigger.focus(); detail.showModal(); close.focus();
+  }
   function card(ad) {
     const item = element('article', '', 'listing-card');
-    if (ad.kind === 'text') { item.classList.add('listing-card--text'); item.append(element('small', t('sponsored')), element('p', ad.description, 'listing-copy'), element('p', ad.contact, 'listing-contact')); return item; }
+    if (ad.kind === 'text') {
+      item.classList.add('listing-card--text');
+      const more = element('button', { pl: 'Czytaj całość', fr: 'Lire la suite', nl: 'Lees meer' }[document.documentElement.lang] || 'Czytaj całość', 'listing-more'); more.type = 'button'; more.onclick = () => showDetail(ad, more);
+      item.append(element('small', t('sponsored')), element('p', ad.description, 'listing-copy'), element('p', ad.contact, 'listing-contact'), more); return item;
+    }
     const link = element('a'); link.href = ad.url; link.rel = 'sponsored noopener'; link.target = '_blank';
     const image = element('img'); image.src = ad.image; image.alt = ad.company; image.loading = 'lazy';
     link.append(image, element('small', `${t('sponsored')} · ${ad.company}`), element('h3', ad.title), element('p', ad.description));
@@ -46,7 +57,7 @@
       const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
       const end = track.scrollWidth - track.clientWidth;
       if (end > 2) {
-        track.scrollTo({ left: direction > 0 && track.scrollLeft >= end - 2 ? 0 : direction < 0 && track.scrollLeft <= 0 ? end : track.scrollLeft + direction * track.clientWidth, behavior: reduced ? 'auto' : 'smooth' });
+        track.scrollTo({ left: direction > 0 && track.scrollLeft >= end - 2 ? 0 : direction < 0 && track.scrollLeft <= 0 ? end : track.scrollLeft + direction * ((track.firstElementChild?.getBoundingClientRect().width || track.clientWidth) + 16), behavior: reduced ? 'auto' : 'smooth' });
       } else if (track.children.length > 2) {
         const oldPositions = new Map([...track.children].map(node => [node, node.getBoundingClientRect()]));
         const items = [...track.children];

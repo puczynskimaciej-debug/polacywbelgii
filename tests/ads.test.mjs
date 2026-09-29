@@ -70,6 +70,20 @@ test('showcase ads stay active until cancelled and retain their marker after CMS
   assert.equal(domain.availability([edited.data], domain.defaults(), 'pl', 'STANDARD', '2035-01-01', '2035-01-01')[0].used, 0);
 });
 
+test('1000 character ads, authenticated deletion and released calendar slots', async () => {
+  await reset();
+  const created = await call('admin-order', 'POST', sample({ kind: 'text', description: 'x'.repeat(1000), contact: 'Contact' }), {}, true);
+  assert.equal(created.status, 201);
+  assert.throws(() => domain.creative({ kind: 'text', description: 'x'.repeat(1001), contact: 'Contact', email: 'test@example.com' }));
+  const input = { id: created.data.id, version: created.data.version };
+  assert.equal((await call('admin-order', 'DELETE', input)).status, 401);
+  assert.equal((await call('admin-order', 'DELETE', { ...input, version: 0 }, {}, true)).status, 409);
+  assert.equal((await call('availability', 'GET', null, sample())).data.daysAvailable[0].remaining, 9);
+  assert.equal((await call('admin-order', 'DELETE', input, {}, true)).status, 200);
+  assert.equal((await call('availability', 'GET', null, sample())).data.daysAvailable[0].remaining, 10);
+  assert.equal((await store.orders()).length, 0);
+});
+
 test('inclusive dates, leap years, Brussels timezone, strict inputs and privacy', () => {
   assert.equal(domain.dates('2028-02-28', '2028-03-01').length, 3);
   assert.equal(domain.dates('2026-11-10', '2026-11-19').length, 10);
@@ -184,6 +198,8 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     await page.locator('[name=type][value=STANDARD]').check();
     await page.locator('[name=languages][value=fr]').check();
     await page.locator('#order-calendar button:not([disabled])').first().click();
+    assert.ok(await page.locator('#order-calendar .calendar-slots').count() > 0);
+    assert.equal(await page.locator('[data-copy=pl]').getAttribute('maxlength'), '1000');
     await page.locator('[data-copy=pl]').fill('Browser advert');
     await page.locator('[data-copy=fr]').fill('Annonce française');
     await page.locator('#order-form [name=contact]').fill('+32 123 456');
@@ -202,7 +218,10 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     await page.goto('http://127.0.0.1:8089/'); await page.waitForSelector('#listing-top .listing-card');
     assert.match(await page.locator('#listing-top').textContent(), /Visible pl/);
     assert.equal(await page.locator('#listing-top .listing-card').count(),2);
-    assert.ok(await page.evaluate(()=>document.querySelector('#listing-top').getBoundingClientRect().bottom<=document.querySelector('.hero').getBoundingClientRect().top));
+    await page.locator('#listing-top .listing-more').click();
+    assert.ok((await page.locator('.listing-detail .listing-copy').textContent()).length > 200);
+    await page.locator('.listing-detail button').click();
+    assert.ok(await page.evaluate(()=>document.querySelector('.hero').contains(document.querySelector('#listing-top'))));
     await page.locator('.language-picker__button').click(); await page.locator('[data-lang="fr"]').click();
     await page.waitForFunction(() => document.querySelector('#listing-top').textContent.includes('Visible fr'));
     assert.doesNotMatch(await page.locator('#listing-top').textContent(), /Visible pl/);
@@ -249,6 +268,13 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     assert.equal(await page.locator('#ads-edit [name="contact"]').isVisible(), true);
     assert.equal(await page.locator('#ads-edit [name="imageFile"]').isVisible(), false);
     await page.locator('#ads-close').click();
+    await page.locator('#ads-filters [name="status"]').selectOption('approved');
+    await page.locator('[data-ad-edit]').first().click();
+    const beforeDeletion = (await store.orders()).length;
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('#ads-delete').click();
+    await page.waitForFunction(() => !document.querySelector('#ads-dialog').open);
+    assert.equal((await store.orders()).length, beforeDeletion - 1);
     for (const width of [360, 768, 1440]) { await page.setViewportSize({ width, height: 900 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); await page.screenshot({ path: `test-results/ads-cms-${width}.png`, fullPage: true }); }
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
@@ -264,7 +290,7 @@ test('multi-language orders are atomic, idempotent and keep customer email priva
   const pl=(await store.orders()).find(o=>o.language==='pl'&&o.startDate===day);
   const approved=await call('admin-order','PUT',{...pl,status:'approved'}, {},true);assert.equal(approved.status,200);
   const pub=await call('public','GET',null,{language:'pl'});assert.equal(pub.data.ads[0].contact,'+32 123');assert.ok(!JSON.stringify(pub.data).includes('private@example.com'));
-  assert.equal((await call('order-batch','POST',{...body,requestId:randomUUID(),variants:[{language:'nl',text:'x'.repeat(401)}]})).status,400);
+  assert.equal((await call('order-batch','POST',{...body,requestId:randomUUID(),variants:[{language:'nl',text:'x'.repeat(1001)}]})).status,400);
 });
 
 registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, originalFetch, origin, adminPassword, adminCookie: () => adminCookie });

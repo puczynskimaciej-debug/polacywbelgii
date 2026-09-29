@@ -43,6 +43,7 @@ async function open(order) {
     catch (error) { $('#ads-notice').textContent = errorText(error); return; }
   }
   editing = order || null; const form = $('#ads-edit'); form.reset();
+  $('#ads-delete').hidden = !order;
   const input = order || { language: Object.keys(configuration.languages)[0], type: 'STANDARD', status: 'approved', startDate: configuration.today, endDate: configuration.today };
   for (const [key, value] of Object.entries(input)) { const control = form.elements.namedItem(key); if (control) control.value = value; }
   form.elements.language.disabled = form.elements.type.disabled = Boolean(order);
@@ -60,6 +61,13 @@ async function open(order) {
 $('#ads-edit').addEventListener('change', editPrice);
 $('#ads-new').onclick = () => open();
 $('#ads-close').onclick = () => $('#ads-dialog').close();
+$('#ads-delete').onclick = async () => {
+  if (!editing || !confirm('Usunąć to ogłoszenie? Zniknie ze strony i zwolni zarezerwowane miejsca. Tej operacji nie można cofnąć.')) return;
+  const button = $('#ads-delete'); button.disabled = true;
+  try { await api('admin-order', 'DELETE', { id: editing.id, version: editing.version }); $('#ads-dialog').close(); await load(); $('#ads-notice').textContent = 'Ogłoszenie usunięte.'; }
+  catch (error) { $('#ads-edit-error').textContent = errorText(error); }
+  finally { button.disabled = false; }
+};
 $('#ads-orders').onclick = event => { const button = event.target.closest('[data-ad-edit]'); if (button) open(orders.find(order => order.id === button.dataset.adEdit)); };
 $('#ads-filters').onchange = render;
 $('#ads-refresh').onclick = load;

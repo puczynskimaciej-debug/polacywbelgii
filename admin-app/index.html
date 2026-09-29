@@ -149,7 +149,7 @@
         <label>Język<select name="language"></select></label><label>Typ<select name="type"><option>STANDARD</option><option>TOP</option></select></label>
         <label>Pierwszy dzień<input name="startDate" type="date" required></label><label>Ostatni dzień (włącznie)<input name="endDate" type="date" required></label>
         <label>Firma<input name="company" maxlength="120" required></label><label>Tytuł<input name="title" maxlength="100" required></label>
-        <label class="wide">Opis<textarea name="description" maxlength="400" required></textarea></label>
+        <label class="wide">Opis<textarea name="description" maxlength="1000" required></textarea></label>
         <label class="wide" id="ads-contact-label" hidden>Kontakt publiczny<input name="contact" maxlength="160"></label>
         <label>Grafika PNG/JPEG/WebP do 500 KB<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></label><img id="ads-image-preview" alt="Podgląd reklamy" width="180" hidden>
         <label>Adres reklamy<input name="url" type="url" maxlength="2048" required></label><label>Zamawiający<input name="customerName" maxlength="120" required></label>
@@ -158,7 +158,8 @@
         <label id="ads-free-label">Bezpłatna / barter<select name="complimentary"><option value="false">Nie — aktualny cennik</option><option value="true">Tak — 0 EUR</option></select></label>
       </div>
       <p id="ads-edit-price"></p><p>Przy zapisie sprawdzamy każdy dzień. Zmiana terminu zachowuje historyczną stawkę dzienną i przelicza sumę. Język i typ istniejącego zamówienia są stałe.</p>
-      <button class="primary" id="ads-save">Zapisz reklamę</button>
+      <button class="primary" id="ads-save">Zapisz ogłoszenie</button>
+      <button class="secondary" type="button" id="ads-delete" hidden>Usuń ogłoszenie</button>
     </form>
   </dialog>
 

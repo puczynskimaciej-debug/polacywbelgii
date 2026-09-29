@@ -16,7 +16,7 @@ exports.handler = async event => {
     const action = query.action || 'public';
     const admin = action.startsWith('admin');
     if (admin) await authorize(event);
-    if (!['GET', 'POST', 'PUT'].includes(method)) return reply(405, { error: 'method' });
+    if (!['GET', 'POST', 'PUT', 'DELETE'].includes(method)) return reply(405, { error: 'method' });
     let body = {};
     if (method !== 'GET') {
       if (!(event.headers['content-type'] || '').startsWith('application/json')) domain.fail('validation', 415);
@@ -41,12 +41,21 @@ exports.handler = async event => {
         return reply(200, { ads: (await store.orders(undefined, false)).filter(order => order.language === query.language && domain.status(order) === 'active').map(order => ({ ...domain.publicAd(order), image: order.kind === 'text' ? '' : `/.netlify/functions/ads?action=image&id=${order.id}` })) });
       }
       if (action === 'availability') {
-        const price = domain.quote(settings.data, query);
+        const price = domain.quote(settings.data, query, domain.today(), true);
         const days = domain.availability(await store.orders(undefined, false), settings.data, query.language, query.type, query.startDate, query.endDate);
-        return reply(200, { ...price, daysAvailable: days });
+        return reply(200, { ...price, enabled: settings.data.markets[query.language].enabled, daysAvailable: days });
       }
       if (action === 'admin-orders') return reply(200, { orders: (await store.orders(undefined, false)).map(order => ({ ...order, effectiveStatus: domain.status(order) })) });
       domain.fail('notFound', 404);
+    }
+    if (action === 'admin-order' && method === 'DELETE') {
+      return reply(200, await store.transaction(async client => {
+        const order = (await store.orders(client)).find(order => order.id === body.id);
+        if (!order) domain.fail('notFound', 404);
+        if (body.version !== order.version) domain.fail('conflict', 409);
+        await client.query('DELETE FROM ad_orders WHERE id=$1', [order.id]);
+        return { deleted: order.id };
+      }));
     }
     if (action === 'order-batch' && method === 'POST') return reply(201, await require('../ads-batch').reserve(body, event.headers['x-nf-client-connection-ip']));
     if (action === 'admin-settings' && method === 'PUT') {
