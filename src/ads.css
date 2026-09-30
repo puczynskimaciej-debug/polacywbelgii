@@ -48,7 +48,7 @@ body.order-open { overflow:hidden; }
 .listing-top-grid h3 { font-size:1.5rem; }
 .ad-controls { display:flex; gap:10px; justify-content:flex-end; margin-bottom:12px; }
 .ad-controls button,.ad-calendar-heading button,#ad-back { padding:10px 18px; border:1px solid var(--line); border-radius:10px; background:white; cursor:pointer; color:var(--navy); }
-.listing-standard-grid { display:grid; grid-auto-flow:column; grid-template-rows:auto; grid-auto-columns:calc((100% - 64px)/5); gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:12px; }
+.listing-standard-grid { display:grid; grid-auto-flow:column; grid-template-rows:auto; grid-auto-columns:calc((100% - 64px)/5); gap:16px; overflow-x:auto; overflow-anchor:none; padding-bottom:12px; }
 .listing-standard-grid .listing-card { scroll-snap-align:start; }
 .listing-standard-grid .listing-card { width:100%; aspect-ratio:1; min-height:270px; padding:18px; gap:10px; }
 .listing-card--text .listing-copy { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; font-size:.88rem; line-height:1.5; }

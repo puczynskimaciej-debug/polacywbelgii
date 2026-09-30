@@ -242,6 +242,19 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await page.screenshot({ path: `test-results/ads-home-${width}.png`, fullPage: true });
     }
+    await page.mouse.move(0, 0);
+    const position = () => page.locator('[data-ad-list="STANDARD"]').evaluate(node => node.scrollLeft);
+    const startPosition = await position();
+    await page.waitForTimeout(600);
+    const middlePosition = await position();
+    await page.waitForTimeout(600);
+    const endPosition = await position();
+    assert.ok(middlePosition > startPosition && endPosition > middlePosition);
+    assert.ok(endPosition - startPosition < 50);
+    await page.locator('[data-ad-pause]').click();
+    const pausedPosition = await position();
+    await page.waitForTimeout(400);
+    assert.equal(await position(), pausedPosition);
     await page.goto('http://127.0.0.1:8089/zamow-ogloszenie/');
     await page.locator('#order-form').waitFor(); await page.locator('[name=type][value=TOP]').check(); await page.waitForSelector('#order-calendar button');
     for (const width of [360, 768, 1440]) { await page.setViewportSize({ width, height: 900 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); await page.screenshot({ path: `test-results/ads-order-${width}.png`, fullPage: true }); }

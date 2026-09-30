@@ -69,10 +69,29 @@
       }
     };
     $('[data-ad-prev]').onclick = () => move(-1); $('[data-ad-next]').onclick = () => move(1);
-    setInterval(() => {
-      if (paused || document.hidden || track.matches(':hover') || track.contains(document.activeElement)) return;
-      move(1);
-    }, 10000);
+    // Keep the same ten cards in a ring; moving a fully hidden card to the end
+    // avoids a visible jump back to the beginning and does not duplicate cards.
+    let previousFrame = 0, remainder = 0;
+    const animate = now => {
+      const elapsed = previousFrame ? Math.min(now - previousFrame, 80) : 0;
+      previousFrame = now;
+      const canMove = !paused && !document.hidden && !detail.open && !track.matches(':hover') && !track.contains(document.activeElement) && track.scrollWidth > track.clientWidth + 2;
+      if (canMove) {
+        remainder += elapsed * 0.018;
+        const pixels = Math.floor(remainder); remainder -= pixels;
+        if (pixels) {
+          track.scrollLeft += pixels;
+          const step = track.firstElementChild.getBoundingClientRect().width + 16;
+          if (track.scrollLeft >= step) {
+            const position = track.scrollLeft;
+            track.append(track.firstElementChild);
+            track.scrollLeft = position - step;
+          }
+        }
+      }
+      requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
   }
   setInterval(() => loadAds(), 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAds(); });
