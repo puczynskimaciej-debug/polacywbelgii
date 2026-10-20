@@ -88,9 +88,9 @@ for (const language of Object.keys(languageData)) {
 }
 
 const pageTitles = {
-  pl: { home: "Strona główna", articles: "Artykuły", contact: "Kontakt" },
-  nl: { home: "Startpagina", articles: "Artikels", contact: "Contact" },
-  fr: { home: "Accueil", articles: "Articles", contact: "Contact" }
+  pl: { home: "Strona główna", articles: "Artykuły", contact: "Kontakt", events: "Wydarzenia", regionalAds: "Ogłoszenia" },
+  nl: { home: "Startpagina", articles: "Artikels", contact: "Contact", events: "Evenementen", regionalAds: "Advertenties" },
+  fr: { home: "Accueil", articles: "Articles", contact: "Contact", events: "Événements", regionalAds: "Annonces" }
 };
 const originalDocumentTitle = document.title;
 
@@ -157,8 +157,9 @@ function applyCmsContent(language) {
     for(const key of ['eyebrow','title','description'])set('home.'+key,home.hero[key]);
     for(const [group,selector] of [['news','.news-grid'],['notices','.notice-grid']]){
       const container=document.querySelector(selector);if(!container)continue;
-      container.replaceChildren(...home[group].map(item=>{
+      container.replaceChildren(...home[group].map((item,index)=>{
         const card=document.createElement('article');card.className=group==='news'?'news-card':'notice';
+        if(group==='news')card.dataset.region=data.home.news[index]?.region||'all';
         const add=(tag,value,className)=>{const e=document.createElement(tag);e.textContent=value||'';if(className)e.className=className;return e;};
         if(group==='news'){const image=document.createElement('img');image.src=item.image;image.alt='';image.loading='lazy';const body=document.createElement('div');body.className='news-card__body';const link=add('a',translations[language]['common.more']||'Dowiedz się więcej','card-link');link.href=item.link;body.append(add('span',item.category,'tag'),add('h3',item.title),add('p',item.description),link);card.append(image,body);}
         else {const top=document.createElement('div');top.className='notice__top';top.append(add('span',item.category,'tag'),add('time',item.date));card.append(top,add('h3',item.title),add('p',item.description),add('p',item.contact,'notice__contact'));}return card;

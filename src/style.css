@@ -14,6 +14,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; }
 body { margin: 0; color: var(--ink); background: var(--paper); font-family: "DM Sans", sans-serif; line-height: 1.65; }
 body.menu-open { overflow: hidden; }
@@ -62,6 +63,34 @@ p { margin: 0; }
 .button--light { color: var(--navy); background: #fff; box-shadow: none; }
 .text-link, .card-link, .back-link { color: var(--blue); font-weight: 700; text-decoration: none; }
 .hero .text-link { color: #fff; }
+.hero__layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, 380px); align-items: center; gap: clamp(30px, 5vw, 75px); }
+.hero__content { min-width: 0; }
+.hero__actions { flex-wrap: wrap; }
+.region-picker { padding: 20px; color: var(--navy); background: rgba(255,253,249,.97); border-radius: var(--radius); box-shadow: var(--shadow); }
+.region-picker__head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: .82rem; }
+.region-picker__head strong { color: var(--blue-dark); }
+.region-picker__map { position: relative; margin: 12px auto; max-width: 360px; }
+.region-picker__map img { display: block; width: 100%; height: auto; }
+.region-hotspot { position: absolute; display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 3px solid #fff; border-radius: 50%; background: var(--blue); color: #fff; box-shadow: 0 2px 12px #142d4c88; cursor: pointer; transform: translate(-50%,-50%); }
+.region-hotspot span { position: absolute; left: 50%; bottom: calc(100% + 5px); padding: 2px 6px; border-radius: 4px; background: var(--navy); color: #fff; font-size: .72rem; white-space: nowrap; transform: translateX(-50%); }
+.region-hotspot--flanders { left: 49%; top: 31%; }
+.region-hotspot--wallonia { left: 58%; top: 67%; }
+.region-hotspot--brussels { left: 47%; top: 49%; width: 34px; height: 34px; background: var(--red); }
+.region-hotspot:hover, .region-hotspot.is-active, .region-hotspot:focus-visible { background: var(--red); outline: 3px solid #fff; outline-offset: 3px; }
+.region-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.region-options button { padding: 7px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--navy); font: 600 .78rem "DM Sans"; cursor: pointer; }
+.region-options button:hover, .region-options button:focus-visible, .region-options button.is-active { border-color: var(--blue); background: #e6effb; outline-offset: 2px; }
+.region-picker small { display: block; margin-top: 9px; color: var(--muted); font-size: .66rem; }
+.region-picker small a { color: var(--blue-dark); }
+.region-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-top: 28px; }
+.region-bar button { padding: 10px 15px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--navy); font: 700 .9rem "DM Sans"; cursor: pointer; }
+.region-bar button:hover, .region-bar button:focus-visible, .region-bar button.is-active { border-color: var(--blue); background: #e6effb; }
+.region-empty { margin-top: 20px; padding: 25px; border-radius: var(--radius); background: var(--cream); text-align: center; }
+.premium-banner { padding: 16px 0; background: var(--cream); }
+.premium-banner__link { position: relative; display: block; overflow: hidden; aspect-ratio: 4 / 1; border-radius: 12px; background: var(--navy); }
+.premium-banner__link img { width: 100%; height: 100%; object-fit: contain; }
+.premium-banner__link picture { display: block; width: 100%; height: 100%; }
+.premium-banner__caption { position: absolute; left: 12px; bottom: 12px; max-width: calc(100% - 24px); padding: 5px 10px; border-radius: 5px; background: rgba(20,45,76,.9); color: #fff; font-size: .75rem; }
 
 .section { padding: 100px 0; }
 .section--tint { background: var(--cream); }
@@ -140,6 +169,9 @@ p { margin: 0; }
 .footer-bottom a { color: inherit; text-decoration: none; }
 
 @media (max-width: 850px) {
+  .hero__layout { grid-template-columns: 1fr; }
+  .region-picker { order: -1; margin-top: 26px; }
+  .hero__content { padding-top: 20px; }
   .nav-toggle { display: block; z-index: 2; }
   .main-nav { position: fixed; inset: 78px 0 auto; display: none; flex-direction: column; gap: 0; padding: 18px 20px 28px; background: var(--paper); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
   .main-nav.is-open { display: flex; }
@@ -157,6 +189,9 @@ p { margin: 0; }
 }
 
 @media (max-width: 580px) {
+  .premium-banner__link { aspect-ratio: 1.6 / 1; }
+  .region-picker { padding: 14px; }
+  .region-picker__map { max-width: 250px; }
   .container { width: min(100% - 30px, 1160px); }
   .hero { min-height: 620px; background-position: 62% center; }
   .hero__content { padding: 80px 0; }
@@ -171,3 +206,72 @@ p { margin: 0; }
   .footer-grid { gap: 35px; }
   .footer-bottom { flex-direction: column; gap: 7px; }
 }
+
+/* Region navigation belongs to the hero rather than to a separate card. */
+.region-picker { min-width: 0; padding: 0; color: #fff; text-align: center; background: transparent; border-radius: 0; box-shadow: none; }
+.region-picker__heading { color: #fff !important; font: 700 clamp(1.05rem, 2vw, 1.35rem) "Manrope", sans-serif !important; }
+.region-picker__hint { margin-top: 5px; color: rgba(255,255,255,.7) !important; font-size: .84rem !important; }
+.region-picker__map { position: relative; width: min(100%, 355px); max-width: none; margin: 8px auto 0; isolation: isolate; }
+.region-picker__map img { width: 100%; height: auto; opacity: .75; filter: grayscale(1) invert(1) contrast(1.2); mix-blend-mode: screen; }
+.region-map-choice { position: absolute; padding: 5px 9px; border: 1px solid rgba(255,255,255,.52); border-radius: 5px; background: rgba(13,32,57,.82); color: #fff; font: 700 .7rem "DM Sans", sans-serif; cursor: pointer; transform: translate(-50%,-50%); transition: background .2s, border-color .2s, box-shadow .2s; white-space: nowrap; }
+.region-map-choice:hover, .region-map-choice:focus-visible, .region-map-choice.is-active { border-color: #fff; background: var(--red); box-shadow: 0 0 0 4px rgba(255,255,255,.15); outline: none; }
+.region-map-choice--flanders { left: 46%; top: 30%; }
+.region-map-choice--wallonia { left: 59%; top: 69%; }
+.region-map-choice--brussels { left: 46%; top: 49%; border-color: #ffaaa7; }
+.region-picker__all { margin-top: -5px; padding: 7px 16px; border: 1px solid rgba(255,255,255,.48); border-radius: 999px; background: transparent; color: #fff; font: 700 .78rem "DM Sans", sans-serif; cursor: pointer; }
+.region-picker__all:hover, .region-picker__all:focus-visible { background: #fff; color: var(--navy); }
+.region-picker__credit { display: block; margin-top: 14px; color: rgba(255,255,255,.52); font-size: .65rem; }
+.region-picker__credit a { color: inherit; }
+.region-dialog { width: min(660px, calc(100% - 28px)); max-height: min(90dvh, 750px); overflow: auto; padding: clamp(22px, 4vw, 38px); border: 0; border-radius: 20px; color: var(--ink); background: var(--paper); box-shadow: 0 30px 90px rgba(0,0,0,.28); }
+.region-dialog::backdrop { background: rgba(5,19,38,.73); backdrop-filter: blur(5px); }
+.region-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: 15px; color: var(--red); font-size: .76rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.region-dialog__head button { width: 42px; height: 42px; border: 0; border-radius: 50%; background: var(--cream); color: var(--navy); font-size: 1.55rem; cursor: pointer; }
+.region-dialog h2 { margin: 10px 0; color: var(--navy); font-size: clamp(2rem, 5vw, 3rem); }
+.region-dialog > p { color: var(--muted); }
+.region-dialog__choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 26px; }
+.region-dialog__choices a { display: flex; align-items: center; gap: 14px; min-height: 130px; padding: 17px; border: 1px solid var(--line); border-radius: 12px; color: var(--navy); background: #fff; text-decoration: none; transition: border-color .2s, transform .2s, box-shadow .2s; }
+.region-dialog__choices a:hover, .region-dialog__choices a:focus-visible { border-color: var(--blue); box-shadow: var(--shadow); transform: translateY(-2px); }
+.region-dialog__choices a > span:last-child { margin-left: auto; }
+.region-dialog__choices strong, .region-dialog__choices small { display: block; }
+.region-dialog__choices strong { font-family: "Manrope", sans-serif; text-transform: uppercase; }
+.region-dialog__choices small { margin-top: 4px; color: var(--muted); font-size: .76rem; }
+.region-dialog__icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 9px; background: var(--cream); color: var(--red); font-size: 1.45rem; }
+.region-view__back { display: inline-block; margin-top: 25px; color: var(--blue); font-weight: 700; }
+@media (max-width: 580px) { .region-picker__map { max-width: 290px; } .region-dialog__choices { grid-template-columns: 1fr; } }
+.hero { background: linear-gradient(115deg, #102841 0%, #1c3c63 65%, #244a73 100%); }
+.hero__layout { width: min(1280px, calc(100% - 40px)); grid-template-columns: minmax(0, 1fr) minmax(0, 550px); gap: clamp(20px, 4vw, 60px); }
+.region-picker { align-self: center; }
+.region-picker__map { width: 100%; max-width: none; margin: 2px auto 0; }
+.belgium-map { display: block; width: 100%; height: auto; overflow: visible; }
+.belgium-map__scene { transform-origin: center; animation: map-arrive .72s ease-out both; }
+.belgium-map__shadow { fill: #03182e; opacity: .5; }
+.belgium-map__wall { fill: url(#map-side); stroke: #23618d; stroke-width: 1.5; }
+.belgium-map__wall--deep { fill: #0d3a62; }
+.belgium-map__wall--rim { fill: #75b8dd; stroke: #b8edff; stroke-width: 2; }
+.belgium-map__region { stroke: #e4f8ff; stroke-width: 2; stroke-linejoin: round; paint-order: stroke fill; cursor: pointer; transition: filter .22s ease, transform .22s ease, stroke .22s ease; }
+.belgium-map__region--flanders { fill: url(#map-flanders); }
+.belgium-map__region--wallonia { fill: url(#map-wallonia); }
+.belgium-map__region--brussels { fill: url(#map-brussels); stroke: transparent; stroke-width: 30; }
+.belgium-map__region:hover, .belgium-map__region:focus-visible, .belgium-map__region.is-active { filter: brightness(1.14) drop-shadow(0 5px 4px rgba(8,45,76,.38)); transform: translateY(-4px); stroke: #fff; stroke-width: 3; outline: none; }
+.belgium-map__region--brussels:hover, .belgium-map__region--brussels:focus-visible, .belgium-map__region--brussels.is-active { stroke: transparent; stroke-width: 30; filter: brightness(1.2) drop-shadow(0 0 5px #fff); }
+.belgium-map__label { fill: #174769; font: 700 27px "Manrope", sans-serif; letter-spacing: .035em; text-shadow: 0 1px rgba(255,255,255,.46); pointer-events: none; }
+.belgium-map__label--brussels { fill: #f4fbff; font-size: 23px; text-shadow: 0 2px 5px #123b5e; }
+.region-picker__options { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 60px; }
+.region-picker__options button { padding: 7px 12px; border: 1px solid rgba(195,231,250,.46); border-radius: 999px; background: rgba(112,171,208,.12); color: #eaf7ff; font: 700 .72rem "DM Sans", sans-serif; cursor: pointer; transition: background .2s, border-color .2s; }
+.region-picker__options button:hover, .region-picker__options button:focus-visible, .region-picker__options button.is-active { border-color: #fff; background: rgba(183,227,249,.28); outline: 2px solid transparent; }
+.region-picker__options .region-picker__all { margin: 0; background: #e4f5ff; color: #183c5b; }
+.region-picker__credit { margin-top: 9px; }
+@keyframes map-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1100px) and (min-width: 851px) { .hero__layout { grid-template-columns: minmax(0, 1fr) minmax(0, 48%); } }
+@media (max-width: 850px) { .hero__layout { grid-template-columns: 1fr; } .region-picker { order: -1; width: min(100%, 600px); margin: 26px auto 0; } }
+@media (max-width: 580px) { .region-picker__map { width: 100%; max-width: 430px; } .region-picker__heading { font-size: 1.05rem !important; } .region-picker__options { gap: 6px; margin-top: 52px; } .region-picker__options button { padding: 6px 10px; font-size: .68rem; } }
+.site-footer__map-credit { max-width: 480px; font-size: .7rem; line-height: 1.4; text-align: center; }
+.site-footer__map-credit a { text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 700px) { .footer-bottom { flex-wrap: wrap; justify-content: center; text-align: center; } .site-footer__map-credit { order: 3; flex-basis: 100%; } }
+@media (prefers-reduced-motion: reduce) { .belgium-map__scene { animation: none; } .belgium-map__region, .region-picker__options button { transition: none; } }
+.premium-banner { padding: 8px 0; }
+.premium-banner .container { width: min(1280px, calc(100% - 40px)); }
+.premium-banner__link { aspect-ratio: 6 / 1; border-radius: 10px; cursor: default; }
+.premium-banner__link img { object-fit: contain; }
+.premium-banner__caption { left: auto; right: 12px; bottom: 7px; padding: 0; background: none; color: #e7f2fb; font-size: .65rem; text-shadow: 0 1px 4px #102841; }
+@media (max-width: 580px) { .premium-banner .container { width: min(100% - 30px, 1280px); } .premium-banner__link { aspect-ratio: 2.2 / 1; } }

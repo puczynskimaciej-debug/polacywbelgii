@@ -12,15 +12,15 @@ function dates(start, end) {
   if (count < 1 || count > 366) fail('dates');
   return Array.from({ length: count }, (_, i) => new Date(Date.parse(start) + i * DAY).toISOString().slice(0, 10));
 }
-function defaults() { return { types: { TOP: { capacity: 2 }, STANDARD: { capacity: 10 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0 } }])) }; }
+function defaults() { return { types: { TOP: { capacity: 2 }, STANDARD: { capacity: 10 }, PREMIUM: { capacity: 1 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0, PREMIUM: 0 } }])) }; }
 function validateSettings(value) {
   const result = defaults();
   for (const language of Object.keys(languages)) {
     const market = value?.markets?.[language];
     if (!market || typeof market.enabled !== 'boolean') fail('settings');
-    for (const type of Object.keys(result.types)) if (!Number.isSafeInteger(market.prices?.[type]) || market.prices[type] < 0 || market.prices[type] > 1000000) fail('settings');
-    if (market.enabled && Object.values(market.prices).some(price => price <= 0)) fail('settings');
-    result.markets[language] = { enabled: market.enabled, currency: 'EUR', prices: { TOP: market.prices.TOP, STANDARD: market.prices.STANDARD } };
+    for (const type of ['TOP', 'STANDARD']) if (!Number.isSafeInteger(market.prices?.[type]) || market.prices[type] < 0 || market.prices[type] > 1000000) fail('settings');
+    if (market.enabled && ['TOP', 'STANDARD'].some(type => market.prices[type] <= 0)) fail('settings');
+    result.markets[language] = { enabled: market.enabled, currency: 'EUR', prices: { TOP: market.prices.TOP, STANDARD: market.prices.STANDARD, PREMIUM: 0 } };
   }
   return result;
 }
@@ -43,11 +43,12 @@ function availability(orders, settings, language, type, start, end, excludeId) {
   });
 }
 function quote(settings, input, day = today(), manual = false) {
+  if (input.type === 'PREMIUM' && !manual) fail('market');
   const market = marketFor(settings, input.language, input.type);
   if (!manual && !market.enabled) fail('disabled', 409);
   const range = dates(input.startDate, input.endDate);
   if (input.startDate < day || input.endDate > new Date(Date.parse(day) + DAY * 730).toISOString().slice(0, 10)) fail('dates');
-  const dailyPrice = market.prices[input.type];
+  const dailyPrice = input.type === 'PREMIUM' ? 0 : market.prices[input.type];
   return { days: range.length, dailyPrice, totalPrice: dailyPrice * range.length, currency: market.currency };
 }
 function text(value, max, required = true) {
@@ -73,5 +74,5 @@ function creative(input) {
   result.image = image;
   return result;
 }
-function publicAd(order) { return Object.fromEntries(['id', 'kind', 'contact', 'company', 'title', 'description', 'image', 'url', 'type', 'language'].map(key => [key, order[key]])); }
+function publicAd(order) { return Object.fromEntries(['id', 'kind', 'contact', 'company', 'title', 'description', 'image', 'url', 'type', 'language', 'region'].map(key => [key, order[key]])); }
 module.exports = { AdError, fail, today, dates, defaults, validateSettings, marketFor, isShowcase, status, availability, quote, creative, publicAd };

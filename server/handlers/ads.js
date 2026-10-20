@@ -34,6 +34,7 @@ exports.handler = async event => {
       }
       const settings = await store.settings();
       // Newly registered site languages are disabled until the editor sets prices.
+      settings.data.types = { ...domain.defaults().types, ...settings.data.types };
       settings.data.markets = { ...domain.defaults().markets, ...settings.data.markets };
       if (action === 'config' || action === 'admin-settings') return reply(200, { ...settings, languages, today: domain.today() });
       if (action === 'public') {
@@ -104,10 +105,13 @@ exports.handler = async event => {
         const blocked = domain.availability(all, settings.data, input.language, input.type, input.startDate, input.endDate, old?.id).filter(day => day.remaining === 0);
         if (blocked.length) domain.fail('full', 409, blocked);
       }
+      if (!admin && input.type === 'PREMIUM') domain.fail('market');
+      if (input.type === 'PREMIUM' && input.kind === 'text') domain.fail('validation');
+      if (input.region && !['all', 'flanders', 'wallonia', 'brussels'].includes(input.region)) domain.fail('validation');
       const content = domain.creative(input);
       // Require confirmation again if prices changed after the visible summary.
       if (!admin && (body.expectedDailyPrice !== price.dailyPrice || body.expectedTotalPrice !== price.totalPrice)) domain.fail('priceChanged', 409);
-      const order = { ...content, ...price, id: old?.id || randomUUID(), language: input.language, type: input.type, startDate: input.startDate, endDate: input.endDate, status: nextStatus, version: (old?.version || 0) + 1, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), source: old?.source || (admin ? 'manual' : 'public'), paymentStatus: old?.paymentStatus || (admin && input.complimentary ? 'not_required' : 'unpaid'), paymentId: old?.paymentId || null, paymentProvider: old?.paymentProvider || null, paidAt: old?.paidAt || null, requestId: old?.requestId || (!admin ? body.requestId : null), fingerprint: old?.fingerprint || (!admin ? body.fingerprint : null) };
+      const order = { ...content, ...price, id: old?.id || randomUUID(), region: input.region || 'all', language: input.language, type: input.type, startDate: input.startDate, endDate: input.endDate, status: nextStatus, version: (old?.version || 0) + 1, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), source: old?.source || (admin ? 'manual' : 'public'), paymentStatus: old?.paymentStatus || (admin && input.complimentary ? 'not_required' : 'unpaid'), paymentId: old?.paymentId || null, paymentProvider: old?.paymentProvider || null, paidAt: old?.paidAt || null, requestId: old?.requestId || (!admin ? body.requestId : null), fingerprint: old?.fingerprint || (!admin ? body.fingerprint : null) };
       if (old?.groupId) { order.groupId=old.groupId; order.batchRequestId=old.batchRequestId; }
       if (old?.demoSet) order.demoSet = old.demoSet;
       await client.query('INSERT INTO ad_orders(id,data) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET data=EXCLUDED.data', [order.id, order]);

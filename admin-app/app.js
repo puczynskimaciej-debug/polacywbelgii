@@ -75,11 +75,12 @@ function captureLanguageDraft() {
 $('#cms-language').onchange=event=>{captureLanguageDraft();state.language=event.target.value;selectContentLanguage();renderAll();document.dispatchEvent(new CustomEvent('cmslanguagechange',{detail:state.language}));};
 function renderHome() {
   const form = $("#home-form"); form.eyebrow.value = state.home.hero.eyebrow; form.title.value = state.home.hero.title; form.description.value = state.home.hero.description;
+  state.home.news.forEach((item, index) => { item.region = state.homeAll.news[index]?.region || 'all'; });
   renderRepeater("news", state.home.news); renderRepeater("notices", state.home.notices);
 }
 function renderRepeater(type, items) {
-  const fields = type === "news" ? [["title","Tytuł"],["category","Kategoria"],["description","Opis"],["image","Zdjęcie"],["link","Link"]] : [["title","Tytuł"],["category","Kategoria"],["date","Data"],["description","Treść"],["contact","Kontakt"]];
-  $(`#${type}-editor`).innerHTML = items.map((item, index) => `<div class="repeat-item" data-index="${index}"><button class="remove" type="button" data-remove="${type}">×</button>${fields.map(([key,label]) => `<label class="${key === "description" ? "wide" : ""}">${label}${key === "description" ? `<textarea data-field="${key}" rows="2">${escapeHtml(item[key] || "")}</textarea>` : `<input data-field="${key}" value="${escapeHtml(item[key] || "")}">`}</label>`).join("")}${type === "news" ? `<button class="secondary" type="button" data-news-upload="${index}">Wgraj zdjęcie</button>` : ""}</div>`).join("");
+  const fields = type === "news" ? [["title","Tytuł"],["category","Kategoria"],["description","Opis"],["image","Zdjęcie"],["link","Link"],["region","Region"]] : [["title","Tytuł"],["category","Kategoria"],["date","Data"],["description","Treść"],["contact","Kontakt"]];
+  $(`#${type}-editor`).innerHTML = items.map((item, index) => `<div class="repeat-item" data-index="${index}"><button class="remove" type="button" data-remove="${type}">×</button>${fields.map(([key,label]) => `<label class="${key === "description" ? "wide" : ""}">${label}${key === "description" ? `<textarea data-field="${key}" rows="2">${escapeHtml(item[key] || "")}</textarea>` : key === 'region' ? `<select data-field="region">${[['all','Cała Belgia'],['flanders','Flandria'],['wallonia','Walonia'],['brussels','Region Stołeczny Brukseli']].map(([value,text]) => `<option value="${value}" ${item.region === value ? 'selected' : ''}>${text}</option>`).join('')}</select>` : `<input data-field="${key}" value="${escapeHtml(item[key] || "")}">`}</label>`).join("")}${type === "news" ? `<button class="secondary" type="button" data-news-upload="${index}">Wgraj zdjęcie</button>` : ""}</div>`).join("");
 }
 function readRepeater(type) { return $$(`#${type}-editor .repeat-item`).map((row) => Object.fromEntries($$("[data-field]", row).map((field) => [field.dataset.field, field.value.trim()]))); }
 function renderArticles() {
@@ -176,7 +177,7 @@ $$("[data-language-tab]").forEach((button) => button.addEventListener("click", (
 
 $("#home-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
-  try { Object.assign(state.home, { hero: { eyebrow: event.target.eyebrow.value.trim(), title: event.target.title.value.trim(), description: event.target.description.value.trim() }, news: readRepeater("news"), notices: readRepeater("notices") }); const result = await state.repository.saveHome(state.homeAll, state.homeSha); state.homeSha = result.content.sha; notify("Zapisano. Netlify rozpocznie publikację."); renderAll(); } catch(error) { notify(error.message,true); } finally { setBusy(button,false); }
+  try { Object.assign(state.home, { hero: { eyebrow: event.target.eyebrow.value.trim(), title: event.target.title.value.trim(), description: event.target.description.value.trim() }, news: readRepeater("news"), notices: readRepeater("notices") }); state.home.news.forEach((item, index) => { if (state.homeAll.news[index]) state.homeAll.news[index].region = item.region; }); const result = await state.repository.saveHome(state.homeAll, state.homeSha); state.homeSha = result.content.sha; notify("Zapisano. Netlify rozpocznie publikację."); renderAll(); } catch(error) { notify(error.message,true); } finally { setBusy(button,false); }
 });
 $("#site-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button,true);

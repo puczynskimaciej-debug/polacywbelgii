@@ -15,7 +15,7 @@ async function load() {
   try {
     const [settings, result] = await Promise.all([api('admin-settings'), api('admin-orders')]);
     configuration = settings; orders = result.orders;
-    $('#ads-prices').innerHTML = Object.entries(settings.languages).map(([key, language]) => `<fieldset><legend>${escape(language.name)}</legend><div class="form-grid"><label>Zamówienia<select name="${key}-enabled"><option value="false">Wyłączone</option><option value="true" ${settings.data.markets[key].enabled ? 'selected' : ''}>Włączone</option></select></label>${Object.keys(settings.data.types).map(type => `<label>${escape(type)} / dzień (EUR)<input name="${key}-${type}" type="number" min="0" max="10000" step="0.01" required value="${settings.data.markets[key].prices[type] / 100}"></label>`).join('')}</div></fieldset>`).join('');
+    $('#ads-prices').innerHTML = Object.entries(settings.languages).map(([key, language]) => `<fieldset><legend>${escape(language.name)}</legend><div class="form-grid"><label>Zamówienia<select name="${key}-enabled"><option value="false">Wyłączone</option><option value="true" ${settings.data.markets[key].enabled ? 'selected' : ''}>Włączone</option></select></label>${['TOP', 'STANDARD'].map(type => `<label>${escape(type)} / dzień (EUR)<input name="${key}-${type}" type="number" min="0" max="10000" step="0.01" required value="${settings.data.markets[key].prices[type] / 100}"></label>`).join('')}</div></fieldset>`).join('');
     for (const form of [$('#ads-filters'), $('#ads-edit')]) {
       const select = form.elements.namedItem('language'); const previous = select.value;
       select.innerHTML = (form.id === 'ads-filters' ? '<option value="">Wszystkie</option>' : '') + Object.entries(settings.languages).map(([key, language]) => `<option value="${escape(key)}">${escape(language.name)}</option>`).join('');
@@ -33,7 +33,7 @@ function editPrice() {
   if (isShowcase(editing)) { $('#ads-edit-price').textContent = 'Bezterminowo (pokazowe). Aby ukryć, wybierz status Anulowane.'; return; }
   const form = $('#ads-edit'); const input = Object.fromEntries(new FormData(form));
   const days = (Date.parse(input.endDate) - Date.parse(input.startDate)) / 86400000 + 1;
-  const price = editing ? editing.dailyPrice : input.complimentary === 'true' ? 0 : configuration.data.markets[input.language]?.prices[input.type];
+  const price = editing ? editing.dailyPrice : input.type === 'PREMIUM' || input.complimentary === 'true' ? 0 : configuration.data.markets[input.language]?.prices[input.type];
   $('#ads-edit-price').textContent = days > 0 && days <= 366 ? `${days} dni × ${money(price)} = ${money(days * price)}` : 'Wybierz poprawny zakres dat.';
 }
 async function open(order) {
@@ -48,17 +48,24 @@ async function open(order) {
   for (const [key, value] of Object.entries(input)) { const control = form.elements.namedItem(key); if (control) control.value = value; }
   form.elements.language.disabled = form.elements.type.disabled = Boolean(order);
   for (const key of ['startDate', 'endDate']) { form.elements[key].readOnly = isShowcase(order); form.elements[key].closest('label').hidden = isShowcase(order); }
-  const textOnly=!order || order.kind==='text';
-  for(const key of ['company','title','url','customerName','imageFile']) { form.elements[key].required=!textOnly && (key!=='imageFile'||!order); form.elements[key].closest('label').hidden=textOnly; }
-  $('#ads-contact-label').hidden=!textOnly; form.elements.contact.required=textOnly;
-  form.elements.imageFile.required = !textOnly && !order;
+  updateCreativeFields();
   $('#ads-free-label').hidden = Boolean(order);
   $('#ads-order-meta').textContent = order ? `${order.id} · ${labels[order.effectiveStatus]} · ${order.source === 'manual' ? 'Dodane ręcznie' : 'Zamówienie klienta'} · ${order.days} dni × ${money(order.dailyPrice)} = ${money(order.totalPrice)}` : 'Nowa reklama';
-  $('#ads-edit-error').textContent = ''; $('#ads-image-preview').hidden = !order || textOnly;
+  $('#ads-edit-error').textContent = ''; $('#ads-image-preview').hidden = !order || order.kind === 'text';
   if (order) $('#ads-image-preview').src = order.image;
   editPrice(); $('#ads-dialog').showModal();
 }
-$('#ads-edit').addEventListener('change', editPrice);
+function updateCreativeFields() {
+  const form = $('#ads-edit');
+  const textOnly = editing ? editing.kind === 'text' : form.elements.type.value !== 'PREMIUM';
+  for (const key of ['company', 'title', 'url', 'customerName', 'imageFile']) {
+    form.elements[key].required = !textOnly && (key !== 'imageFile' || !editing);
+    form.elements[key].closest('label').hidden = textOnly;
+  }
+  $('#ads-contact-label').hidden = !textOnly;
+  form.elements.contact.required = textOnly;
+}
+$('#ads-edit').addEventListener('change', event => { if (event.target.name === 'type') updateCreativeFields(); editPrice(); });
 $('#ads-new').onclick = () => open();
 $('#ads-close').onclick = () => $('#ads-dialog').close();
 $('#ads-delete').onclick = async () => {
@@ -79,7 +86,7 @@ $('#ads-settings').onsubmit = async event => {
     const values = Object.fromEntries(new FormData(event.target)); const data = structuredClone(configuration.data);
     for (const language of Object.keys(configuration.languages)) {
       data.markets[language].enabled = values[`${language}-enabled`] === 'true';
-      for (const type of Object.keys(data.types)) data.markets[language].prices[type] = Math.round(Number(values[`${language}-${type}`]) * 100);
+      for (const type of ['TOP', 'STANDARD']) data.markets[language].prices[type] = Math.round(Number(values[`${language}-${type}`]) * 100);
     }
     const saved = await api('admin-settings', 'PUT', { data, version: configuration.version }); configuration = { ...configuration, ...saved };
     $('#ads-notice').textContent = 'Cennik zapisany. Obowiązuje od razu. Istniejące zamówienia zachowują ceny.';
@@ -94,7 +101,7 @@ $('#ads-edit').onsubmit = async event => {
       if (file.size > 512000 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw { code: 'image' };
       image = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
     }
-    await api('admin-order', editing ? 'PUT' : 'POST', { ...values, kind: editing ? editing.kind : 'text', imageFile: undefined, image, language: editing?.language || values.language, type: editing?.type || values.type, id: editing?.id, version: editing?.version, complimentary: values.complimentary === 'true' });
+    await api('admin-order', editing ? 'PUT' : 'POST', { ...values, kind: editing ? editing.kind : values.type === 'PREMIUM' ? 'image' : 'text', imageFile: undefined, image, language: editing?.language || values.language, type: editing?.type || values.type, id: editing?.id, version: editing?.version, complimentary: values.complimentary === 'true' });
     $('#ads-dialog').close(); await load(); $('#ads-notice').textContent = 'Reklama zapisana.';
   } catch (error) { $('#ads-edit-error').textContent = errorText(error); } finally { button.disabled = false; }
 };

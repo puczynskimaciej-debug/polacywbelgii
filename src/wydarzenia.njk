@@ -1,0 +1,26 @@
+---
+layout: base.njk
+title: Wydarzenia
+description: Wydarzenia dla Polaków mieszkających w Belgii.
+pageKey: events
+permalink: /wydarzenia/index.html
+---
+<header class="page-hero page-hero--compact"><div class="container">
+  <span class="eyebrow" data-region-text="events">Wydarzenia</span>
+  <h1 data-region-view-title="events">Wydarzenia · Cała Belgia</h1>
+  <a class="region-view__back" href="/" data-region-back>Wybierz inny region</a>
+</div></header>
+<section class="section"><div class="container article-list" data-event-list>
+  {% set entries = collections.articles | reverse %}
+  {% for article in entries %}{% if article.data.contentType == 'event' %}
+  <article class="article-row {% if loop.index0 % 2 == 1 %}article-row--reverse{% endif %}" data-event-region="{{ article.data.region or 'all' }}">
+    <a class="article-row__image" href="{{ article.url }}" aria-label="Czytaj: {{ article.data.title }}"><img src="{{ article.data.image or '/images/hero.jpg' }}" alt="" loading="lazy"></a>
+    <div class="article-row__content"><div class="article-meta"><span class="tag" data-category>{{ article.data.category or 'Wydarzenie' }}</span><time datetime="{{ article.date }}">{{ article.date | readableDate }}</time></div>
+      <h2><a href="{{ article.url }}" data-translation-nl="{{ article.data.title_nl }}" data-translation-fr="{{ article.data.title_fr }}">{{ article.data.title }}</a></h2>
+      <p data-translation-nl="{{ article.data.description_nl }}" data-translation-fr="{{ article.data.description_fr }}">{{ article.data.description }}</p>
+      <a class="text-link" href="{{ article.url }}"><span data-i18n="articles.read">Czytaj artykuł</span> <span aria-hidden="true">→</span></a>
+    </div>
+  </article>
+  {% endif %}{% endfor %}
+  <p class="region-empty" data-region-empty="events" hidden>Brak wydarzeń dla wybranego regionu. Zajrzyj ponownie wkrótce.</p>
+</div></section>

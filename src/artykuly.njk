@@ -18,7 +18,7 @@ permalink: /artykuly/index.html
   <div class="container article-list">
     {% set articles = collections.articles | reverse %}
     {% for article in articles %}
-    <article class="article-row {% if loop.index0 % 2 == 1 %}article-row--reverse{% endif %}">
+    <article class="article-row {% if loop.index0 % 2 == 1 %}article-row--reverse{% endif %}" data-region="{{ article.data.region or 'all' }}">
       <a class="article-row__image" href="{{ article.url }}" aria-label="Czytaj: {{ article.data.title }}">
         <img src="{{ article.data.image or '/images/hero.jpg' }}" alt="" loading="lazy">
       </a>

@@ -1,0 +1,22 @@
+<aside class="region-picker" aria-label="Wybierz region Belgii" data-i18n-aria="region.choose">
+  <p class="region-picker__heading" data-region-text="heading">Odkryj Belgię według regionu</p>
+  <p class="region-picker__hint" data-region-text="hint">Wybierz region na mapie</p>
+  <div class="region-picker__map">
+    {% include "belgium-map-svg.njk" %}
+  </div>
+  <div class="region-picker__options" aria-label="Wybierz region Belgii" data-i18n-aria="region.choose">
+    <button type="button" data-region-choice="flanders" data-region-text="flanders">Flandria</button>
+    <button type="button" data-region-choice="wallonia" data-region-text="wallonia">Walonia</button>
+    <button type="button" data-region-choice="brussels" data-region-text="brusselsShort">Bruksela</button>
+    <button class="region-picker__all" type="button" data-region-choice="all" data-region-text="all">Cała Belgia</button>
+  </div>
+</aside>
+<dialog class="region-dialog" id="region-dialog" aria-labelledby="region-dialog-title">
+  <div class="region-dialog__head"><span data-region-text="modalEyebrow">Odkryj region</span><button type="button" data-region-close aria-label="Zamknij">×</button></div>
+  <h2 id="region-dialog-title" data-region-title>Flandria</h2>
+  <p data-region-text="modalQuestion">Co chcesz zobaczyć w tym regionie?</p>
+  <div class="region-dialog__choices">
+    <a href="/wydarzenia/" data-region-link="events"><span class="region-dialog__icon" aria-hidden="true">▦</span><span><strong data-region-text="events">Wydarzenia</strong><small data-region-text="eventsDescription">Sprawdź wydarzenia w regionie</small></span><span aria-hidden="true">→</span></a>
+    <a href="/ogloszenia/" data-region-link="listings"><span class="region-dialog__icon" aria-hidden="true">▤</span><span><strong data-region-text="listings">Ogłoszenia</strong><small data-region-text="listingsDescription">Zobacz lokalne oferty i usługi</small></span><span aria-hidden="true">→</span></a>
+  </div>
+</dialog>
