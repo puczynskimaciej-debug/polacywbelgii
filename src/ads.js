@@ -3,7 +3,7 @@
   const t = key => window.adTranslations[document.documentElement.lang]?.[`ads.${key}`] || window.adTranslations.pl[`ads.${key}`] || key;
   async function api(action, params = {}, body) {
     let response;
-    try { response = await fetch(`/.netlify/functions/ads?${new URLSearchParams({ action, ...params })}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' }); } catch { throw { code: 'unavailable' }; }
+    try { response = await fetch(`/api/ads?${new URLSearchParams({ action, ...params })}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' }); } catch { throw { code: 'unavailable' }; }
     let data; try { data = await response.json(); } catch { throw { code: 'unavailable' }; }
     if (!response.ok) throw { code: data.error, details: data.details };
     return data;

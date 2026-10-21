@@ -122,7 +122,7 @@
         if (action === 'order-batch') return { demo: true };
       }
     }
-    const response = await fetch('/.netlify/functions/ads?' + new URLSearchParams({ action, ...params }), body
+    const response = await fetch('/api/ads?' + new URLSearchParams({ action, ...params }), body
       ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       : { cache: 'no-store' });
     const data = await response.json();

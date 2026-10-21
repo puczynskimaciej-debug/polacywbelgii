@@ -38,7 +38,7 @@ exports.handler = async event => {
       if (action === 'config' || action === 'admin-settings') return reply(200, { ...settings, languages, today: domain.today() });
       if (action === 'public') {
         if (!Object.hasOwn(languages, query.language)) domain.fail('market');
-        return reply(200, { ads: (await store.orders(undefined, false)).filter(order => order.language === query.language && domain.status(order) === 'active').map(order => ({ ...domain.publicAd(order), image: order.kind === 'text' ? '' : `/.netlify/functions/ads?action=image&id=${order.id}`, imageMobile: order.imageMobile ? `/.netlify/functions/ads?action=image&id=${order.id}&variant=mobile` : '' })) });
+        return reply(200, { ads: (await store.orders(undefined, false)).filter(order => order.language === query.language && domain.status(order) === 'active').map(order => ({ ...domain.publicAd(order), image: order.kind === 'text' ? '' : `/api/ads?action=image&id=${order.id}`, imageMobile: order.imageMobile ? `/api/ads?action=image&id=${order.id}&variant=mobile` : '' })) });
       }
       if (action === 'availability') {
         const price = domain.quote(settings.data, query, domain.today(), true);

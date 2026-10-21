@@ -10,7 +10,7 @@ const messages = {
 };
 export async function cmsRequest(endpoint, params = {}, method = 'GET', body) {
   let response;
-  try { response = await fetch(`/.netlify/functions/${endpoint}?${new URLSearchParams(params)}`, { method, credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: body === undefined || ['GET', 'HEAD'].includes(method) ? undefined : JSON.stringify(body) }); }
+  try { response = await fetch(`/api/${endpoint}?${new URLSearchParams(params)}`, { method, credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: body === undefined || ['GET', 'HEAD'].includes(method) ? undefined : JSON.stringify(body) }); }
   catch { throw new Error(messages.unavailable); }
   const payload = await response.json().catch(() => ({ error: 'unavailable' }));
   if (!response.ok) {
