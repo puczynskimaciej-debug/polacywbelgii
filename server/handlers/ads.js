@@ -69,6 +69,7 @@ exports.handler = async event => {
     }
     if (!((action === 'order' && method === 'POST') || (action === 'admin-order' && ['POST', 'PUT'].includes(method)))) domain.fail('notFound', 404);
     const result = await store.transaction(async (client, settings) => {
+      settings.data.types = { ...domain.defaults().types, ...settings.data.types };
       settings.data.markets = { ...domain.defaults().markets, ...settings.data.markets };
       const all = await store.orders(client);
       const old = method === 'PUT' ? all.find(order => order.id === body.id) : null;
