@@ -1,6 +1,6 @@
 const messages = {
   unauthorized: 'Sesja wygasła. Zaloguj się ponownie.', invalidCredentials: 'Nieprawidłowy e-mail lub hasło.', forbidden: 'Nie masz uprawnień do tej operacji.',
-  passwordChangeRequired: 'Zmień hasło tymczasowe przed rozpoczęciem pracy.', passwordLength: 'Hasło musi mieć od 15 do 128 znaków.', passwordReuse: 'Nowe hasło musi różnić się od dotychczasowego.',
+  passwordChangeRequired: 'Zmień hasło tymczasowe przed rozpoczęciem pracy.', passwordResetRequired: 'To konto wymaga ustawienia nowego hasła po migracji. Skontaktuj się z administratorem.', passwordLength: 'Hasło musi mieć od 15 do 128 znaków.', passwordReuse: 'Nowe hasło musi różnić się od dotychczasowego.',
   rateLimit: 'Zbyt wiele prób. Spróbuj ponownie za 15 minut.', validation: 'Sprawdź dane formularza.', emailExists: 'Konto z tym adresem e-mail już istnieje.',
   lastAdmin: 'Musi pozostać co najmniej jeden aktywny administrator.', selfModification: 'Własne hasło zmień przez „Zmień hasło”. Nie możesz odebrać sobie dostępu administratora.',
   conflict: 'Dane zmieniły się. Odśwież widok i spróbuj ponownie.', origin: 'Nieprawidłowy adres panelu. Otwórz go pod skonfigurowaną domeną.',

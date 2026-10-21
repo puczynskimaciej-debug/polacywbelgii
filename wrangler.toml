@@ -1,0 +1,12 @@
+name = "polacywbelgii"
+pages_build_output_dir = "./_site"
+compatibility_date = "2026-10-21"
+
+[vars]
+CMS_GITHUB_BRANCH = "cloudflare-migration"
+CMS_GITHUB_REPOSITORY = "puczynskimaciej-debug/poradnik-polaka-w-belgii"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "polacywbelgii-preview"
+database_id = "be9435a1-b3ff-41dc-b70d-6f79f768d887"
