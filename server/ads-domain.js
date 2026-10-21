@@ -72,6 +72,15 @@ function creative(input) {
   const signature = match[1] === 'png' ? bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a' : match[1] === 'jpeg' ? bytes.subarray(0, 3).toString('hex') === 'ffd8ff' : bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
   if (!signature || bytes.length > 512000) fail('image');
   result.image = image;
+  if (input.imageMobile) {
+    const mobile = input.imageMobile;
+    const mobileMatch = typeof mobile === 'string' && mobile.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+    if (!mobileMatch || mobile.length > 700000) fail('image');
+    const mobileBytes = Buffer.from(mobileMatch[2], 'base64');
+    const mobileSignature = mobileMatch[1] === 'png' ? mobileBytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a' : mobileMatch[1] === 'jpeg' ? mobileBytes.subarray(0, 3).toString('hex') === 'ffd8ff' : mobileBytes.toString('ascii', 0, 4) === 'RIFF' && mobileBytes.toString('ascii', 8, 12) === 'WEBP';
+    if (!mobileSignature || mobileBytes.length > 512000) fail('image');
+    result.imageMobile = mobile;
+  }
   return result;
 }
 function publicAd(order) { return Object.fromEntries(['id', 'kind', 'contact', 'company', 'title', 'description', 'image', 'url', 'type', 'language', 'region'].map(key => [key, order[key]])); }
