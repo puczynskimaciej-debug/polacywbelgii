@@ -1,13 +1,25 @@
 ---
 title: "Testowy artykuł: pomysł na weekend"
+title_en: "Sample article: an idea for the weekend"
 title_nl: "Testartikel: een idee voor het weekend"
 title_fr: "Article test : une idée pour le week-end"
 date: "2026-07-23T15:15:00.000+02:00"
 category: "Rodzina"
 description: "Lekki, przykładowy tekst pozwalający przetestować prezentację materiałów o codziennym życiu i wolnym czasie."
+description_en: "A light sample article about everyday life and leisure."
 description_nl: "Een luchtige voorbeeldtekst om de presentatie van artikels over het dagelijks leven en vrije tijd te testen."
 description_fr: "Un texte d’exemple léger permettant de tester la présentation des contenus sur la vie quotidienne et les loisirs."
 image: "/images/placeholders/weekend-belgia.svg"
+body_en: |
+  This third sample article deliberately takes a lighter subject, showing that the CMS works for both practical guides and everyday stories.
+
+  ## An imaginary plan
+
+  The example starts with a walk in a park and a visit to a small market. In the afternoon, there is time for a museum or a quiet coffee.
+
+  Local opening hours and booking rules can change. A real article would include current sources and specific addresses.
+
+  This outing is fictional and serves only to demonstrate the site.
 body_nl: |
   Dit derde testartikel heeft bewust een lichter onderwerp. Zo kunnen we controleren of het CMS geschikt is voor zowel praktische gidsen als berichten over het dagelijks leven.
 

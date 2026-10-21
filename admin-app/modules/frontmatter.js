@@ -19,7 +19,7 @@ export function parseMarkdown(source) {
 }
 
 export function stringifyMarkdown(data, body) {
-  const preferredOrder = ["title", "title_nl", "title_fr", "date", "category", "description", "description_nl", "description_fr", "image", "body_nl", "body_fr"];
+  const preferredOrder = ["title", "title_en", "title_nl", "title_fr", "date", "category", "description", "description_en", "description_nl", "description_fr", "image", "body_en", "body_nl", "body_fr"];
   const keys = [...preferredOrder.filter((key) => data[key] !== undefined && data[key] !== ""), ...Object.keys(data).filter((key) => !preferredOrder.includes(key) && data[key] !== undefined && data[key] !== "")];
   const yaml = keys.map((key) => {
     const value = data[key];

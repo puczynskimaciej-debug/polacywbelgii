@@ -63,6 +63,28 @@
           "description": "Skontaktuj się z redakcją serwisu Polacy w Belgii."
         }
       }
+    },
+    "en": {
+      "contact": {
+        "email": "kontakt@polacywbelgii.eu",
+        "area": "All of Belgium",
+        "heading": "Close to the Polish community",
+        "description": "We reply on working days. We do not provide individual legal or medical advice."
+      },
+      "seo": {
+        "home": {
+          "title": "Poles in Belgium — information, articles and listings",
+          "description": "Practical information, news and listings for Poles living in Belgium."
+        },
+        "articles": {
+          "title": "Articles and guides for Poles in Belgium",
+          "description": "Guides and news for Poles living and working in Belgium."
+        },
+        "contact": {
+          "title": "Contact — Poles in Belgium",
+          "description": "Contact the Poles in Belgium editorial team."
+        }
+      }
     }
   }
 }

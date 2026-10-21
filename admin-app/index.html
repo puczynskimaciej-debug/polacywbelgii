@@ -61,7 +61,7 @@
 
     <main class="workspace">
       <header class="topbar">
-        <label class="cms-language">Edytowany język<select id="cms-language"><option value="pl">Polski</option><option value="nl">Nederlands</option><option value="fr">Français</option></select></label>
+        <label class="cms-language">Edytowany język<select id="cms-language"><option value="pl">Polski</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option></select></label>
         <button id="menu-toggle" class="menu-toggle" aria-label="Otwórz menu">☰</button>
 
         <div><strong id="current-user"></strong><small id="repository-name"></small></div>
@@ -168,8 +168,9 @@
     <form id="article-form">
       <div class="dialog-heading"><div><p class="kicker">Markdown</p><h2 id="article-dialog-title">Nowy artykuł</h2></div><button class="icon-button" type="button" data-close>×</button></div>
       <input name="slug" type="hidden">
-      <div class="language-tabs"><button type="button" class="is-active" data-language-tab="pl">Polski</button><button type="button" data-language-tab="nl">Nederlands</button><button type="button" data-language-tab="fr">Français</button></div>
+      <div class="language-tabs"><button type="button" class="is-active" data-language-tab="pl">Polski</button><button type="button" data-language-tab="en">English</button><button type="button" data-language-tab="nl">Nederlands</button><button type="button" data-language-tab="fr">Français</button></div>
       <div class="language-pane is-active" data-language-pane="pl"><label>Tytuł<input name="title" required></label><label>Krótki opis<textarea name="description" rows="2" required></textarea></label><label>Treść <small>(Markdown)</small><textarea name="body" rows="13" required></textarea></label></div>
+      <div class="language-pane" data-language-pane="en"><label>Tytuł<input name="title_en"></label><label>Krótki opis<textarea name="description_en" rows="2"></textarea></label><label>Treść <small>(Markdown)</small><textarea name="body_en" rows="13"></textarea></label></div>
       <div class="language-pane" data-language-pane="nl"><label>Tytuł<input name="title_nl"></label><label>Krótki opis<textarea name="description_nl" rows="2"></textarea></label><label>Treść <small>(Markdown)</small><textarea name="body_nl" rows="13"></textarea></label></div>
       <div class="language-pane" data-language-pane="fr"><label>Tytuł<input name="title_fr"></label><label>Krótki opis<textarea name="description_fr" rows="2"></textarea></label><label>Treść <small>(Markdown)</small><textarea name="body_fr" rows="13"></textarea></label></div>
       <div class="form-grid"><label>Rodzaj treści<select name="contentType"><option value="article">Artykuł</option><option value="event">Wydarzenie</option></select></label><label>Kategoria<select name="category"><option>Praca</option><option>Formalności</option><option>Zdrowie</option><option>Podatki</option><option>Rodzina</option><option>Życie w Belgii</option></select></label><label>Region<select name="region"><option value="all">Cała Belgia</option><option value="flanders">Flandria</option><option value="wallonia">Walonia</option><option value="brussels">Region Stołeczny Brukseli</option></select></label><label>Data publikacji<input name="date" type="datetime-local" required></label><label class="wide">Zdjęcie główne<div class="image-input"><input name="image"><button class="secondary" type="button" data-action="pick-article-image">Wgraj</button></div></label></div>
@@ -179,7 +180,7 @@
 
   <dialog id="preview-dialog" class="preview-dialog">
     <div class="dialog-heading"><div><p class="kicker">Przed publikacją</p><h2 id="preview-title">Podgląd artykułu</h2></div><button class="icon-button" type="button" data-close>×</button></div>
-    <div class="preview-language"><button class="is-active" data-preview-language="pl">Polski</button><button data-preview-language="nl">Nederlands</button><button data-preview-language="fr">Français</button></div>
+    <div class="preview-language"><button class="is-active" data-preview-language="pl">Polski</button><button data-preview-language="en">English</button><button data-preview-language="nl">Nederlands</button><button data-preview-language="fr">Français</button></div>
     <article id="article-preview" class="article-preview"></article>
   </dialog>
 

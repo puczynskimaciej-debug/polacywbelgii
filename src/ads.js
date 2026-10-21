@@ -12,7 +12,8 @@
   const detail = document.createElement('dialog'); detail.className = 'listing-detail'; detail.setAttribute('aria-label', 'Ogłoszenie'); document.body.append(detail);
   function showDetail(ad, trigger) {
     const lang = document.documentElement.lang;
-    const close = element('button', { pl: 'Zamknij', fr: 'Fermer', nl: 'Sluiten' }[lang] || 'Zamknij', 'button'); close.type = 'button'; close.onclick = () => detail.close();
+    detail.setAttribute('aria-label', t('sponsored'));
+    const close = element('button', { pl: 'Zamknij', en: 'Close', fr: 'Fermer', nl: 'Sluiten' }[lang] || 'Zamknij', 'button'); close.type = 'button'; close.onclick = () => detail.close();
     detail.replaceChildren(element('h2', t('sponsored')), element('p', ad.description, 'listing-copy'), element('p', ad.contact, 'listing-contact'), close);
     detail.onclose = () => trigger.focus(); detail.showModal(); close.focus();
   }
@@ -20,7 +21,7 @@
     const item = element('article', '', 'listing-card');
     if (ad.kind === 'text') {
       item.classList.add('listing-card--text');
-      const more = element('button', { pl: 'Czytaj całość', fr: 'Lire la suite', nl: 'Lees meer' }[document.documentElement.lang] || 'Czytaj całość', 'listing-more'); more.type = 'button'; more.onclick = () => showDetail(ad, more);
+      const more = element('button', { pl: 'Czytaj całość', en: 'Read more', fr: 'Lire la suite', nl: 'Lees meer' }[document.documentElement.lang] || 'Czytaj całość', 'listing-more'); more.type = 'button'; more.onclick = () => showDetail(ad, more);
       item.append(element('small', t('sponsored')), element('p', ad.description, 'listing-copy'), element('p', ad.contact, 'listing-contact'), more); return item;
     }
     const link = element('a'); link.href = ad.url; link.rel = 'sponsored noopener'; link.target = '_blank';
@@ -33,7 +34,7 @@
     const picture = element('picture');
     if (ad.imageMobile) { const source = element('source'); source.media = '(max-width: 580px)'; source.srcset = ad.imageMobile; picture.append(source); }
     const image = element('img'); image.src = ad.image; image.alt = ad.company || ad.title;
-    image.width = 1200; image.height = 300;
+    image.width = 1200; image.height = 200;
     const caption = element('span', t('sponsored'), 'premium-banner__caption');
     picture.append(image); banner.append(picture, caption);
     return banner;

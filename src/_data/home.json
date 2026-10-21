@@ -177,6 +177,66 @@
           "contact": "https://www.google.com/"
         }
       ]
+    },
+    "en": {
+      "hero": {
+        "eyebrow": "Test version of the site",
+        "title": "A test site for Poles in Belgium",
+        "description": "This sample hero introduces the portal and links to practical articles and community listings."
+      },
+      "news": [
+        {
+          "title": "Sample story: first days in Belgium",
+          "category": "Test: administration",
+          "description": "A sample guide to documents and the first steps after moving.",
+          "image": "/images/placeholders/start-belgia.svg",
+          "link": "/artykuly/test/"
+        },
+        {
+          "title": "Sample story: working in Belgium",
+          "category": "Test: work",
+          "description": "An example of how a practical article about work could appear.",
+          "image": "/images/placeholders/praca-belgia.svg",
+          "link": "/artykuly/test-praca/"
+        },
+        {
+          "title": "Sample idea for the weekend",
+          "category": "Test: leisure",
+          "description": "A sample card about events, family life and free time.",
+          "image": "/images/placeholders/weekend-belgia.svg",
+          "link": "/artykuly/test-weekend/"
+        }
+      ],
+      "notices": [
+        {
+          "title": "Sample community notice",
+          "category": "Test: community",
+          "date": "July 2026",
+          "description": "A sample notice. A real local event or initiative could be announced here.",
+          "contact": "test@polacywbelgii.eu"
+        },
+        {
+          "title": "Sample editorial notice",
+          "category": "Test: editorial",
+          "date": "July 2026",
+          "description": "A second sample notice showing a longer announcement on the home page.",
+          "contact": "Sample contact details"
+        },
+        {
+          "title": "Another sample notice",
+          "category": "Test: editorial",
+          "date": "September 2026",
+          "description": "A third sample notice showing how a longer community message could look.",
+          "contact": "Phone: 123-456-789"
+        },
+        {
+          "title": "Sample notice for readers",
+          "category": "Test: readers",
+          "date": "September 2026",
+          "description": "A fourth sample notice for checking the layout of the community board.",
+          "contact": "https://www.google.com/"
+        }
+      ]
     }
   }
 }

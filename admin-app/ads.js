@@ -15,7 +15,7 @@ async function load() {
   try {
     const [settings, result] = await Promise.all([api('admin-settings'), api('admin-orders')]);
     configuration = settings; orders = result.orders;
-    $('#ads-prices').innerHTML = Object.entries(settings.languages).map(([key, language]) => `<fieldset><legend>${escape(language.name)}</legend><div class="form-grid"><label>Zamówienia<select name="${key}-enabled"><option value="false">Wyłączone</option><option value="true" ${settings.data.markets[key].enabled ? 'selected' : ''}>Włączone</option></select></label>${['TOP', 'STANDARD'].map(type => `<label>${escape(type)} / dzień (EUR)<input name="${key}-${type}" type="number" min="0" max="10000" step="0.01" required value="${settings.data.markets[key].prices[type] / 100}"></label>`).join('')}</div></fieldset>`).join('');
+    $('#ads-prices').innerHTML = Object.entries(settings.languages).map(([key, language]) => `<fieldset><legend>${escape(language.name)}</legend><div class="form-grid"><label>Zamówienia<select name="${key}-enabled"><option value="false">Wyłączone</option><option value="true" ${settings.data.markets[key].enabled ? 'selected' : ''}>Włączone</option></select></label>${['TOP', 'STANDARD', 'PREMIUM'].map(type => `<label>${escape(type)} / dzień (EUR)<input name="${key}-${type}" type="number" min="0" max="10000" step="0.01" required value="${settings.data.markets[key].prices[type] / 100}"></label>`).join('')}</div><p>PREMIUM: 0 EUR wyłącza publiczne zamówienia tego miejsca.</p></fieldset>`).join('');
     for (const form of [$('#ads-filters'), $('#ads-edit')]) {
       const select = form.elements.namedItem('language'); const previous = select.value;
       select.innerHTML = (form.id === 'ads-filters' ? '<option value="">Wszystkie</option>' : '') + Object.entries(settings.languages).map(([key, language]) => `<option value="${escape(key)}">${escape(language.name)}</option>`).join('');
@@ -33,7 +33,7 @@ function editPrice() {
   if (isShowcase(editing)) { $('#ads-edit-price').textContent = 'Bezterminowo (pokazowe). Aby ukryć, wybierz status Anulowane.'; return; }
   const form = $('#ads-edit'); const input = Object.fromEntries(new FormData(form));
   const days = (Date.parse(input.endDate) - Date.parse(input.startDate)) / 86400000 + 1;
-  const price = editing ? editing.dailyPrice : input.type === 'PREMIUM' || input.complimentary === 'true' ? 0 : configuration.data.markets[input.language]?.prices[input.type];
+  const price = editing ? editing.dailyPrice : input.complimentary === 'true' ? 0 : configuration.data.markets[input.language]?.prices[input.type];
   $('#ads-edit-price').textContent = days > 0 && days <= 366 ? `${days} dni × ${money(price)} = ${money(days * price)}` : 'Wybierz poprawny zakres dat.';
 }
 async function open(order) {
@@ -86,7 +86,7 @@ $('#ads-settings').onsubmit = async event => {
     const values = Object.fromEntries(new FormData(event.target)); const data = structuredClone(configuration.data);
     for (const language of Object.keys(configuration.languages)) {
       data.markets[language].enabled = values[`${language}-enabled`] === 'true';
-      for (const type of ['TOP', 'STANDARD']) data.markets[language].prices[type] = Math.round(Number(values[`${language}-${type}`]) * 100);
+      for (const type of ['TOP', 'STANDARD', 'PREMIUM']) data.markets[language].prices[type] = Math.round(Number(values[`${language}-${type}`]) * 100);
     }
     const saved = await api('admin-settings', 'PUT', { data, version: configuration.version }); configuration = { ...configuration, ...saved };
     $('#ads-notice').textContent = 'Cennik zapisany. Obowiązuje od razu. Istniejące zamówienia zachowują ceny.';

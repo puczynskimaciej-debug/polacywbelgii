@@ -30,8 +30,10 @@ function validateContent(filename, content) {
     const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
     if (!match) fail('validation');
     let data; try { data = yaml.load(match[1], { schema: yaml.JSON_SCHEMA }); } catch { fail('validation'); }
-    const keys = new Set(['title', 'date', 'category', 'description', 'image', ...Object.keys(languages).flatMap(language => [`title_${language}`, `description_${language}`, `body_${language}`])]);
+    const keys = new Set(['title', 'date', 'category', 'description', 'image', 'region', 'contentType', ...Object.keys(languages).flatMap(language => [`title_${language}`, `description_${language}`, `body_${language}`])]);
     if (!data || typeof data !== 'object' || Object.entries(data).some(([key, value]) => !keys.has(key) || typeof value !== 'string') || !data.title || !Number.isFinite(Date.parse(data.date))) fail('validation');
+    if (data.region && !['all', 'flanders', 'wallonia', 'brussels'].includes(data.region)) fail('validation');
+    if (data.contentType && !['article', 'event'].includes(data.contentType)) fail('validation');
     safeUrl(data.image || '');
   } else {
     let data; try { data = JSON.parse(text); } catch { fail('validation'); }
@@ -39,7 +41,7 @@ function validateContent(filename, content) {
     if (data.locales !== undefined) {
       if (!data.locales || typeof data.locales !== 'object' || Array.isArray(data.locales)) fail('validation');
       for (const [language, localized] of Object.entries(data.locales)) {
-        if (!['nl','fr'].includes(language) || !localized || localized.locales !== undefined) fail('validation');
+        if (language === 'pl' || !Object.hasOwn(languages, language) || !localized || localized.locales !== undefined) fail('validation');
         validateContent(filename, Buffer.from(JSON.stringify(localized)).toString('base64'));
       }
     }

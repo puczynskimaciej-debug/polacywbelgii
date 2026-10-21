@@ -1,5 +1,6 @@
 {
   "pl": { "code": "PL", "name": "Polski", "flag": "/images/flags/pl.svg", "locale": "pl-PL" },
+  "en": { "code": "EN", "name": "English", "flag": "/images/flags/en.svg", "locale": "en-GB" },
   "nl": { "code": "NL", "name": "Nederlands", "flag": "/images/flags/be.svg", "locale": "nl-BE" },
   "fr": { "code": "FR", "name": "Français", "flag": "/images/flags/fr.svg", "locale": "fr-BE" }
 }

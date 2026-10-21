@@ -1,13 +1,25 @@
 ---
 title: "Testowy artykuł: dzień pracy w Belgii"
+title_en: "Sample article: a working day in Belgium"
 title_nl: "Testartikel: een werkdag in België"
 title_fr: "Article test : une journée de travail en Belgique"
 date: "2026-07-24T11:30:00.000+02:00"
 category: "Praca"
 description: "Przykład artykułu pokazującego, jak na stronie może wyglądać praktyczny materiał dotyczący pracy."
+description_en: "An example of how a practical article about working in Belgium can appear on the site."
 description_nl: "Een voorbeeld van hoe een praktisch artikel over werken op de website kan worden gepresenteerd."
 description_fr: "Un exemple montrant comment un contenu pratique consacré au travail peut être présenté sur le site."
 image: "/images/placeholders/praca-belgia.svg"
+body_en: |
+  This second, independent sample article shows how different text lengths and categories appear in the article list.
+
+  ## An imaginary working day
+
+  A future article could explain working hours, breaks, payslips or communication with an employer. For now, this is a short fictional scenario.
+
+  Jan starts at eight, checks his schedule and discusses tasks with his team. At the end of the day, he keeps his documents together.
+
+  > This example does not provide binding employment law information.
 body_nl: |
   Dit is een tweede, zelfstandig testartikel. Het dient om de afwisselende lay-out, categorieën en verschillende tekstlengtes in de artikellijst te controleren.
 

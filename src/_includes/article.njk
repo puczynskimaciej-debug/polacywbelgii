@@ -9,11 +9,12 @@ pageKey: articles
       <span class="tag" data-category>{{ category or "Poradnik" }}</span>
       <time datetime="{{ date }}">{{ date | readableDate }}</time>
     </div>
-    <h1 data-translation-nl="{{ title_nl }}" data-translation-fr="{{ title_fr }}">{{ title }}</h1>
-    <p class="lead" data-translation-nl="{{ description_nl }}" data-translation-fr="{{ description_fr }}">{{ description }}</p>
+    <h1 data-translation-en="{{ title_en }}" data-translation-nl="{{ title_nl }}" data-translation-fr="{{ title_fr }}">{{ title }}</h1>
+    <p class="lead" data-translation-en="{{ description_en }}" data-translation-nl="{{ description_nl }}" data-translation-fr="{{ description_fr }}">{{ description }}</p>
   </header>
   {% if image %}<div class="single-article__image container"><img src="{{ image }}" alt="" loading="eager"></div>{% endif %}
   <div class="prose container" data-i18n-html="article.{{ page.fileSlug }}.body">{{ content | safe }}</div>
   {% if body_nl %}<template data-article-translation="nl">{{ body_nl | renderMarkdown | safe }}</template>{% endif %}
   {% if body_fr %}<template data-article-translation="fr">{{ body_fr | renderMarkdown | safe }}</template>{% endif %}
+  {% if body_en %}<template data-article-translation="en">{{ body_en | renderMarkdown | safe }}</template>{% endif %}
 </article>

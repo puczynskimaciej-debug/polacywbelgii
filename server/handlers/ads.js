@@ -20,7 +20,7 @@ exports.handler = async event => {
     let body = {};
     if (method !== 'GET') {
       if (!(event.headers['content-type'] || '').startsWith('application/json')) domain.fail('validation', 415);
-      if (Buffer.byteLength(event.body || '') > 720000) domain.fail('image', 413);
+      if (Buffer.byteLength(event.body || '') > 1450000) domain.fail('image', 413);
       try { body = JSON.parse(event.body || '{}'); } catch { domain.fail('validation'); }
       if (!body || typeof body !== 'object' || Array.isArray(body)) domain.fail('validation');
     }
@@ -34,8 +34,7 @@ exports.handler = async event => {
       }
       const settings = await store.settings();
       // Newly registered site languages are disabled until the editor sets prices.
-      settings.data.types = { ...domain.defaults().types, ...settings.data.types };
-      settings.data.markets = { ...domain.defaults().markets, ...settings.data.markets };
+      settings.data = domain.normalizeSettings(settings.data);
       if (action === 'config' || action === 'admin-settings') return reply(200, { ...settings, languages, today: domain.today() });
       if (action === 'public') {
         if (!Object.hasOwn(languages, query.language)) domain.fail('market');
@@ -44,7 +43,7 @@ exports.handler = async event => {
       if (action === 'availability') {
         const price = domain.quote(settings.data, query, domain.today(), true);
         const days = domain.availability(await store.orders(undefined, false), settings.data, query.language, query.type, query.startDate, query.endDate);
-        return reply(200, { ...price, enabled: settings.data.markets[query.language].enabled, daysAvailable: days });
+        return reply(200, { ...price, enabled: settings.data.markets[query.language].enabled && (query.type !== 'PREMIUM' || settings.data.markets[query.language].prices.PREMIUM > 0), daysAvailable: days });
       }
       if (action === 'admin-orders') return reply(200, { orders: (await store.orders(undefined, false)).map(order => ({ ...order, effectiveStatus: domain.status(order) })) });
       domain.fail('notFound', 404);
@@ -69,8 +68,7 @@ exports.handler = async event => {
     }
     if (!((action === 'order' && method === 'POST') || (action === 'admin-order' && ['POST', 'PUT'].includes(method)))) domain.fail('notFound', 404);
     const result = await store.transaction(async (client, settings) => {
-      settings.data.types = { ...domain.defaults().types, ...settings.data.types };
-      settings.data.markets = { ...domain.defaults().markets, ...settings.data.markets };
+      settings.data = domain.normalizeSettings(settings.data);
       const all = await store.orders(client);
       const old = method === 'PUT' ? all.find(order => order.id === body.id) : null;
       if (method === 'PUT' && !old) domain.fail('notFound', 404);
@@ -106,7 +104,7 @@ exports.handler = async event => {
         const blocked = domain.availability(all, settings.data, input.language, input.type, input.startDate, input.endDate, old?.id).filter(day => day.remaining === 0);
         if (blocked.length) domain.fail('full', 409, blocked);
       }
-      if (!admin && input.type === 'PREMIUM') domain.fail('market');
+      if (!admin && input.type === 'STANDARD' && input.kind !== 'text') domain.fail('validation');
       if (input.type === 'PREMIUM' && input.kind === 'text') domain.fail('validation');
       if (input.region && !['all', 'flanders', 'wallonia', 'brussels'].includes(input.region)) domain.fail('validation');
       const content = domain.creative(input);

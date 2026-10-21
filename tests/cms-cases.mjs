@@ -135,6 +135,8 @@ export function registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, origin
     }
   });
   test('CMS browser: email login, create editor, first password change, edit content, logout', async () => {
+    const previousToken = process.env.CMS_GITHUB_TOKEN;
+    process.env.CMS_GITHUB_TOKEN = 'server_only_test_token';
     await store.database().query('TRUNCATE cms_login_limits');
     const files = new Map();
     for (const filename of ['src/_data/home.json', 'src/_data/site.json', 'src/content/articles/test.md', 'src/content/articles/test-praca.md', 'src/content/articles/test-weekend.md']) files.set(filename, await readFile(filename, 'utf8'));
@@ -205,6 +207,6 @@ export function registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, origin
       await page.locator('[data-view="ads"]').click(); await page.waitForFunction(() => document.querySelector('#ads-prices').children.length > 0);
       await page.locator('#logout-button').click(); await page.locator('#login-form').waitFor({ state: 'visible' });
       assert.deepEqual(githubRequests, []); assert.deepEqual(errors, []);
-    } finally { globalThis.fetch = originalFetch; await browser.close(); await new Promise(resolve => server.close(resolve)); }
+    } finally { globalThis.fetch = originalFetch; if (previousToken === undefined) delete process.env.CMS_GITHUB_TOKEN; else process.env.CMS_GITHUB_TOKEN = previousToken; await browser.close(); await new Promise(resolve => server.close(resolve)); }
   });
 }

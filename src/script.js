@@ -1,5 +1,46 @@
 const translations = {
   pl: {},
+  en: {
+    "nav.home": "Home", "nav.articles": "Articles", "nav.contact": "Contact",
+    "lang.choose": "Choose language", "footer.about": "A practical site for Poles living in Belgium.",
+    "footer.shortcuts": "Quick links", "footer.important": "Important",
+    "footer.disclaimer": "Published content is for information only and is not legal, medical or tax advice.",
+    "footer.admin": "Editorial dashboard", "footer.mapCredit": "Map boundaries:", "footer.mapNote": "adapted and simplified",
+    "skip.content": "Skip to content", "nav.open": "Open menu", "nav.main": "Main navigation", "brand.home": "Poles in Belgium — home page",
+    "home.eyebrow": "Test version of the site", "home.title": "A test site for Poles in Belgium",
+    "home.description": "This sample hero introduces the portal and links to practical articles and community listings.",
+    "home.read": "Read the latest articles", "home.noticesLink": "View listings",
+    "home.worth": "Good to know", "home.latest": "Latest information", "home.allArticles": "All articles",
+    "home.community": "Community board", "home.notices": "Listings",
+    "home.question": "Sample contact section", "home.help": "Get in touch",
+    "home.helpText": "Use this space to send questions or suggest topics for future articles.",
+    "home.contact": "Contact us", "common.more": "Learn more",
+    "news.0.category": "Test: administration", "news.0.title": "Sample story: first days in Belgium",
+    "news.0.description": "A sample guide to documents and the first steps after moving.",
+    "news.1.category": "Test: work", "news.1.title": "Sample story: working in Belgium",
+    "news.1.description": "An example of how a practical article about work could appear.",
+    "news.2.category": "Test: leisure", "news.2.title": "Sample idea for the weekend",
+    "news.2.description": "A sample card about events, family life and free time.",
+    "notices.0.category": "Test: community", "notices.0.date": "July 2026", "notices.0.title": "Sample community notice",
+    "notices.0.description": "A sample notice. A real local event or initiative could be announced here.",
+    "notices.1.category": "Test: editorial", "notices.1.date": "July 2026", "notices.1.title": "Sample editorial notice",
+    "notices.1.description": "A second sample notice showing a longer announcement on the home page.",
+    "articles.eyebrow": "Knowledge base", "articles.title": "Articles and guides",
+    "articles.description": "Administration, work, health and everyday life in Belgium — explained clearly.",
+    "articles.read": "Read article", "articles.emptyTitle": "The first articles are being prepared", "articles.emptyText": "Please come back soon.",
+    "category.Zdrowie": "Health", "category.Praca": "Work", "category.Formalności": "Administration",
+    "category.Podatki": "Taxes", "category.Rodzina": "Family", "category.Życie w Belgii": "Life in Belgium",
+    "category.Poradnik": "Guide", "category.Wydarzenie": "Event",
+    "contact.eyebrow": "Let's talk", "contact.intro": "Have a question, an article idea or an important notice? Write to us.",
+    "contact.editorial": "Editorial team", "contact.heading": "Close to the Polish community",
+    "contact.text": "We reply on working days. We do not provide individual legal or medical advice.",
+    "contact.email": "Email", "contact.area": "Coverage", "contact.belgium": "All of Belgium",
+    "form.name": "Full name", "form.email": "Email address", "form.subject": "Subject",
+    "form.optionQuestion": "Question for the editors", "form.optionArticle": "Article suggestion",
+    "form.optionNotice": "Listing", "form.optionError": "Report an error", "form.message": "Message",
+    "form.consent": "I agree to the processing of my details so this message can be handled.",
+    "form.send": "Send message", "form.honeypot": "Do not fill in:",
+  },
   nl: {
     "nav.home": "Startpagina", "nav.articles": "Artikels", "nav.contact": "Contact",
     "lang.choose": "Kies een taal", "footer.about": "Een praktische website voor Polen die in België wonen.",
@@ -89,10 +130,19 @@ for (const language of Object.keys(languageData)) {
 
 const pageTitles = {
   pl: { home: "Strona główna", articles: "Artykuły", contact: "Kontakt", events: "Wydarzenia", regionalAds: "Ogłoszenia" },
+  en: { home: "Home", articles: "Articles", contact: "Contact", events: "Events", regionalAds: "Listings" },
   nl: { home: "Startpagina", articles: "Artikels", contact: "Contact", events: "Evenementen", regionalAds: "Advertenties" },
   fr: { home: "Accueil", articles: "Articles", contact: "Contact", events: "Événements", regionalAds: "Annonces" }
 };
 const originalDocumentTitle = document.title;
+const originalMetaDescription = document.querySelector('meta[name="description"]')?.content;
+const pageDescriptions = {
+  en: {
+    events: 'Events for Poles living in Belgium.',
+    regionalAds: 'Local listings and services across Belgium.',
+    order: 'Choose a listing format and publication dates in Belgium.'
+  }
+};
 
 const originalContent = new Map();
 
@@ -114,7 +164,7 @@ function applyLanguage(language) {
   const articleBody = document.querySelector(".prose[data-i18n-html]");
   const translatedBody = document.querySelector(`template[data-article-translation="${selected}"]`);
   if (articleBody && translatedBody) articleBody.innerHTML = translatedBody.innerHTML;
-  document.querySelectorAll("[data-translation-nl], [data-translation-fr]").forEach((element) => {
+  document.querySelectorAll("[data-translation-en], [data-translation-nl], [data-translation-fr]").forEach((element) => {
     if (!originalContent.has(element)) originalContent.set(element, element.textContent);
     const translated = element.getAttribute(`data-translation-${selected}`);
     element.textContent = selected === "pl" || !translated ? originalContent.get(element) : translated;
@@ -123,6 +173,10 @@ function applyLanguage(language) {
     if (!originalContent.has(element)) originalContent.set(element, element.textContent);
     const original = originalContent.get(element);
     element.textContent = dictionary[`category.${original}`] ?? original;
+  });
+  document.querySelectorAll('[data-article-image-link]').forEach(element => {
+    const title = element.closest('article')?.querySelector('h2 a')?.textContent;
+    if (title) element.setAttribute('aria-label', `${selected === 'en' ? 'Read' : selected === 'fr' ? 'Lire' : selected === 'nl' ? 'Lees' : 'Czytaj'}: ${title}`);
   });
   document.querySelectorAll("time[datetime]").forEach((element) => {
     const date = new Date(element.getAttribute("datetime"));
@@ -138,6 +192,9 @@ function applyLanguage(language) {
   const pageTitle = articleHeading?.textContent || (document.body.dataset.page === 'order' ? dictionary['ads.order'] : pageTitles[selected]?.[document.body.dataset.page]);
   if (selected === "pl") document.title = originalDocumentTitle;
   else if (pageTitle) document.title = `${pageTitle} | Polacy w Belgii`;
+  const description = document.querySelector('meta[name="description"]');
+  if (description && pageDescriptions[selected]?.[document.body.dataset.page]) description.content = pageDescriptions[selected][document.body.dataset.page];
+  else if (description && originalMetaDescription) description.content = originalMetaDescription;
   document.querySelector(".language-picker__button img").src = languageData[selected].flag;
   document.querySelector(".language-picker__code").textContent = languageData[selected].code;
   document.querySelectorAll("[data-lang]").forEach((button) =>

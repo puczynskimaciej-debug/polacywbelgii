@@ -19,17 +19,17 @@
   <script src="/order-modal.js?v={{ buildVersion }}" defer></script>
 </head>
 <body data-page="{{ pageKey }}">
-  <a class="skip-link" href="#main">Przejdź do treści</a>
+  <a class="skip-link" href="#main" data-i18n="skip.content">Przejdź do treści</a>
   <header class="site-header">
     <div class="container nav-wrap">
-      <a class="brand" href="/" aria-label="Polacy w Belgii — strona główna">
+      <a class="brand" href="/" aria-label="Polacy w Belgii — strona główna" data-i18n-aria="brand.home">
         <span class="brand__mark"><strong>PL</strong><span>BE</span></span>
         <span class="brand__text">Polacy <small>w Belgii</small></span>
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav">
-        <span></span><span></span><span></span><span class="sr-only">Otwórz menu</span>
+        <span></span><span></span><span></span><span class="sr-only" data-i18n="nav.open">Otwórz menu</span>
       </button>
-      <nav id="main-nav" class="main-nav" aria-label="Główna nawigacja">
+      <nav id="main-nav" class="main-nav" aria-label="Główna nawigacja" data-i18n-aria="nav.main">
         <a href="/" {% if pageKey == "home" %}aria-current="page"{% endif %} data-i18n="nav.home">Strona główna</a>
         <a href="/artykuly/" {% if pageKey == "articles" %}aria-current="page"{% endif %} data-i18n="nav.articles">Artykuły</a>
         <a href="/kontakt/" {% if pageKey == "contact" %}aria-current="page"{% endif %} data-i18n="nav.contact">Kontakt</a>
@@ -72,7 +72,7 @@
     </div>
     <div class="container footer-bottom">
       <span>© 2026 Polacy w Belgii</span>
-      <small class="site-footer__map-credit">Granice mapy: <a href="https://simplemaps.com/gis/country/be" target="_blank" rel="noopener">Simplemaps</a>, opracowane i uproszczone · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></small>
+      <small class="site-footer__map-credit"><span data-i18n="footer.mapCredit">Granice mapy:</span> <a href="https://simplemaps.com/gis/country/be" target="_blank" rel="noopener">Simplemaps</a>, <span data-i18n="footer.mapNote">opracowane i uproszczone</span> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></small>
       <a href="/admin/" data-i18n="footer.admin">Panel redakcji</a>
     </div>
   </footer>

@@ -1,13 +1,29 @@
 ---
 title: "Testowy artykuł: pierwsze dni w Belgii"
+title_en: "Sample article: first days in Belgium"
 title_nl: "Testartikel: de eerste dagen in België"
 title_fr: "Article test : les premiers jours en Belgique"
 date: "2026-07-25T09:00:00.000+02:00"
 category: "Życie w Belgii"
 description: "Przykładowy materiał prezentujący wygląd poradnika o pierwszych krokach po przeprowadzce do Belgii."
+description_en: "A sample guide showing the first steps after moving to Belgium."
 description_nl: "Een voorbeeldartikel dat toont hoe een gids over de eerste stappen na een verhuizing naar België eruitziet."
 description_fr: "Un exemple d’article montrant la présentation d’un guide consacré aux premières démarches après une installation en Belgique."
 image: "/images/placeholders/start-belgia.svg"
+body_en: |
+  This sample article shows how a longer guide appears in the English version of the site. The information below is illustrative only.
+
+  ## A calm start
+
+  Imagine that you have just arrived in Belgium. A real guide here could cover registration with the municipality, finding a home and handling the first administrative steps.
+
+  ## Sample checklist
+
+  - check which documents you need;
+  - note the important appointments;
+  - keep copies of forms and confirmations.
+
+  This is demonstration content and does not constitute official advice.
 body_nl: |
   Dit is een testartikel dat laat zien hoe langere inhoud in het Nederlandstalige gedeelte van de website wordt weergegeven. De informatie hieronder is uitsluitend een voorbeeld.
 

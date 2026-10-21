@@ -2,6 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { createServer } from 'node:http';
 import { execFile } from 'node:child_process';
@@ -17,6 +18,13 @@ import auth from '../server/cms-auth.js';
 import { registerCmsTests } from './cms-cases.mjs';
 
 const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5S8AAAAASUVORK5CYII=';
+function png(width, height) {
+  const crc = bytes => { let value = 0xffffffff; for (const byte of bytes) { value ^= byte; for (let i = 0; i < 8; i++) value = value & 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1; } return (value ^ 0xffffffff) >>> 0; };
+  const chunk = (name, data) => { const label = Buffer.from(name); const size = Buffer.alloc(4), sum = Buffer.alloc(4); size.writeUInt32BE(data.length); sum.writeUInt32BE(crc(Buffer.concat([label, data]))); return Buffer.concat([size, label, data, sum]); };
+  const header = Buffer.alloc(13); header.writeUInt32BE(width); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 2;
+  const pixels = Buffer.alloc((width * 3 + 1) * height);
+  return 'data:image/png;base64,' + Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), chunk('IHDR', header), chunk('IDAT', deflateSync(pixels)), chunk('IEND', Buffer.alloc(0))]).toString('base64');
+}
 const day = domain.today();
 const plus = n => new Date(Date.parse(day) + n * 86400000).toISOString().slice(0, 10);
 const cluster = new EmbeddedPostgres({ databaseDir: path.resolve('test-results', `postgres-${randomUUID()}`), port: 55439, user: 'postgres', password: 'local-test-only', persistent: true, onLog: () => {}, onError: () => {} });
@@ -25,6 +33,7 @@ let adminCookie;
 const adminPassword = 'Test-only password 123456!';
 const origin = 'http://127.0.0.1:8089';
 const sample = (extra = {}) => ({ language: 'pl', type: 'STANDARD', startDate: day, endDate: day, company: 'Firma', title: 'Reklama', description: 'Opis reklamy', image, url: 'https://example.com', customerName: 'Jan Kowalski', email: 'jan@example.com', phone: '', consent: true, requestId: randomUUID(), expectedDailyPrice: 400, expectedTotalPrice: 400, ...extra });
+const publicSample = (extra = {}) => sample({ kind: 'text', contact: 'Kontakt', ...extra });
 async function call(action, method = 'GET', body, query = {}, admin = false) {
   const result = await ads.handler({ httpMethod: method, headers: { 'content-type': 'application/json', origin, 'x-nf-client-connection-ip': randomUUID(), ...(admin ? { cookie: adminCookie } : {}) }, queryStringParameters: { action, ...query }, body: body ? JSON.stringify(body) : undefined });
   return { status: result.statusCode, data: JSON.parse(result.body) };
@@ -32,7 +41,7 @@ async function call(action, method = 'GET', body, query = {}, admin = false) {
 async function reset() {
   await store.database().query('TRUNCATE ad_orders,ads_settings,ad_rate_limits');
   const settings = domain.defaults();
-  for (const market of Object.values(settings.markets)) { market.enabled = true; market.prices = { TOP: 1000, STANDARD: 400 }; }
+  for (const market of Object.values(settings.markets)) { market.enabled = true; market.prices = { TOP: 1000, STANDARD: 400, PREMIUM: 2500 }; }
   await store.database().query('INSERT INTO ads_settings(id,data) VALUES(1,$1)', [settings]);
 }
 before(async () => {
@@ -96,27 +105,27 @@ test('inclusive dates, leap years, Brussels timezone, strict inputs and privacy'
 });
 test('real concurrent PostgreSQL transactions: 10 STANDARD, 2 TOP, independent languages', async () => {
   await reset();
-  const results = await Promise.all(Array.from({ length: 11 }, () => call('order', 'POST', sample())));
+  const results = await Promise.all(Array.from({ length: 11 }, () => call('order', 'POST', publicSample())));
   assert.equal(results.filter(result => result.status === 201).length, 10);
   assert.equal(results.filter(result => result.data.error === 'full').length, 1);
-  const top = await Promise.all(Array.from({ length: 3 }, () => call('order', 'POST', sample({ type: 'TOP', expectedDailyPrice: 1000, expectedTotalPrice: 1000 }))));
+  const top = await Promise.all(Array.from({ length: 3 }, () => call('order', 'POST', publicSample({ type: 'TOP', expectedDailyPrice: 1000, expectedTotalPrice: 1000 }))));
   assert.equal(top.filter(result => result.status === 201).length, 2);
   assert.equal(top.filter(result => result.data.error === 'full').length, 1);
-  assert.equal((await call('order', 'POST', sample({ language: 'fr' }))).status, 201);
-  const blocked = await call('order', 'POST', sample({ endDate: plus(5), expectedTotalPrice: 2400 }));
+  assert.equal((await call('order', 'POST', publicSample({ language: 'fr' }))).status, 201);
+  const blocked = await call('order', 'POST', publicSample({ endDate: plus(5), expectedTotalPrice: 2400 }));
   assert.equal(blocked.data.error, 'full'); assert.equal(blocked.data.details[0].date, day);
 });
 test('price is server-owned, snapshot survives price change, request retries are idempotent', async () => {
   await reset();
-  const input = sample({ endDate: plus(9), expectedTotalPrice: 4000, totalPrice: 1, dailyPrice: 1 });
+  const input = publicSample({ endDate: plus(9), expectedTotalPrice: 4000, totalPrice: 1, dailyPrice: 1 });
   const result = await call('order', 'POST', input); assert.equal(result.data.totalPrice, 4000);
   const retry = await call('order', 'POST', input); assert.equal(result.data.id, retry.data.id);
   assert.equal((await store.orders()).length, 1);
-  const changed = domain.defaults(); for (const market of Object.values(changed.markets)) { market.enabled = true; market.prices = { TOP: 1200, STANDARD: 500 }; }
+  const changed = domain.defaults(); for (const market of Object.values(changed.markets)) { market.enabled = true; market.prices = { TOP: 1200, STANDARD: 500, PREMIUM: 2500 }; }
   assert.equal((await call('admin-settings', 'PUT', { data: changed, version: 1 }, {}, true)).status, 200);
   assert.equal((await store.orders())[0].dailyPrice, 400);
-  assert.equal((await call('order', 'POST', sample())).data.error, 'priceChanged');
-  assert.equal((await call('order', 'POST', sample({ expectedDailyPrice: 1, expectedTotalPrice: 1 }))).data.error, 'priceChanged');
+  assert.equal((await call('order', 'POST', publicSample())).data.error, 'priceChanged');
+  assert.equal((await call('order', 'POST', publicSample({ expectedDailyPrice: 1, expectedTotalPrice: 1 }))).data.error, 'priceChanged');
 });
 test('status transitions, visibility, cancellation, admin editing and privacy', async () => {
   await reset();
@@ -153,13 +162,13 @@ test('manual capacity checks and moving a booking cannot bypass capacity; free c
 test('interior full day blocks the whole range; disabled market and stale updates fail safely', async () => {
   await reset();
   for (let i = 0; i < 2; i++) await call('admin-order', 'POST', sample({ type: 'TOP', startDate: plus(2), endDate: plus(2) }), {}, true);
-  const blocked = await call('order', 'POST', sample({ type: 'TOP', endDate: plus(4), expectedDailyPrice: 1000, expectedTotalPrice: 5000 }));
+  const blocked = await call('order', 'POST', publicSample({ type: 'TOP', endDate: plus(4), expectedDailyPrice: 1000, expectedTotalPrice: 5000 }));
   assert.equal(blocked.data.error, 'full'); assert.deepEqual(blocked.data.details.map(item => item.date), [plus(2)]);
   const settings = (await store.settings()).data; settings.markets.pl.enabled = false;
   assert.equal((await call('admin-settings', 'PUT', { data: settings, version: 1 }, {}, true)).status, 200);
   assert.equal((await call('admin-settings', 'PUT', { data: settings, version: 1 }, {}, true)).data.error, 'conflict');
-  assert.equal((await call('order', 'POST', sample())).data.error, 'disabled');
-  assert.equal((await call('order', 'POST', sample({ language: 'fr', status: 'approved', paymentStatus: 'paid' }))).data.status, 'pending');
+  assert.equal((await call('order', 'POST', publicSample())).data.error, 'disabled');
+  assert.equal((await call('order', 'POST', publicSample({ language: 'fr', status: 'approved', paymentStatus: 'paid' }))).data.status, 'pending');
   assert.equal((await store.orders()).find(order => order.language === 'fr').paymentStatus, 'unpaid');
 });
 
@@ -167,7 +176,7 @@ test('public API excludes future, expired and pending advertisements without a r
   await reset();
   await call('admin-order', 'POST', sample({ title: 'Now' }), {}, true);
   await call('admin-order', 'POST', sample({ title: 'Future', startDate: plus(1), endDate: plus(1) }), {}, true);
-  await call('order', 'POST', sample({ title: 'Pending' }));
+  await call('order', 'POST', publicSample({ title: 'Pending' }));
   const expired = { ...(await store.orders())[0], id: randomUUID(), status: 'approved', title: 'Expired', startDate: plus(-2), endDate: plus(-1) };
   await store.database().query('INSERT INTO ad_orders(id,data) VALUES($1,$2)', [expired.id, expired]);
   assert.deepEqual((await call('public', 'GET', null, { language: 'pl' })).data.ads.map(ad => ad.title), ['Now']);
@@ -192,12 +201,24 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
   const browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true });
   try {
     const page = await browser.newPage(); const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/local-demo-order.json', route => route.fulfill({ status: 404, body: '' }));
+    await page.route('**/local-demo-ads.json', route => route.fulfill({ status: 404, body: '' }));
     await page.goto('http://127.0.0.1:8089/zamow-ogloszenie/');
     await page.locator('#order-form').waitFor({state:'visible'});
-    assert.equal(await page.locator('#order-calendar-step').isVisible(),false);
+    assert.equal(await page.locator('#order-calendar-step').isVisible(),true);
+    assert.equal(await page.locator('[name=type][value=PREMIUM]').count(),1);
+    await page.locator('[name=type][value=PREMIUM]').check();
+    assert.equal(await page.locator('[name=kind][value=text]').isVisible(),false);
+    assert.equal(await page.locator('[name=kind][value=image]').isChecked(),true);
+    assert.match(await page.locator('#order-image-hint').textContent(),/1200 × 200.*660 × 300/);
+    await page.locator('[name=type][value=TOP]').check();
+    assert.equal(await page.locator('[name=kind][value=image]').isVisible(),true);
+    assert.match(await page.locator('#order-image-hint').textContent(),/1200 × 720/);
     await page.locator('[name=type][value=STANDARD]').check();
+    assert.equal(await page.locator('[name=kind][value=image]').isVisible(),false);
     await page.locator('[name=languages][value=fr]').check();
     await page.locator('#order-calendar button:not([disabled])').first().click();
+    await page.locator('#order-calendar button:not([disabled])').nth(1).click();
     assert.ok(await page.locator('#order-calendar .calendar-slots').count() > 0);
     assert.equal(await page.locator('[data-copy=pl]').getAttribute('maxlength'), '1000');
     await page.locator('[data-copy=pl]').fill('Browser advert');
@@ -221,7 +242,7 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     await page.locator('#listing-top .listing-more').click();
     assert.ok((await page.locator('.listing-detail .listing-copy').textContent()).length > 200);
     await page.locator('.listing-detail button').click();
-    assert.ok(await page.evaluate(()=>document.querySelector('.hero').contains(document.querySelector('#listing-top'))));
+    assert.ok(await page.evaluate(()=>document.querySelector('.hero').nextElementSibling?.id === 'listing-top'));
     await page.locator('.language-picker__button').click(); await page.locator('[data-lang="fr"]').click();
     await page.waitForFunction(() => document.querySelector('#listing-top').textContent.includes('Visible fr'));
     assert.doesNotMatch(await page.locator('#listing-top').textContent(), /Visible pl/);
@@ -230,7 +251,7 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
     assert.equal(new URL(page.url()).pathname,'/');
     assert.equal(await page.locator('#order-title').textContent(),'Publier une annonce');
     assert.equal(await page.locator('[name=languages]').first().inputValue(),'pl');
-    assert.equal(await page.locator('[name=languages][value=pl]').isChecked(),true);
+    assert.equal(await page.locator('[name=languages][value=fr]').isChecked(),true);
     await page.locator('#order-close').click();
     await page.locator('.language-picker__button').click(); await page.locator('[data-lang="pl"]').click();
     await page.waitForSelector('#ogloszenia .listing-card');
@@ -295,15 +316,26 @@ test('browser: real order, language switching, calendar, CMS and responsive layo
 
 test('multi-language orders are atomic, idempotent and keep customer email private', async () => {
   await reset();
-  const body={requestId:randomUUID(),type:'TOP',dates:[day,plus(2)],variants:[{language:'pl',text:'Polskie ogłoszenie'},{language:'fr',text:'Annonce française'}],contact:'+32 123',email:'private@example.com',consent:true,expectedTotalPrice:4000};
+  const body={requestId:randomUUID(),type:'TOP',kind:'text',dates:[day,plus(1)],variants:[{language:'pl',text:'Polskie ogłoszenie'},{language:'fr',text:'Annonce française'}],contact:'+32 123',email:'private@example.com',consent:true,expectedTotalPrice:4000};
   const first=await call('order-batch','POST',body); assert.equal(first.status,201);assert.equal(first.data.totalPrice,4000);
-  const retry=await call('order-batch','POST',body);assert.equal(retry.data.id,first.data.id);assert.equal((await store.orders()).length,4);
-  await call('admin-order','POST',sample({type:'TOP',language:'fr',startDate:plus(2),endDate:plus(2)}),{},true);
-  const blocked=await call('order-batch','POST',{...body,requestId:randomUUID()});assert.equal(blocked.status,409);assert.equal((await store.orders()).length,5);
+  const retry=await call('order-batch','POST',body);assert.equal(retry.data.id,first.data.id);assert.equal((await store.orders()).length,2);
+  await call('admin-order','POST',sample({type:'TOP',language:'fr',startDate:plus(1),endDate:plus(1)}),{},true);
+  const blocked=await call('order-batch','POST',{...body,requestId:randomUUID()});assert.equal(blocked.status,409);assert.equal((await store.orders()).length,3);
   const pl=(await store.orders()).find(o=>o.language==='pl'&&o.startDate===day);
   const approved=await call('admin-order','PUT',{...pl,status:'approved'}, {},true);assert.equal(approved.status,200);
   const pub=await call('public','GET',null,{language:'pl'});assert.equal(pub.data.ads[0].contact,'+32 123');assert.ok(!JSON.stringify(pub.data).includes('private@example.com'));
   assert.equal((await call('order-batch','POST',{...body,requestId:randomUUID(),variants:[{language:'nl',text:'x'.repeat(1001)}]})).status,400);
+  assert.equal((await call('order-batch','POST',{...body,requestId:randomUUID(),dates:[day,plus(2)]})).status,400);
+  const banner={requestId:randomUUID(),type:'TOP',kind:'image',dates:[day,plus(1)],variants:[{language:'en',title:'Sample banner',description:'A local example'}],company:'Example Ltd',url:'https://example.com',customerName:'Jane Sample',image:png(1200,720),email:'private@example.com',consent:true,expectedTotalPrice:2000};
+  const created=await call('order-batch','POST',banner);assert.equal(created.status,201);
+  const saved=(await store.orders()).find(order=>order.groupId===created.data.id);assert.equal(saved.kind,'image');assert.equal(saved.language,'en');assert.equal(saved.startDate,day);assert.equal(saved.endDate,plus(1));
+  assert.equal((await call('order-batch','POST',{...banner,requestId:randomUUID(),type:'STANDARD',expectedTotalPrice:800})).data.error,'validation');
+  const premium={...banner,requestId:randomUUID(),type:'PREMIUM',image:png(1200,200),imageMobile:png(660,300),expectedTotalPrice:5000};
+  const premiumCreated=await call('order-batch','POST',premium);assert.equal(premiumCreated.status,201);
+  assert.ok((await store.orders()).find(order=>order.groupId===premiumCreated.data.id).imageMobile);
+  assert.equal((await call('order-batch','POST',{...premium,requestId:randomUUID(),kind:'text'})).data.error,'validation');
+  assert.equal((await call('order-batch','POST',{...premium,requestId:randomUUID(),imageMobile:image})).data.error,'image');
+  assert.equal((await call('availability','GET',null,{language:'en',type:'PREMIUM',startDate:day,endDate:plus(1)})).data.daysAvailable[0].remaining,0);
 });
 
 registerCmsTests({ store, auth, cmsAuth, cmsContent, ads, originalFetch, origin, adminPassword, adminCookie: () => adminCookie });
