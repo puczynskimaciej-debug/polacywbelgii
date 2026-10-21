@@ -4,7 +4,7 @@ compatibility_date = "2026-10-21"
 
 [vars]
 CMS_GITHUB_BRANCH = "cloudflare-migration"
-CMS_GITHUB_REPOSITORY = "puczynskimaciej-debug/poradnik-polaka-w-belgii"
+CMS_GITHUB_REPOSITORY = "puczynskimaciej-debug/polacywbelgii"
 
 [[d1_databases]]
 binding = "DB"

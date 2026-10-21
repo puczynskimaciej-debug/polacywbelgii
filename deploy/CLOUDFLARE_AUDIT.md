@@ -12,7 +12,7 @@ Wniosek: istnieją darmowe kopie części treści, lecz kompletności zamówień
 
 ## Kod Cloudflare przygotowany lokalnie
 
-- `wrangler.toml` wiąże `DB` z bazą D1 `be9435a1-b3ff-41dc-b70d-6f79f768d887`, buduje `_site` i wskazuje gałąź CMS `cloudflare-migration`. Sekrety nie są w repo.
+- `wrangler.toml` wiąże `DB` z bazą D1 `be9435a1-b3ff-41dc-b70d-6f79f768d887`, buduje `_site` i wskazuje gałąź CMS `cloudflare-migration`. Repozytorium GitHub zostało przeniesione do `puczynskimaciej-debug/polacywbelgii`; konfiguracja CMS używa nowej nazwy. Sekrety nie są w repo.
 - `functions/api` obsługuje reklamy, rezerwacje, CMS email/hasło, treści CMS, kontakt i stan usługi. Logika reklam korzysta z dotychczasowych reguł domenowych. Netlify i domena produkcyjna pozostają bez zmian.
 - `deploy/cloudflare-d1.sql` to pierwsze siedem tabel, które użytkownik już wykonał w D1. `deploy/cloudflare-d1-0002.sql` dodaje dziennik wersji zapisów reklam oraz wiadomości kontaktowe; wymaga jeszcze wykonania w zdalnym D1.
 - Dotychczasowe hashe scrypt przekraczają praktyczny limit pamięci Workers. Nowe logowanie zachowuje email/hasło i używa PBKDF2-SHA256. Konta wymagają jednorazowego ustawienia nowych haseł; użytkownik to zaakceptował. Nie przenosić aktywnych sesji. `scripts/cloudflare-bootstrap-admin.mjs` przygotowuje jednorazowy INSERT administratora tylko dla pustej tabeli użytkowników.

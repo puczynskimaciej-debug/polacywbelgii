@@ -3,7 +3,7 @@ import { currentUser } from '../../cloudflare/auth.mjs';
 import { errorResponse, fail, json, readJson } from '../../cloudflare/common.mjs';
 
 async function github(env, endpoint, options = {}) {
-  const repository = env.CMS_GITHUB_REPOSITORY || 'puczynskimaciej-debug/poradnik-polaka-w-belgii';
+  const repository = env.CMS_GITHUB_REPOSITORY || 'puczynskimaciej-debug/polacywbelgii';
   if (!env.CMS_GITHUB_TOKEN || !/^[\w.-]+\/[\w.-]+$/.test(repository)) fail('contentConfiguration', 503);
   const response = await fetch(`https://api.github.com/repos/${repository}${endpoint}`, {
     method: options.method || 'GET',
