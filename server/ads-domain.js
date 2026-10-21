@@ -113,4 +113,4 @@ function validateImageDimensions(data, width, height) {
   if (!dimensions || dimensions[0] !== width || dimensions[1] !== height) fail('image');
 }
 function publicAd(order) { return Object.fromEntries(['id', 'kind', 'contact', 'company', 'title', 'description', 'image', 'url', 'type', 'language', 'region'].map(key => [key, order[key]])); }
-module.exports = { AdError, fail, today, dates, defaults, normalizeSettings, validateSettings, marketFor, isShowcase, status, availability, quote, creative, validateImageDimensions, publicAd };
+module.exports = { AdError, fail, today, dates, defaults, normalizeSettings, validateSettings, marketFor, isShowcase, status, availability, quote, creative, validateImageDimensions, publicAd, languages };

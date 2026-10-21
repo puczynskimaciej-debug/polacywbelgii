@@ -1,8 +1,8 @@
 import domain from '../server/ads-domain.js';
-import languages from '../src/_data/languages.json' with { type: 'json' };
 import { currentUser } from './auth.mjs';
 import { errorResponse, fail, json, readJson, sha256 } from './common.mjs';
 
+const languages = domain.languages;
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
 const parseOrder = row => ({ ...JSON.parse(row.data), ...(row.has_mobile === undefined ? {} : { hasMobileImage: Boolean(row.has_mobile) }) });
 async function settings(db) {
