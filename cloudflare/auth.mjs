@@ -2,6 +2,8 @@ import { fail, hex, sha256 } from './common.mjs';
 
 const COOKIE = '__Host-pbe_session';
 const ITERATIONS = 600000;
+const CHAIN_ROUNDS = 6;
+const ROUND_ITERATIONS = 100000;
 const SESSION_SECONDS = 8 * 60 * 60;
 const encoder = new TextEncoder();
 const bytes = hexValue => Uint8Array.from(hexValue.match(/../g) || [], pair => parseInt(pair, 16));
@@ -12,12 +14,31 @@ export function validatePassword(value) {
 export async function hashPassword(password) {
   validatePassword(password);
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const derived = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: ITERATIONS }, key, 256);
-  return `pbkdf2-sha256$${ITERATIONS}$${hex(salt)}$${hex(derived)}`;
+  const derived = await chainedDerive(encoder.encode(password), salt);
+  return `pbkdf2-chain-sha256$${CHAIN_ROUNDS}$${ROUND_ITERATIONS}$${hex(salt)}$${hex(derived)}`;
+}
+async function chainedDerive(passwordBytes, salt) {
+  let material = passwordBytes;
+  for (let round = 0; round < CHAIN_ROUNDS; round++) {
+    const key = await crypto.subtle.importKey('raw', material, 'PBKDF2', false, ['deriveBits']);
+    const roundSalt = new Uint8Array(salt.length + 1);
+    roundSalt.set(salt);
+    roundSalt[salt.length] = round;
+    material = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: roundSalt, iterations: ROUND_ITERATIONS }, key, 256));
+  }
+  return material;
 }
 export async function verifyPassword(password, encoded) {
   if (typeof password !== 'string' || encoder.encode(password).length > 512) return false;
+  const chained = /^pbkdf2-chain-sha256\$(\d+)\$(\d+)\$([0-9a-f]{32})\$([0-9a-f]{64})$/.exec(encoded || '');
+  if (chained) {
+    if (Number(chained[1]) !== CHAIN_ROUNDS || Number(chained[2]) !== ROUND_ITERATIONS) return false;
+    const actual = await chainedDerive(encoder.encode(password), bytes(chained[3]));
+    const expected = bytes(chained[4]);
+    let difference = 0;
+    for (let index = 0; index < actual.length; index++) difference |= actual[index] ^ expected[index];
+    return difference === 0;
+  }
   const match = /^pbkdf2-sha256\$(\d+)\$([0-9a-f]{32})\$([0-9a-f]{64})$/.exec(encoded || '');
   if (!match || Number(match[1]) !== ITERATIONS) return false;
   const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
