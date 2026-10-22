@@ -100,20 +100,20 @@
           "category": "Test: redactie",
           "date": "Juli 2026",
           "description": "Een tweede, onafhankelijke placeholder om een langer bericht op de startpagina te testen.",
-          "contact": "Dane kontaktowe są przykładowe"
+          "contact": "Voorbeeldcontactgegevens"
         },
         {
-          "title": "Testowe ogłoszenie redakcyjne",
-          "category": "Test: redakcja",
-          "date": "Wrzesień",
-          "description": "Trzeci, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "title": "Nog een testbericht van de redactie",
+          "category": "Test: redactie",
+          "date": "September",
+          "description": "Een derde voorbeeldbericht dat toont hoe een langere mededeling op de startpagina verschijnt.",
           "contact": "Tel: 123-456-789"
         },
         {
-          "title": "Testowe ogłoszenie redakcyjne",
-          "category": "Test: odbiorca",
-          "date": "Wrzesień",
-          "description": "Czwarty, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "title": "Testbericht voor lezers",
+          "category": "Test: lezers",
+          "date": "September",
+          "description": "Een vierde voorbeeldbericht om de opmaak van het prikbord te controleren.",
           "contact": "https://www.google.com/"
         }
       ]
@@ -160,20 +160,20 @@
           "category": "Test : rédaction",
           "date": "Juillet 2026",
           "description": "Un deuxième placeholder indépendant permettant de tester un message plus long sur la page d’accueil.",
-          "contact": "Dane kontaktowe są przykładowe"
+          "contact": "Coordonnées d’exemple"
         },
         {
-          "title": "Testowe ogłoszenie redakcyjne",
-          "category": "Test: redakcja",
-          "date": "Wrzesień",
-          "description": "Trzeci, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "title": "Autre annonce test de la rédaction",
+          "category": "Test : rédaction",
+          "date": "Septembre",
+          "description": "Une troisième annonce d’exemple montrant une communication plus longue sur la page d’accueil.",
           "contact": "Tel: 123-456-789"
         },
         {
-          "title": "Testowe ogłoszenie redakcyjne",
-          "category": "Test: odbiorca",
-          "date": "Wrzesień",
-          "description": "Czwarty, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
+          "title": "Annonce test pour les lecteurs",
+          "category": "Test : lecteurs",
+          "date": "Septembre",
+          "description": "Une quatrième annonce d’exemple pour vérifier la présentation du tableau communautaire.",
           "contact": "https://www.google.com/"
         }
       ]

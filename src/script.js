@@ -145,6 +145,15 @@ const pageDescriptions = {
 };
 
 const originalContent = new Map();
+const localizedPlaceholders = new Set(['start-belgia', 'praca-belgia', 'weekend-belgia', 'home-hero']);
+
+function localizePlaceholderImages(language) {
+  document.querySelectorAll('img[src^="/images/placeholders/"]').forEach(image => {
+    const match = image.getAttribute('src').match(/^\/images\/placeholders\/([a-z-]+?)(?:-(en|fr|nl))?\.svg$/);
+    if (!match || !localizedPlaceholders.has(match[1])) return;
+    image.src = `/images/placeholders/${match[1]}${language === 'pl' ? '' : `-${language}`}.svg`;
+  });
+}
 
 function applyLanguage(language) {
   const selected = languageData[language] ? language : "pl";
@@ -202,6 +211,7 @@ function applyLanguage(language) {
   );
   localStorage.setItem("siteLanguage", selected);
   applyCmsContent(selected);
+  localizePlaceholderImages(selected);
   document.dispatchEvent(new CustomEvent("languagechange", { detail: selected }));
 }
 
