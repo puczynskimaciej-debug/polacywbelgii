@@ -6,6 +6,11 @@ test-results/
 .env
 .env.*
 !.env.example
+.dev.vars
+.dev.vars.*
 .local/
+src/content/articles/ilu-polakow-mieszka-w-belgii.md
+src/content/articles/ai-*.md
 cloudflare-export/
 .wrangler/
+**/.wrangler/

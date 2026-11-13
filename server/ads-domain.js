@@ -12,10 +12,78 @@ function dates(start, end) {
   if (count < 1 || count > 366) fail('dates');
   return Array.from({ length: count }, (_, i) => new Date(Date.parse(start) + i * DAY).toISOString().slice(0, 10));
 }
-function defaults() { return { types: { TOP: { capacity: 2 }, STANDARD: { capacity: 10 }, PREMIUM: { capacity: 1 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0, PREMIUM: 0 } }])) }; }
+function defaults() { return { types: { TOP: { capacity: 5 }, STANDARD: { capacity: 30 }, PREMIUM: { capacity: 2 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0, PREMIUM: 0 } }])) }; }
 function normalizeSettings(value) {
   const base = defaults();
-  return { types: { ...base.types, ...value?.types }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { ...base.markets[language], ...value?.markets?.[language], prices: { ...base.markets[language].prices, ...value?.markets?.[language]?.prices } }])) };
+  return { types: base.types, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { ...base.markets[language], ...value?.markets?.[language], prices: { ...base.markets[language].prices, ...value?.markets?.[language]?.prices } }])) };
+}
+function belgianMidnight(date) {
+  dates(date, date);
+  const utc = Date.parse(`${date}T00:00:00Z`);
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Brussels', timeZoneName: 'shortOffset' }).formatToParts(new Date(utc));
+  const offset = parts.find(part => part.type === 'timeZoneName')?.value.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!offset) fail('dates');
+  const minutes = (Number(offset[2]) * 60 + Number(offset[3] || 0)) * (offset[1] === '+' ? 1 : -1);
+  return new Date(utc - minutes * 60000).toISOString();
+}
+function windowFor(startDate, days, now = new Date()) {
+  if (!Number.isSafeInteger(days) || days < 1 || days > 90 || startDate < today(now)) fail('dates');
+  const startAt = startDate === today(now) ? now.toISOString() : belgianMidnight(startDate);
+  return { startAt, endAt: new Date(Date.parse(startAt) + days * DAY).toISOString(), startsToday: startDate === today(now) };
+}
+function selectedDates(values, now = new Date()) {
+  if (!Array.isArray(values) || values.length < 1 || values.length > 90) fail('dates');
+  const max = new Date(Date.parse(today(now)) + 730 * DAY).toISOString().slice(0, 10);
+  for (let i = 0; i < values.length; i++) {
+    dates(values[i], values[i]);
+    if (values[i] < today(now) || values[i] > max || i && values[i] <= values[i - 1]) fail('dates');
+  }
+  return values;
+}
+function periodForDate(date, now = new Date()) {
+  selectedDates([date], now);
+  const window = windowFor(date, 1, now);
+  return { date, plannedStartAt: window.startsToday ? null : window.startAt, plannedEndAt: window.startsToday ? null : window.endAt, reservationStartAt: window.startAt, reservationEndAt: window.endAt, actualStartAt: null, actualEndAt: null };
+}
+function periodWindow(period) {
+  if (period.actualStartAt && period.actualEndAt) return { startAt: period.actualStartAt, endAt: period.actualEndAt };
+  if (period.plannedStartAt && period.plannedEndAt) return { startAt: period.plannedStartAt, endAt: period.plannedEndAt };
+  return { startAt: period.reservationStartAt, endAt: period.reservationEndAt };
+}
+function orderWindow(order) {
+  if (isShowcase(order)) return { startAt: belgianMidnight(order.startDate), endAt: '9999-12-31T00:00:00.000Z' };
+  if (order.actualStartAt && order.actualEndAt) return { startAt: order.actualStartAt, endAt: order.actualEndAt };
+  if (order.plannedStartAt && order.plannedEndAt) return { startAt: order.plannedStartAt, endAt: order.plannedEndAt };
+  if (order.reservationStartAt && order.reservationEndAt) return { startAt: order.reservationStartAt, endAt: order.reservationEndAt };
+  return { startAt: belgianMidnight(order.startDate), endAt: belgianMidnight(new Date(Date.parse(order.endDate) + DAY).toISOString().slice(0, 10)) };
+}
+function orderWindows(order) { return Array.isArray(order.periods) && order.periods.length ? order.periods.map(periodWindow) : [orderWindow(order)]; }
+function mergedWindows(windows) {
+  const sorted = windows.filter(w => w.startAt && w.endAt).sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const merged = [];
+  for (const window of sorted) {
+    const last = merged.at(-1);
+    if (last && window.startAt <= last.endAt) { if (window.endAt > last.endAt) last.endAt = window.endAt; }
+    else merged.push({ ...window });
+  }
+  return merged;
+}
+function availabilityWindow(orders, settings, language, type, startAt, endAt, excludeIds = [], now = new Date()) {
+  marketFor(settings, language, type);
+  const capacity = settings.types[type].capacity;
+  const excluded = new Set(Array.isArray(excludeIds) ? excludeIds : [excludeIds]);
+  const events = [];
+  for (const o of orders) {
+    if (excluded.has(o.id) || o.language !== language || o.type !== type || !['pending', 'approved'].includes(o.status) || o.source === 'public' && o.paymentStatus !== 'paid' && o.reservationExpiresAt && o.reservationExpiresAt <= now.toISOString()) continue;
+    for (const w of mergedWindows(orderWindows(o))) {
+      if (w.startAt >= endAt || startAt >= w.endAt) continue;
+      events.push([w.startAt < startAt ? startAt : w.startAt, 1], [w.endAt > endAt ? endAt : w.endAt, -1]);
+    }
+  }
+  events.sort((a, b) => a[0].localeCompare(b[0]) || a[1] - b[1]);
+  let concurrent = 0, used = 0;
+  for (const [, delta] of events) { concurrent += delta; used = Math.max(used, concurrent); }
+  return { used, capacity, remaining: Math.max(0, capacity - used) };
 }
 function validateSettings(value) {
   const result = defaults();
@@ -33,16 +101,30 @@ function marketFor(settings, language, type) {
   return settings.markets[language];
 }
 function isShowcase(order) { return order.demoSet === 'showcase-2026-09-29' && order.source === 'manual' && order.paymentStatus === 'not_required'; }
-function status(order, day = today()) {
+function status(order, day = today(), now = new Date()) {
+  if (order.source === 'public') {
+    if (order.paymentStatus === 'refunded') return 'refunded';
+    if (['cancelled', 'rejected'].includes(order.status)) return order.status;
+    if (['failed', 'paid_late'].includes(order.paymentStatus)) return 'payment_failed';
+    if (order.paymentStatus !== 'paid') return 'pending_payment';
+    if (order.status !== 'approved') return (order.periods || [order]).some(period => period.plannedStartAt && period.plannedStartAt <= now.toISOString()) ? 'needs_reschedule' : 'pending_approval';
+  }
   if (order.status !== 'approved') return order.status;
   if (isShowcase(order)) return day < order.startDate ? 'scheduled' : 'active';
-  return day < order.startDate ? 'scheduled' : day > order.endDate ? 'ended' : 'active';
+  if (Array.isArray(order.periods) && order.periods.length) {
+    const windows = orderWindows(order);
+    if (windows.some(window => window.startAt <= now.toISOString() && now.toISOString() < window.endAt)) return 'active';
+    if (windows.some(window => window.startAt > now.toISOString())) return 'scheduled';
+    return order.source === 'public' ? 'completed' : 'ended';
+  }
+  if (order.actualStartAt && order.actualEndAt) return now.toISOString() < order.actualStartAt ? 'scheduled' : now.toISOString() >= order.actualEndAt ? (order.source === 'public' ? 'completed' : 'ended') : 'active';
+  return day < order.startDate ? 'scheduled' : day > order.endDate ? (order.source === 'public' ? 'completed' : 'ended') : 'active';
 }
 function availability(orders, settings, language, type, start, end, excludeId) {
   marketFor(settings, language, type);
   const capacity = settings.types[type].capacity;
   return dates(start, end).map(date => {
-    const used = orders.filter(o => o.id !== excludeId && o.language === language && o.type === type && ['pending', 'approved'].includes(o.status) && o.startDate <= date && (isShowcase(o) || o.endDate >= date)).length;
+    const used = orders.filter(o => o.id !== excludeId && o.language === language && o.type === type && ['pending', 'approved'].includes(o.status) && !(o.source === 'public' && o.paymentStatus !== 'paid' && o.reservationExpiresAt && o.reservationExpiresAt <= new Date().toISOString()) && o.startDate <= date && (isShowcase(o) || o.endDate >= date)).length;
     return { date, used, capacity, remaining: Math.max(0, capacity - used) };
   });
 }
@@ -54,22 +136,45 @@ function quote(settings, input, day = today(), manual = false) {
   const dailyPrice = input.type === 'PREMIUM' && manual ? 0 : market.prices[input.type];
   return { days: range.length, dailyPrice, totalPrice: dailyPrice * range.length, currency: market.currency };
 }
+function quoteSelected(settings, input, now = new Date(), manual = false) {
+  const market = marketFor(settings, input.language, input.type);
+  const chosen = selectedDates(input.dates, now);
+  if (!manual && (!market.enabled || !market.prices[input.type])) fail('disabled', 409);
+  const dailyPrice = input.type === 'PREMIUM' && manual ? 0 : market.prices[input.type];
+  return { days: chosen.length, dailyPrice, totalPrice: dailyPrice * chosen.length, currency: market.currency };
+}
 function text(value, max, required = true) {
-  if (typeof value !== 'string' || value.trim().length > max || (required && !value.trim())) fail('validation');
+  if (typeof value !== 'string' || Array.from(value.trim()).length > max || (required && !value.trim())) fail('validation');
   return value.trim();
 }
+const creativeLimits = Object.freeze({ PREMIUM: { title: 70, description: 200 }, TOP: { title: 60, description: 160 }, STANDARD: { title: 70, description: 500 } });
+function publicContacts(input) {
+  const company = text(input.company || '', 120, false);
+  const contact = text(input.contact || '', 160, false);
+  const publicPhone = text(input.publicPhone || '', 40, false);
+  const publicEmail = text(input.publicEmail || '', 254, false);
+  const url = text(input.url || '', 2048, false);
+  if (publicPhone && (!/^\+?[0-9][0-9 ().-]*$/.test(publicPhone) || (publicPhone.match(/\d/g) || []).length < 6)) fail('validation');
+  if (publicEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(publicEmail)) fail('validation');
+  if (url) { try { const parsed = new URL(url); if (!['https:', 'http:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) fail('validation'); } catch { fail('validation'); } }
+  return { company, contact, publicPhone, publicEmail, url };
+}
 function creative(input) {
+  const publicData = publicContacts(input);
   if (input.kind === 'text') {
-    const description = text(input.description, 1000);
+    const limits = creativeLimits[input.type || 'STANDARD'] || creativeLimits.STANDARD;
+    const description = text(input.description, limits.description);
+    const title = text(input.title || Array.from(description).slice(0,limits.title).join(''), limits.title);
     const email = text(input.email, 254);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail('validation');
-    return { kind: 'text', description, contact: text(input.contact, 160), email, company: '', title: description.slice(0, 70), image: '', url: '', phone: '', customerName: '' };
+    return { kind: 'text', description, ...publicData, email, title, image: '', phone: '', customerName: text(input.customerName || '', 120, false) };
   }
-  const result = { kind: 'image', company: text(input.company, 120), title: text(input.title, 100), description: text(input.description, 1000), url: text(input.url, 2048), email: text(input.email, 254), phone: text(input.phone || '', 40, false), customerName: text(input.customerName, 120) };
-  try { const url = new URL(result.url); if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) fail('validation'); } catch { fail('validation'); }
+  const limits = creativeLimits[input.type] || creativeLimits.TOP;
+  const result = { kind: 'image', ...publicData, title: text(input.title, limits.title), description: text(input.description, limits.description), email: text(input.email, 254), phone: text(input.phone || '', 40, false), customerName: text(input.customerName || '', 120, false) };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result.email)) fail('validation');
   const image = input.image;
   const match = typeof image === 'string' && image.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+  if (!image) { result.image = ''; result.imageMobile = ''; return result; }
   if (!match || image.length > 700000) fail('image');
   const bytes = Buffer.from(match[2], 'base64');
   const signature = match[1] === 'png' ? bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a' : match[1] === 'jpeg' ? bytes.subarray(0, 3).toString('hex') === 'ffd8ff' : bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
@@ -112,5 +217,5 @@ function validateImageDimensions(data, width, height) {
   }
   if (!dimensions || dimensions[0] !== width || dimensions[1] !== height) fail('image');
 }
-function publicAd(order) { return Object.fromEntries(['id', 'kind', 'contact', 'company', 'title', 'description', 'image', 'url', 'type', 'language', 'region'].map(key => [key, order[key]])); }
-module.exports = { AdError, fail, today, dates, defaults, normalizeSettings, validateSettings, marketFor, isShowcase, status, availability, quote, creative, validateImageDimensions, publicAd, languages };
+function publicAd(order) { return { ...Object.fromEntries(['id', 'kind', 'contact', 'company', 'publicPhone', 'publicEmail', 'title', 'description', 'image', 'url', 'type', 'language', 'region', 'actualStartAt', 'actualEndAt'].map(key => [key, order[key]])), ...(Array.isArray(order.periods) ? { periods: order.periods.filter(period => period.actualStartAt && period.actualEndAt).map(period => ({ date: period.date, startAt: period.actualStartAt, endAt: period.actualEndAt })) } : {}) }; }
+module.exports = { AdError, fail, today, dates, selectedDates, periodForDate, periodWindow, orderWindows, mergedWindows, defaults, normalizeSettings, validateSettings, marketFor, isShowcase, status, availability, availabilityWindow, belgianMidnight, windowFor, orderWindow, quote, quoteSelected, creative, creativeLimits, validateImageDimensions, publicAd, languages };

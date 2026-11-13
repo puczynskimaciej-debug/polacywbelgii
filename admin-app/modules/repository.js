@@ -26,7 +26,7 @@ export class ContentRepository {
     const articles = await Promise.all(markdownFiles.map(async (entry) => {
       const file = await this.api.read(entry.path);
       const parsed = parseMarkdown(file.text);
-      return { slug: entry.name.replace(/\.md$/, ""), path: entry.path, sha: entry.sha, ...parsed.data, body: parsed.body };
+      return { slug: entry.name.replace(/\.md$/, ""), path: entry.path, sha: entry.sha, ...parsed.data, body: parsed.body, status: file.status || 'published' };
     }));
     return articles.sort((first, second) => String(second.date).localeCompare(String(first.date)));
   }
@@ -35,8 +35,8 @@ export class ContentRepository {
     const slug = original?.slug || slugify(article.slug || article.title);
     if (!slug) throw new Error("Nie można utworzyć adresu artykułu.");
     const path = `${this.paths.articles}/${slug}.md`;
-    const { body, slug: ignored, path: ignoredPath, sha: ignoredSha, ...data } = article;
-    return this.api.writeText(path, stringifyMarkdown(data, body), `CMS: ${original ? "edycja" : "dodanie"} artykułu „${article.title}”`, original?.sha);
+    const { body, slug: ignored, path: ignoredPath, sha: ignoredSha, status, ...data } = article;
+    return this.api.writeText(path, stringifyMarkdown(data, body), `CMS: ${original ? "edycja" : "dodanie"} artykułu „${article.title}”`, original?.sha, status);
   }
 
   deleteArticle(article) {

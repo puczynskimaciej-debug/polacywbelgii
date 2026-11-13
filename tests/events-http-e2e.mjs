@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { localD1Path } from '../agent/local-db.mjs';
+import { publishDue } from '../cloudflare/publication.mjs';
+import { chromium } from 'playwright-core';
+
+const origin = process.env.LOCAL_CMS_ORIGIN || 'http://127.0.0.1:8080';
+const sqlite = new DatabaseSync(localD1Path()); sqlite.exec('PRAGMA busy_timeout=5000');
+const id = randomUUID(), candidateId = randomBytes(10).toString('hex');
+const token = randomBytes(32).toString('base64url');
+const cookie = `__Host-pbe_session=${token}`;
+const url = `${origin}/wydarzenia/ai-${candidateId}/`;
+const start = new Date(Date.now()+14*86400000).toISOString();
+const end = new Date(Date.now()+14*86400000+7200000).toISOString();
+const sourceUrl = 'https://instytutpolski.pl/brussels/en/category/programme-en/';
+const event = { start,end,timezone:'Europe/Brussels',city:'Bruksela',venue:'Miejsce testowe',organizer:'Organizator testowy',category:'Kultura',region:'brussels',sourceUrl,status:'scheduled',familyFriendly:true,price:0,priceCurrency:'EUR' };
+const body = 'Wyłącznie lokalny materiał testowy, usuwany po zakończeniu testu. '.repeat(6);
+async function api(input) { const response=await fetch(`${origin}/api/ai-editor`,{method:'POST',headers:{Cookie:cookie,Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(input)}); return { status:response.status,data:await response.json() }; }
+const db = { prepare(sql) { let values=[]; return { bind(...params) { values=params; return this; }, async all() { return { results:sqlite.prepare(sql).all(...values) }; }, async run() { const result=sqlite.prepare(sql).run(...values); return {meta:{changes:result.changes}}; } }; } };
+let browser;
+try {
+  sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(id,`event-${id}@example.invalid`,'Events E2E','unused','admin');
+  sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(createHash('sha256').update(token).digest('hex'),id,'2099-01-01T00:00:00Z');
+  const created=await api({action:'manual-event',id:candidateId,kind:'event',title:'Lokalny test wydarzenia w Brukseli',description:'Test szczegółów wydarzenia usuwany z D1 po zakończeniu scenariusza.',body,category:'Kultura',region:'brussels',sources:[{url:sourceUrl}],event});
+  assert.equal(created.status,201,JSON.stringify(created.data));
+  assert.equal((await fetch(url)).status,404);
+  assert.equal((await api({action:'status',id:candidateId,status:'approved'})).status,200);
+  assert.equal((await api({action:'status',id:candidateId,status:'scheduled',publishNow:true})).status,200);
+  assert.deepEqual((await publishDue(db,new Date(),new Set([candidateId]))).published,[candidateId]);
+  assert.deepEqual((await publishDue(db,new Date(),new Set([candidateId]))).published,[]);
+  const page=await fetch(url); assert.equal(page.status,200); assert.match(await page.text(),/schema.org\/EventScheduled/);
+  const events=await (await fetch(`${origin}/api/public-events`)).json(); assert.ok(events.events.some(item=>item.url.endsWith(candidateId+'/')));
+  assert.match(await (await fetch(`${origin}/wydarzenia/`)).text(),/Kalendarz wydarzeń w Belgii/);
+  browser=await chromium.launch({executablePath:process.env.BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',headless:true});
+  const pageBrowser=await browser.newPage({viewport:{width:390,height:844}});
+  await pageBrowser.goto(`${origin}/wydarzenia/`);
+  await pageBrowser.locator('#event-calendar-dialog').waitFor({state:'visible'});
+  const localDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(start));
+  const shownMonth=await pageBrowser.locator('#event-month-title').textContent();
+  if(!shownMonth.includes(new Intl.DateTimeFormat('pl-PL',{timeZone:'UTC',month:'long'}).format(new Date(start)))) await pageBrowser.locator('[data-event-month="next"]').click();
+  await pageBrowser.locator(`[data-date="${localDate}"]`).click();
+  await pageBrowser.getByText('Lokalny test wydarzenia w Brukseli',{exact:true}).waitFor();
+  assert.ok(await pageBrowser.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1));
+  await pageBrowser.goto(origin);
+  await pageBrowser.locator('#home-events .event-card').waitFor();
+  await browser.close(); browser=undefined;
+  assert.equal((await api({action:'status',id:candidateId,status:'archived'})).status,200);
+  assert.equal((await fetch(url)).status,404);
+  const after=await (await fetch(`${origin}/api/public-events`)).json(); assert.ok(!after.events.some(item=>item.url.endsWith(candidateId+'/')));
+  console.log('Events D1 HTTP E2E: moderation, verification, publication, schema, withdrawal OK');
+} finally {
+  await browser?.close();
+  sqlite.prepare('DELETE FROM ai_candidate_history WHERE candidate_id=?').run(candidateId);
+  sqlite.prepare('DELETE FROM ai_editorial WHERE candidate_id=?').run(candidateId);
+  sqlite.prepare('DELETE FROM ai_candidates WHERE id=?').run(candidateId);
+  sqlite.prepare('DELETE FROM cms_sessions WHERE user_id=?').run(id);
+  sqlite.prepare('DELETE FROM cms_audit WHERE actor_id=?').run(id);
+  sqlite.prepare('DELETE FROM cms_users WHERE id=?').run(id);
+  sqlite.close();
+}

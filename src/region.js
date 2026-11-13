@@ -8,7 +8,7 @@
   const valid = new Set(['all','flanders','wallonia','brussels']);
   const page = document.body.dataset.page;
   const requested = new URLSearchParams(location.search).get('region');
-  const selected = ['events','regionalAds'].includes(page) && valid.has(requested) ? requested : 'all';
+  let selected = ['events','ads'].includes(page) && valid.has(requested) ? requested : 'all';
   window.portalRegion = () => selected;
   const dialog = document.querySelector('#region-dialog');
   let dialogRegion = 'all';
@@ -29,7 +29,6 @@
   function updateDialog() {
     const words = language();
     dialog.querySelector('[data-region-title]').textContent = words[dialogRegion];
-    dialog.querySelector('[data-region-link="events"]').href = '/wydarzenia/?region=' + dialogRegion;
     dialog.querySelector('[data-region-link="listings"]').href = '/ogloszenia/?region=' + dialogRegion;
   }
   function open(region, trigger) {
@@ -40,20 +39,41 @@
     dialog.querySelector('[data-region-close]').focus();
   }
   if (dialog) {
+    dialog.querySelector('[data-region-link="events"]').addEventListener('click', () => {
+      const region = dialogRegion;
+      const trigger = returnFocus;
+      dialog.close();
+      document.dispatchEvent(new CustomEvent('portal-open-events', { detail: { region, trigger } }));
+    });
     document.addEventListener('click', event => { const button = event.target.closest('[data-region-choice]'); if (button) open(button.dataset.regionChoice, button); });
     document.addEventListener('keydown', event => { const region = event.target.closest('[data-region-map] [data-region-choice]'); if (region && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(region.dataset.regionChoice, region); } });
     dialog.querySelector('[data-region-close]').addEventListener('click', () => dialog.close());
     dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
     dialog.addEventListener('close', () => { document.querySelectorAll('[data-region-choice]').forEach(node => node.classList.remove('is-active')); returnFocus?.focus(); });
   }
+  document.querySelectorAll('[data-ad-region]').forEach(button => button.addEventListener('click', () => {
+    selected = button.dataset.adRegion;
+    history.replaceState(null, '', selected === 'all' ? location.pathname : `${location.pathname}?region=${selected}`);
+    document.dispatchEvent(new Event('portal-region-change'));
+    updateRegionButtons();
+  }));
+  function updateRegionButtons() {
+    const words = language();
+    document.querySelector('[data-ad-region-controls]')?.setAttribute('aria-label', ({pl:'Region ogłoszeń',en:'Listing region',nl:'Regio van advertenties',fr:'Région des annonces'})[document.documentElement.lang] || 'Region ogłoszeń');
+    document.querySelectorAll('[data-ad-region]').forEach(button => {
+      button.textContent = words[button.dataset.adRegion === 'brussels' ? 'brusselsShort' : button.dataset.adRegion];
+      button.classList.toggle('is-active', button.dataset.adRegion === selected);
+      button.setAttribute('aria-pressed', String(button.dataset.adRegion === selected));
+    });
+  }
   if (page === 'events') {
-    const rows = [...document.querySelectorAll('[data-event-region]')];
+    const rows = [...document.querySelectorAll('[data-event-list] [data-event-region]')];
     const list = document.querySelector('[data-event-list]');
     const ordered = selected === 'all' ? rows : [...rows.filter(row => row.dataset.eventRegion === selected), ...rows.filter(row => row.dataset.eventRegion === 'all')];
     rows.forEach(row => { row.hidden = !ordered.includes(row); });
     ordered.forEach(row => list.append(row));
     const empty = document.querySelector('[data-region-empty="events"]'); if (empty) empty.hidden = ordered.length > 0;
   }
-  document.addEventListener('languagechange', translate);
-  translate();
+  document.addEventListener('languagechange', () => { translate(); updateRegionButtons(); });
+  translate(); updateRegionButtons();
 })();

@@ -6,7 +6,8 @@ const messages = {
   conflict: 'Dane zmieniły się. Odśwież widok i spróbuj ponownie.', origin: 'Nieprawidłowy adres panelu. Otwórz go pod skonfigurowaną domeną.',
   unavailable: 'Usługa jest chwilowo niedostępna. Spróbuj ponownie.', configuration: 'Logowanie nie zostało skonfigurowane. Skontaktuj się z administratorem.',
   contentConfiguration: 'Publikowanie treści nie zostało skonfigurowane na serwerze.', contentUnavailable: 'Nie udało się połączyć z magazynem treści.',
-  path: 'Nie można edytować tego pliku.', notFound: 'Nie znaleziono danych.', tooLarge: 'Plik jest za duży.', image: 'Wybierz poprawny plik obrazu.', templateCode: 'Treść nie może zawierać kodu szablonów.'
+  path: 'Nie można edytować tego pliku.', notFound: 'Nie znaleziono danych.', tooLarge: 'Plik jest za duży.', image: 'Wybierz poprawny plik obrazu.', templateCode: 'Treść nie może zawierać kodu szablonów.',
+  verificationRequired: 'Sprawdź treść i źródła, a następnie zapisz weryfikację przed publikacją.', eventVerification: 'Wydarzenie AI wymaga potwierdzonego źródła i terminu.', publicationBlocked: 'Publikator zablokował materiał. Sprawdź termin, akceptację i weryfikację.', invalidSchedule: 'Podaj poprawny termin publikacji w czasie Brukseli.', pastSchedule: 'Termin publikacji musi być w przyszłości.', scheduleConflict: 'Ten termin jest już zajęty.'
 };
 export async function cmsRequest(endpoint, params = {}, method = 'GET', body) {
   let response;

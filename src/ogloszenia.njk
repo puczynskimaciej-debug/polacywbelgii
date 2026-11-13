@@ -1,18 +1,12 @@
 ---
 layout: base.njk
-title: Ogłoszenia regionalne
-description: Lokalne ogłoszenia i usługi w Belgii.
-pageKey: regionalAds
+title: Ogłoszenia w Belgii
+description: Aktualne ogłoszenia firm i osób działających w Belgii.
+pageKey: ads
 permalink: /ogloszenia/index.html
 ---
-<header class="page-hero page-hero--compact"><div class="container">
-  <span class="eyebrow" data-region-text="listings">Ogłoszenia</span>
-  <h1 data-region-view-title="listings">Ogłoszenia · Cała Belgia</h1>
-  <a class="region-view__back" href="/" data-region-back>Wybierz inny region</a>
-</div></header>
-<section class="section listing-section" id="listing-top" hidden><div class="container"><h2 data-i18n="ads.top">Wyróżnione ogłoszenia</h2><div class="listing-top-grid" data-ad-list="TOP"></div></div></section>
-<section class="section section--tint" id="ogloszenia"><div class="container">
-  <h2 data-region-text="listings">Ogłoszenia</h2>
-  <div class="listing-standard-grid region-listing-grid" data-ad-list="STANDARD"></div>
-  <p class="region-empty" data-region-empty="ads" hidden>Brak ogłoszeń dla wybranego regionu.</p>
-</div></section>
+<section class="section ads-page-section premium-banner" id="listing-premium" aria-labelledby="ads-premium-title" hidden><div class="container"><h2 id="ads-premium-title">PREMIUM</h2><div class="ads-premium-list" data-ad-list="PREMIUM"></div></div></section>
+<header class="page-hero page-hero--compact ads-page-hero"><div class="container"><span class="eyebrow" data-i18n="nav.ads">Ogłoszenia</span><h1 data-i18n="adsPage.title">Ogłoszenia w Belgii</h1><p data-i18n="adsPage.intro">Aktualne oferty zatwierdzone przez redakcję.</p><button class="button" type="button" data-order-open data-i18n="adsPage.add">Dodaj swoje ogłoszenie</button></div></header>
+<div id="ads-page-empty" class="container ads-page-empty" hidden><p data-i18n="adsPage.empty">Nie ma teraz aktywnych ogłoszeń.</p><button class="text-link" type="button" data-order-open data-i18n="adsPage.addArrow">Dodaj swoje ogłoszenie →</button></div>
+<section class="section ads-page-section listing-section" id="listing-top" aria-labelledby="ads-top-title" hidden><div class="container"><h2 id="ads-top-title">TOP</h2><div class="listing-top-grid" data-ad-list="TOP"></div></div></section>
+<section class="section ads-page-section" id="ogloszenia" aria-labelledby="ads-standard-title"><div class="container"><h2 id="ads-standard-title">STANDARD</h2><nav class="region-bar" data-ad-region-controls aria-label="Region ogłoszeń"><button type="button" data-ad-region="flanders">Flandria</button><button type="button" data-ad-region="wallonia">Walonia</button><button type="button" data-ad-region="brussels">Bruksela</button><button type="button" data-ad-region="all">Cała Belgia</button></nav><div class="listing-standard-grid ads-standard-list" data-ad-list="STANDARD"></div><p class="region-empty" data-region-empty="ads" hidden>Brak ogłoszeń w tym regionie.</p></div></section>

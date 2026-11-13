@@ -1,0 +1,7 @@
+[
+  {"id":"statbel","url":"https://statbel.fgov.be/en","type":"html","language":"en","region":"all","intervalHours":24,"priority":5,"active":false,"official":true},
+  {"id":"embassy-pl","url":"https://www.gov.pl/web/belgia","type":"html","language":"pl","region":"all","intervalHours":12,"priority":5,"active":false,"official":true},
+  {"id":"brussels","url":"https://www.brussels.be","type":"html","language":"fr","region":"brussels","intervalHours":24,"priority":4,"active":false,"official":true},
+  {"id":"flanders","url":"https://www.vlaanderen.be","type":"html","language":"nl","region":"flanders","intervalHours":24,"priority":4,"active":false,"official":true},
+  {"id":"wallonia","url":"https://www.wallonie.be","type":"html","language":"fr","region":"wallonia","intervalHours":24,"priority":4,"active":false,"official":true}
+]

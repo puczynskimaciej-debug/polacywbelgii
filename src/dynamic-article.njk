@@ -1,0 +1,20 @@
+---
+layout: base.njk
+title: "%%TITLE%%"
+description: "%%DESCRIPTION%%"
+category: "Dynamiczny artykuł"
+canonical: "%%CANONICAL%%"
+pageKey: articles
+permalink: /dynamic-article.html
+eleventyExcludeFromCollections: true
+---
+<article class="single-article">
+  <header class="single-article__header container">
+    <a class="back-link" href="/artykuly/">← Wszystkie artykuły</a>
+    <div class="article-meta"><span class="tag" data-category>%%CATEGORY%%</span><time datetime="%%DATE_ISO%%">%%DATE%%</time></div>
+    <h1 %%TITLE_I18N%%>%%TITLE%%</h1><p class="lead" %%DESCRIPTION_I18N%%>%%DESCRIPTION%%</p>
+  </header>
+  %%IMAGE%%
+  <div class="prose container">%%BODY%%</div>
+  %%TRANSLATIONS%%
+</article>

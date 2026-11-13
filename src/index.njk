@@ -15,7 +15,7 @@ pageKey: home
     <div class="hero__actions">
       <a class="button" href="/zamow-ogloszenie/" data-i18n="ads.order">Zamów ogłoszenie</a>
       <a class="button" href="/artykuly/" data-i18n="home.read">Czytaj najnowsze artykuły</a>
-      <a class="text-link" href="#ogloszenia"><span data-i18n="home.noticesLink">Zobacz ogłoszenia</span> <span aria-hidden="true">↓</span></a>
+      <a class="text-link" href="/ogloszenia/"><span data-i18n="home.noticesLink">Zobacz ogłoszenia</span> <span aria-hidden="true">→</span></a>
     </div>
   </div>
   {% include "region-map.njk" %}
@@ -24,6 +24,13 @@ pageKey: home
 <section class="section listing-section" id="listing-top" hidden><div class="container"><h2 data-i18n="ads.top">Polecane firmy</h2><div class="listing-top-grid" data-ad-list="TOP"></div></div></section>
 
 
+
+<section class="section home-events" aria-labelledby="home-events-heading">
+  <div class="container">
+    <div class="section-heading"><div><span class="eyebrow" data-i18n="events.eyebrow">Kalendarz</span><h2 id="home-events-heading" data-i18n="events.homeTitle">Co się dzieje w Belgii?</h2><p data-i18n="events.homeIntro">Odkryj sprawdzone wydarzenia i wybierz dzień w kalendarzu.</p></div><button class="button" type="button" data-event-open data-i18n="events.open">Otwórz kalendarz</button></div>
+    <div id="home-events" class="home-events-grid" aria-live="polite"></div>
+  </div>
+</section>
 
 <section class="section" aria-labelledby="news-heading">
   <div class="container">
@@ -57,11 +64,10 @@ pageKey: home
         <span class="eyebrow" data-i18n="home.community">Tablica społeczności</span>
         <h2 id="notices-heading" data-i18n="home.notices">Ogłoszenia</h2>
       </div>
-      <button class="button" type="button" data-order-open data-i18n="ads.order">Zamów ogłoszenie</button>
+      <div class="home-ad-actions"><a class="text-link" href="/ogloszenia/" data-i18n="adsPage.all">Wszystkie ogłoszenia →</a><button class="button" type="button" data-order-open data-i18n="ads.order">Zamów ogłoszenie</button></div>
     </div>
-    <div class="ad-controls"><button type="button" data-ad-prev data-i18n-aria="ads.previous" aria-label="Poprzednie ogłoszenia">←</button><button type="button" data-ad-pause data-i18n="ads.pause">Wstrzymaj</button><button type="button" data-ad-next data-i18n-aria="ads.next" aria-label="Następne ogłoszenia">→</button></div>
     <div class="listing-standard-grid" data-ad-list="STANDARD" tabindex="0"></div>
-    <p class="region-empty" data-region-empty="ads" data-i18n="region.emptyAds" hidden>Brak ogłoszeń dla wybranego regionu.</p>
+    <p class="region-empty" data-region-empty="ads" hidden>Brak aktywnych ogłoszeń. <a href="/ogloszenia/">Zobacz stronę ogłoszeń</a>.</p>
   </div>
 </section>
 

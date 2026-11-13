@@ -1,10 +1,12 @@
 <!doctype html>
-<html lang="pl">
+<html lang="{{ legalLanguage or 'pl' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="{{ site.seo[pageKey].description or description }}" data-i18n-content="meta.description">
-  <title>{{ site.seo[pageKey].title or title }}</title>
+  {% if pageKey == "legal" %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  <meta name="description" content="{{ description if category else (site.seo[pageKey].description or description) }}" data-i18n-content="meta.description">
+  <title>{{ title if category else (site.seo[pageKey].title or title) }}</title>
+  {% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -15,10 +17,12 @@
   <script src="/content-data.js?v={{ buildVersion }}" defer></script>
   <script src="/script.js?v={{ buildVersion }}" defer></script>
   <script src="/region.js?v={{ buildVersion }}" defer></script>
+  <script src="/events.js?v={{ buildVersion }}" defer></script>
+  <script src="/ad-creative.js?v={{ buildVersion }}" defer></script>
   <script src="/listings.js?v={{ buildVersion }}" defer></script>
   <script src="/order-modal.js?v={{ buildVersion }}" defer></script>
 </head>
-<body data-page="{{ pageKey }}">
+<body data-page="{{ pageKey }}"{% if legalLanguage %} data-legal-language="{{ legalLanguage }}"{% endif %}>
   <a class="skip-link" href="#main" data-i18n="skip.content">Przejdź do treści</a>
   <header class="site-header">
     <div class="container nav-wrap">
@@ -32,6 +36,7 @@
       <nav id="main-nav" class="main-nav" aria-label="Główna nawigacja" data-i18n-aria="nav.main">
         <a href="/" {% if pageKey == "home" %}aria-current="page"{% endif %} data-i18n="nav.home">Strona główna</a>
         <a href="/artykuly/" {% if pageKey == "articles" %}aria-current="page"{% endif %} data-i18n="nav.articles">Artykuły</a>
+        <a href="/ogloszenia/" {% if pageKey == "ads" %}aria-current="page"{% endif %} data-i18n="nav.ads">Ogłoszenia</a>
         <a href="/kontakt/" {% if pageKey == "contact" %}aria-current="page"{% endif %} data-i18n="nav.contact">Kontakt</a>
         <div class="language-picker">
           <button class="language-picker__button" type="button" aria-expanded="false" aria-controls="language-menu">
@@ -50,6 +55,18 @@
     </div>
   </header>
   <main id="main">{{ content | safe }}</main>
+  {% if pageKey == "home" or pageKey == "events" %}
+  <dialog id="event-calendar-dialog" class="event-calendar-dialog" aria-labelledby="event-calendar-title">
+    <div class="region-bar" data-event-region-controls aria-label="Region wydarzeń">
+      <button type="button" data-event-region="flanders">Flandria</button><button type="button" data-event-region="wallonia">Walonia</button><button type="button" data-event-region="brussels">Bruksela</button><button type="button" data-event-region="all">Cała Belgia</button>
+    </div>
+    <div class="event-dialog-head"><div><span class="eyebrow" data-i18n="events.label">Wydarzenia</span><h2 id="event-calendar-title" data-i18n="events.calendar">Kalendarz wydarzeń</h2></div><button type="button" class="event-dialog-close" data-event-close aria-label="Zamknij kalendarz" data-i18n-aria="events.close">×</button></div>
+    <div class="event-month-controls"><button type="button" data-event-month="prev" aria-label="Poprzedni miesiąc">←</button><h3 id="event-month-title"></h3><button type="button" data-event-month="next" aria-label="Następny miesiąc">→</button></div>
+    <div id="event-calendar-grid" class="event-calendar-grid" role="group" aria-label="Dni miesiąca"></div>
+    <div id="event-day-details" class="event-day-details" aria-live="polite"></div>
+      <section id="event-undated" class="event-day-details" aria-label="Wydarzenia z nieustalonym terminem"></section>
+  </dialog>
+  {% endif %}
   <footer class="site-footer">
     <div class="container footer-grid">
       <div>
@@ -63,16 +80,26 @@
         <h2 data-i18n="footer.shortcuts">Na skróty</h2>
         <a href="/" data-i18n="nav.home">Strona główna</a>
         <a href="/artykuly/" data-i18n="nav.articles">Artykuły</a>
+        <a href="/ogloszenia/" data-i18n="nav.ads">Ogłoszenia</a>
         <a href="/kontakt/" data-i18n="nav.contact">Kontakt</a>
       </div>
       <div>
         <h2 data-i18n="footer.important">Ważne</h2>
         <p data-i18n="footer.disclaimer">Publikowane treści mają charakter informacyjny i nie stanowią porady prawnej, medycznej ani podatkowej.</p>
       </div>
+      <div class="footer-legal">
+        <h2 data-i18n="legal.heading">Informacje prawne</h2>
+        <nav class="footer-legal__links" aria-label="Informacje prawne">
+          <a href="/regulamin/" data-i18n="legal.portal">Regulamin portalu</a>
+          <a href="/regulamin-ogloszen/" data-i18n="legal.ads">Regulamin ogłoszeń</a>
+          <a href="/polityka-prywatnosci/" data-i18n="legal.privacy">Polityka prywatności</a>
+          <a href="/polityka-cookies/" data-i18n="legal.cookies">Polityka cookies</a>
+          <a href="/zrodla-i-licencje/" data-i18n="legal.sources">Źródła i licencje</a>
+        </nav>
+      </div>
     </div>
     <div class="container footer-bottom">
       <span>© 2026 Polacy w Belgii</span>
-      <small class="site-footer__map-credit"><span data-i18n="footer.mapCredit">Granice mapy:</span> <a href="https://simplemaps.com/gis/country/be" target="_blank" rel="noopener">Simplemaps</a>, <span data-i18n="footer.mapNote">opracowane i uproszczone</span> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></small>
       <a href="/admin/" data-i18n="footer.admin">Panel redakcji</a>
     </div>
   </footer>

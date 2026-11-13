@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { chromium } from 'playwright-core';
+import { localD1Path } from '../agent/local-db.mjs';
+import { hashPassword } from '../cloudflare/auth.mjs';
+
+const origin = process.env.LOCAL_CMS_ORIGIN || 'http://localhost:8080';
+const db = new DatabaseSync(localD1Path());
+db.exec('PRAGMA busy_timeout=5000');
+const id = randomUUID();
+const password = randomBytes(32).toString('base64url');
+const email = `browser-${id.slice(0, 12)}@example.invalid`;
+const slug = `browser-${id.slice(0, 12)}`;
+const articlePath = `src/content/articles/${slug}.md`;
+let browser;
+try {
+  db.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(id,email,'Browser E2E',await hashPassword(password),'admin');
+  browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(`${origin}/admin/`);
+  await page.locator('#login-form [name="email"]').fill(email);
+  await page.locator('#login-form [name="password"]').fill(password);
+  await page.locator('#login-form [type="submit"]').click();
+  await page.locator('#app-view').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('[data-view="articles"]').click();
+  await page.locator('[data-action="new-article"]').click();
+  await page.locator('#article-form [name="title"]').fill('Przeglądarkowy test D1');
+  await page.locator('#article-form [name="description"]').fill('Opis testowy w CMS');
+  await page.locator('#article-form [name="body"]').fill('Treść testowa lokalnego szkicu.');
+  await page.locator('#article-form [name="slug"]').evaluate((input, value) => { input.value = value; }, slug);
+  await page.locator('#article-form [name="status"]').selectOption('draft');
+  await page.locator('#article-form [type="submit"]').click();
+  await page.waitForFunction(() => !document.querySelector('#article-dialog').open);
+  assert.equal(db.prepare('SELECT status FROM cms_content WHERE path=?').get(articlePath)?.status, 'draft');
+  await page.locator('.nav-item[data-view="articles"]').click();
+  await page.locator(`[data-edit-article="${slug}"]`).click();
+  await page.locator('#article-form [name="status"]').selectOption('published');
+  await page.locator('#article-form [type="submit"]').click();
+  await page.waitForFunction(() => !document.querySelector('#article-dialog').open);
+  assert.equal((await fetch(`${origin}/artykuly/${slug}/`)).status, 200);
+  await page.locator('.nav-item[data-view="ai-editor"]').click();
+  await page.locator('[data-panel="ai-editor"]').waitFor({ state: 'visible' });
+  console.log('CMS browser E2E: D1 draft, publish, AI editor visible OK');
+} finally {
+  await browser?.close();
+  db.prepare('DELETE FROM cms_content WHERE path=?').run(articlePath);
+  db.prepare('DELETE FROM cms_content_history WHERE path=?').run(articlePath);
+  db.prepare('DELETE FROM cms_sessions WHERE user_id=?').run(id);
+  db.prepare('DELETE FROM cms_audit WHERE actor_id=?').run(id);
+  db.prepare('DELETE FROM cms_users WHERE id=?').run(id);
+  db.close();
+}

@@ -5,6 +5,8 @@ export async function onRequestGet({ env }) {
   try {
     await env.DB.prepare('SELECT id FROM ads_settings LIMIT 1').first();
     await env.DB.prepare('SELECT id FROM cms_users LIMIT 1').first();
-    return json({ ready: Boolean(env.CMS_GITHUB_TOKEN) }, env.CMS_GITHUB_TOKEN ? 200 : 503);
+    if (env.CMS_CONTENT_BACKEND === 'd1') await env.DB.prepare('SELECT path FROM cms_content LIMIT 1').first();
+    const ready = env.CMS_CONTENT_BACKEND === 'd1' || env.CMS_CONTENT_BACKEND === 'github' && Boolean(env.CMS_GITHUB_TOKEN);
+    return json({ ready }, ready ? 200 : 503);
   } catch { return json({ ready: false }, 503); }
 }

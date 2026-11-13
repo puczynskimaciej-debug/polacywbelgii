@@ -1,10 +1,24 @@
 module.exports = function (eleventyConfig) {
   const fs = require('node:fs');
+  const path = require('node:path');
+  eleventyConfig.on('eleventy.before', () => {
+    const workspace = path.resolve(__dirname);
+    const output = path.resolve(workspace, '_site');
+    if (path.dirname(output) !== workspace) throw new Error('Unexpected Eleventy output path');
+    for (const name of ['local-demo-order.json', 'local-demo-ads.json', 'demo-assets']) {
+      const target = path.resolve(output, name);
+      if (path.dirname(target) !== output) throw new Error('Unexpected local demo path');
+      fs.rmSync(target, { recursive: name === 'demo-assets', force: true });
+    }
+  });
+  if (process.env.CONTEXT !== 'production' && !process.env.CF_PAGES) eleventyConfig.setUseGitIgnore(false);
   eleventyConfig.addGlobalData('buildVersion', process.env.CF_PAGES_COMMIT_SHA || process.env.COMMIT_REF || String(Date.now()));
   const markdown = require("markdown-it")({ html: false, linkify: true, typographer: true });
   eleventyConfig.addPassthroughCopy("src/style.css");
   eleventyConfig.addPassthroughCopy("src/script.js");
   eleventyConfig.addPassthroughCopy("src/region.js");
+  eleventyConfig.addPassthroughCopy("src/events.js");
+  eleventyConfig.addPassthroughCopy("src/ad-creative.js");
   eleventyConfig.addPassthroughCopy({ "src/ads.js": "listings.js" });
   eleventyConfig.addPassthroughCopy("src/order-modal.js");
   eleventyConfig.addPassthroughCopy({ "src/ads-i18n.js": "listings-i18n.js" });
@@ -13,11 +27,9 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("jsjson", value => JSON.stringify(value).replace(/</g, "\\u003c"));
   eleventyConfig.addPassthroughCopy({ "src/Images": "images" });
   eleventyConfig.addPassthroughCopy({ "admin-app": "admin" });
-  if (process.env.CONTEXT !== 'production' && !process.env.CF_PAGES && fs.existsSync('.local/demo-ads.json')) {
-    eleventyConfig.addPassthroughCopy({ '.local/demo-ads.json': 'local-demo-ads.json' });
-    eleventyConfig.addPassthroughCopy({ '.local/demo-assets': 'demo-assets' });
-  }
   if (process.env.CONTEXT !== 'production' && !process.env.CF_PAGES && fs.existsSync('.local/demo-order.json')) eleventyConfig.addPassthroughCopy({ '.local/demo-order.json': 'local-demo-order.json' });
+  if (process.env.CONTEXT !== 'production' && !process.env.CF_PAGES && fs.existsSync('.local/demo-ads.json')) eleventyConfig.addPassthroughCopy({ '.local/demo-ads.json': 'local-demo-ads.json' });
+  if (process.env.CONTEXT !== 'production' && !process.env.CF_PAGES && fs.existsSync('.local/demo-assets')) eleventyConfig.addPassthroughCopy({ '.local/demo-assets': 'demo-assets' });
   eleventyConfig.addFilter("renderMarkdown", (value) => markdown.render(value || ""));
 
   eleventyConfig.addFilter("readableDate", (value) =>

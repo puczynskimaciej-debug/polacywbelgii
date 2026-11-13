@@ -1,16 +1,17 @@
 import domain from '../server/ads-domain.js';
 import { currentUser } from './auth.mjs';
 import { errorResponse, fail, json, readJson, sha256 } from './common.mjs';
+import { translateAd } from './ad-translation.mjs';
 
 const languages = domain.languages;
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
-const parseOrder = row => ({ ...JSON.parse(row.data), ...(row.has_mobile === undefined ? {} : { hasMobileImage: Boolean(row.has_mobile) }) });
+const parseOrder = row => ({ ...JSON.parse(row.data), ...(row.has_mobile === undefined ? {} : { hasImage: Boolean(row.has_image), hasMobileImage: Boolean(row.has_mobile) }) });
 async function settings(db) {
   const row = await db.prepare('SELECT data,version FROM ads_settings WHERE id=1').first();
   return row ? { data: domain.normalizeSettings(JSON.parse(row.data)), version: row.version } : { data: domain.defaults(), version: 0 };
 }
 async function orders(db, includeImages = false) {
-  const sql = includeImages ? 'SELECT data FROM ad_orders ORDER BY created_at DESC' : "SELECT json_remove(data,'$.image','$.imageMobile') AS data,CASE WHEN length(json_extract(data,'$.imageMobile'))>0 THEN 1 ELSE 0 END AS has_mobile FROM ad_orders ORDER BY created_at DESC";
+  const sql = includeImages ? 'SELECT data FROM ad_orders ORDER BY created_at DESC' : "SELECT json_remove(data,'$.image','$.imageMobile') AS data,CASE WHEN length(json_extract(data,'$.image'))>0 THEN 1 ELSE 0 END AS has_image,CASE WHEN length(json_extract(data,'$.imageMobile'))>0 THEN 1 ELSE 0 END AS has_mobile FROM ad_orders ORDER BY created_at DESC";
   return (await db.prepare(sql).all()).results.map(parseOrder);
 }
 async function order(db, id) {
@@ -19,18 +20,19 @@ async function order(db, id) {
   return row ? parseOrder(row) : null;
 }
 function imageResponse(item, variant) {
-  if (!item || domain.status(item) !== 'active' || item.kind === 'text') domain.fail('notFound', 404);
+  if (!item || !publicEligible(item) || item.kind === 'text') domain.fail('notFound', 404);
   const data = variant === 'mobile' && item.imageMobile ? item.imageMobile : item.image;
   if (typeof data !== 'string') domain.fail('notFound', 404);
   const [prefix, base64] = data.split(',');
   if (!/^data:image\/(png|jpeg|webp);base64$/.test(prefix) || !base64) domain.fail('image', 503);
   return new Response(Uint8Array.from(atob(base64), char => char.charCodeAt(0)), { headers: { 'Content-Type': prefix.slice(5).split(';')[0], 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
+function publicEligible(item) { return (item.paymentStatus === 'paid' || item.source === 'manual' && item.paymentStatus === 'not_required') && item.status === 'approved' && domain.status(item) === 'active'; }
 function publicAds(all, language) {
   if (!Object.hasOwn(languages, language)) domain.fail('market');
-  return all.filter(item => item.language === language && domain.status(item) === 'active').map(item => ({
+  return all.filter(item => item.language === language && publicEligible(item)).map(item => ({
     ...domain.publicAd(item),
-    image: item.kind === 'text' ? '' : `/api/ads?action=image&id=${item.id}`,
+    image: item.kind === 'text' || !item.image && !item.hasImage ? '' : `/api/ads?action=image&id=${item.id}`,
     imageMobile: item.hasMobileImage ? `/api/ads?action=image&id=${item.id}&variant=mobile` : ''
   }));
 }
@@ -60,11 +62,12 @@ async function limitStatements(db, all, ip) {
 }
 async function reserveBatch(db, body, ip) {
   if (body.website || body.consent !== true || !/^[0-9a-f-]{36}$/i.test(body.requestId || '')) domain.fail('validation');
-  if (!Array.isArray(body.dates) || !body.dates.length || body.dates.length > 90 || new Set(body.dates).size !== body.dates.length) domain.fail('dates');
-  const range = domain.dates(body.dates[0], body.dates.at(-1));
-  if (range.length !== body.dates.length || range.some((date, index) => date !== body.dates[index])) domain.fail('dates');
+  if (body.termsAccepted !== true || body.termsVersion !== 'draft-2026-11-11' || body.earlyServiceRequest !== true && body.earlyServiceRequest !== false) domain.fail('validation');
+  const chosen = domain.selectedDates(body.dates);
+  if (body.region && !['all', 'flanders', 'wallonia', 'brussels'].includes(body.region)) domain.fail('validation');
   if (!['text', 'image'].includes(body.kind) || (body.type === 'STANDARD' && body.kind !== 'text') || (body.type === 'PREMIUM' && body.kind !== 'image')) domain.fail('validation');
   if (!Array.isArray(body.variants) || !body.variants.length || body.variants.length > Object.keys(languages).length || body.variants.some(v => !v || typeof v !== 'object') || new Set(body.variants.map(v => v.language)).size !== body.variants.length) domain.fail('market');
+  if (!body.primaryLanguage || body.variants[0].language !== body.primaryLanguage) domain.fail('market');
   const fingerprint = await sha256(JSON.stringify(body));
   return withWrite(db, async ({ current, all }) => {
     const existing = all.filter(item => item.batchRequestId === body.requestId);
@@ -75,28 +78,96 @@ async function reserveBatch(db, body, ip) {
     const statements = await limitStatements(db, all, ip);
     const groupId = crypto.randomUUID();
     const planned = [];
+    const periods = chosen.map(date => domain.periodForDate(date));
+    const baseQuote = domain.quoteSelected(current.data, { language: body.primaryLanguage, type: body.type, dates: chosen });
     for (const variant of body.variants) {
       if (!Object.hasOwn(languages, variant.language)) domain.fail('market');
       const creative = body.kind === 'text'
-        ? domain.creative({ kind: 'text', description: variant.text, contact: body.contact, email: body.email })
-        : domain.creative({ kind: 'image', company: body.company, title: variant.title, description: variant.description, url: body.url, email: body.email, customerName: body.customerName, image: body.image, imageMobile: body.type === 'PREMIUM' ? body.imageMobile : '', phone: body.phone || '' });
-      if (body.kind === 'image') {
+        ? domain.creative({ kind: 'text', type: body.type, title: variant.title, description: variant.description || variant.text, contact: body.contact, company:body.company, publicPhone:body.publicPhone, publicEmail:body.publicEmail, url:body.url, email: body.email, customerName:body.customerName })
+        : domain.creative({ kind: 'image', type: body.type, company: body.company, contact:body.contact, publicPhone:body.publicPhone, publicEmail:body.publicEmail, title: variant.title, description: variant.description, url: body.url, email: body.email, customerName: body.customerName, image: variant.image || body.image, imageMobile: body.type === 'PREMIUM' ? variant.imageMobile || body.imageMobile : '', phone: body.phone || '' });
+      if (body.kind === 'image' && creative.image) {
         domain.validateImageDimensions(creative.image, 1200, body.type === 'PREMIUM' ? 200 : 720);
-        if (body.type === 'PREMIUM') domain.validateImageDimensions(creative.imageMobile, 660, 300);
+        if (body.type === 'PREMIUM' && creative.imageMobile) domain.validateImageDimensions(creative.imageMobile, 660, 300);
       }
-      const input = { language: variant.language, type: body.type, startDate: range[0], endDate: range.at(-1) };
-      const price = domain.quote(current.data, input);
-      const blocked = domain.availability(all, current.data, input.language, input.type, input.startDate, input.endDate).filter(day => !day.remaining);
-      if (blocked.length) domain.fail('full', 409, blocked);
-      planned.push({ ...creative, kind: body.kind, ...input, ...price, id: crypto.randomUUID(), groupId, batchRequestId: body.requestId, fingerprint, region: 'all', status: 'pending', version: 1, source: 'public', paymentStatus: 'unpaid', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      const input = { language: variant.language, type: body.type, startDate: chosen[0], endDate: chosen.at(-1) };
+      const price = domain.quoteSelected(current.data, { language: variant.language, type: body.type, dates: chosen });
+      for (const period of periods) {
+        const window = domain.periodWindow(period);
+        const availability = domain.availabilityWindow(all, current.data, input.language, input.type, window.startAt, window.endAt);
+        if (!availability.remaining) domain.fail('full', 409, [{ date: period.date, ...availability }]);
+      }
+      const languagePrice = variant.language === body.primaryLanguage ? baseQuote.totalPrice : Math.round(baseQuote.totalPrice / 2);
+      planned.push({ ...creative, kind: body.kind, ...input, ...price, totalPrice: languagePrice, basePrice: baseQuote.totalPrice, primaryLanguage: body.primaryLanguage, languages: body.variants.map(v => v.language), groupTotalPrice: null, periods: periods.map(period => ({ ...period })), plannedStartAt: periods[0].plannedStartAt, plannedEndAt: periods.at(-1).plannedEndAt, reservationStartAt: periods[0].reservationStartAt, reservationEndAt: periods.at(-1).reservationEndAt, id: crypto.randomUUID(), groupId, batchRequestId: body.requestId, fingerprint, termsVersion:body.termsVersion,termsAcceptedAt:new Date().toISOString(),earlyServiceRequest:body.earlyServiceRequest, region: body.region || 'all', status: 'pending', version: 1, source: 'public', paymentStatus: 'unpaid', reservationExpiresAt: new Date(Date.now() + 31 * 60000).toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     }
     const totalPrice = planned.reduce((sum, item) => sum + item.totalPrice, 0);
     if (body.expectedTotalPrice !== totalPrice) domain.fail('priceChanged', 409);
+    planned.forEach(item => { item.groupTotalPrice = totalPrice; });
     for (const item of planned) statements.push(q(db, 'INSERT INTO ad_orders(id,data,created_at) VALUES(?,?,?)', item.id, JSON.stringify(item), item.createdAt));
     return { statements, output: { id: groupId, totalPrice, currency: 'EUR', status: 'pending' } };
   });
 }
-async function writeOrder(db, body, method, admin, ip) {
+async function moderateGroup(db, body, adminUser) {
+  if (!['approved', 'rejected', 'cancelled'].includes(body.status)) domain.fail('validation');
+  return withWrite(db, async ({ current, all }) => {
+    const target = all.find(item => item.id === body.id);
+    if (!target || target.source !== 'public' || !target.groupId) domain.fail('notFound', 404);
+    if (target.version !== body.version) domain.fail('conflict', 409);
+    const group = all.filter(item => item.groupId === target.groupId);
+    if (group.some(item => item.status !== target.status)) domain.fail('conflict', 409);
+    const now = new Date();
+    if (body.status === 'approved') {
+      if (group.some(item => item.paymentStatus !== 'paid')) domain.fail('paymentRequired', 409);
+      if (group.some(item => (item.periods || [item]).some(period => period.plannedStartAt && period.plannedStartAt <= now.toISOString()))) domain.fail('needsReschedule', 409);
+      for (const item of group) {
+        for (const period of item.periods || [item]) {
+          const startAt = period.plannedStartAt || now.toISOString();
+          const endAt = period.plannedEndAt || new Date(Date.parse(startAt) + (item.periods ? 1 : item.days) * 86400000).toISOString();
+          const free = domain.availabilityWindow(all, current.data, item.language, item.type, startAt, endAt, group.map(entry => entry.id));
+          if (!free.remaining) domain.fail('full', 409, [{ date: period.date || item.startDate, ...free }]);
+        }
+      }
+    }
+    const statements = [];
+    for (const item of group) {
+      const nextPeriods = item.periods?.map(period => {
+        if (body.status !== 'approved') return period;
+        const actualStartAt = period.plannedStartAt || now.toISOString();
+        return { ...period, actualStartAt, actualEndAt: period.plannedEndAt || new Date(Date.parse(actualStartAt) + 86400000).toISOString() };
+      });
+      const startAt = body.status === 'approved' ? nextPeriods?.[0].actualStartAt || item.plannedStartAt || now.toISOString() : item.actualStartAt;
+      const endAt = body.status === 'approved' ? nextPeriods?.at(-1).actualEndAt || item.plannedEndAt || new Date(Date.parse(startAt) + item.days * 86400000).toISOString() : item.actualEndAt;
+      const updated = { ...item, status: body.status, periods: nextPeriods || item.periods, actualStartAt: startAt, actualEndAt: endAt, version: item.version + 1, updatedAt: now.toISOString() };
+      statements.push(q(db, 'UPDATE ad_orders SET data=? WHERE id=?', JSON.stringify(updated), item.id));
+      statements.push(q(db, 'INSERT INTO ad_order_history(order_id,actor_id,action,previous_status,new_status,created_at) VALUES(?,?,?,?,?,?)', item.id, adminUser?.id || null, 'moderate-group', item.status, updated.status, updated.updatedAt));
+    }
+    return { statements, output: { groupId: target.groupId, status: body.status } };
+  });
+}
+async function rescheduleGroup(db, body, adminUser) {
+  return withWrite(db, async ({ current, all }) => {
+    const target = all.find(item => item.id === body.id);
+    if (!target || target.source !== 'public' || !target.groupId || target.version !== body.version) domain.fail('conflict', 409);
+    const group = all.filter(item => item.groupId === target.groupId);
+    if (group.some(item => item.paymentStatus !== 'paid' || item.status !== 'pending' || item.actualStartAt)) domain.fail('validation', 409);
+    const days = target.days;
+    const chosen = target.periods ? domain.selectedDates(body.dates) : (() => { domain.dates(body.startDate, body.startDate); return domain.dates(body.startDate, new Date(Date.parse(body.startDate) + (days - 1) * 86400000).toISOString().slice(0, 10)); })();
+    if (chosen.length !== days) domain.fail('dates');
+    const periods = target.periods ? chosen.map(date => domain.periodForDate(date)) : null;
+    const windows = periods ? periods.map(domain.periodWindow) : [domain.windowFor(chosen[0], days)];
+    for (const item of group) {
+      for (const window of windows) if (!domain.availabilityWindow(all, current.data, item.language, item.type, window.startAt, window.endAt, group.map(entry => entry.id)).remaining) domain.fail('full', 409);
+    }
+    const now = new Date().toISOString();
+    const statements = [];
+    for (const item of group) {
+      const updated = { ...item, startDate: chosen[0], endDate: chosen.at(-1), periods: periods?.map(period => ({ ...period })) || item.periods, plannedStartAt: periods ? periods[0].plannedStartAt : windows[0].startsToday ? null : windows[0].startAt, plannedEndAt: periods ? periods.at(-1).plannedEndAt : windows[0].startsToday ? null : windows[0].endAt, reservationStartAt: windows[0].startAt, reservationEndAt: windows.at(-1).endAt, version: item.version + 1, updatedAt: now };
+      statements.push(q(db, 'UPDATE ad_orders SET data=? WHERE id=?', JSON.stringify(updated), item.id));
+      statements.push(q(db, 'INSERT INTO ad_order_history(order_id,actor_id,action,previous_status,new_status,created_at) VALUES(?,?,?,?,?,?)', item.id, adminUser?.id || null, 'reschedule-group', item.status, item.status, now));
+    }
+    return { statements, output: { groupId: target.groupId, dates: chosen, startDate: chosen[0], endDate: chosen.at(-1) } };
+  });
+}
+async function writeOrder(db, body, method, admin, ip, adminUser) {
   return withWrite(db, async ({ current, all }) => {
     const old = method === 'PUT' ? all.find(item => item.id === body.id) : null;
     if (method === 'PUT' && !old) domain.fail('notFound', 404);
@@ -117,29 +188,38 @@ async function writeOrder(db, body, method, admin, ip) {
     const nextStatus = admin ? input.status || 'approved' : 'pending';
     if (!['pending', 'approved', 'rejected', 'cancelled'].includes(nextStatus)) domain.fail('validation');
     const unchangedSchedule = old && ['language', 'type', 'startDate', 'endDate'].every(key => old[key] === input[key]);
+    if (old?.source === 'public' && (!unchangedSchedule || nextStatus !== old.status)) domain.fail('useGroupModeration', 409);
     let price;
     if (old) {
       if (old.language !== input.language || old.type !== input.type) domain.fail('immutableMarket');
-      const days = domain.dates(input.startDate, input.endDate).length;
+      const days = old.periods?.length || domain.dates(input.startDate, input.endDate).length;
       if (!unchangedSchedule) domain.quote(current.data, input, domain.today(), true);
-      price = { days, dailyPrice: old.dailyPrice, totalPrice: days * old.dailyPrice, currency: old.currency };
+      price = { days, dailyPrice: old.dailyPrice, totalPrice: unchangedSchedule ? old.totalPrice : days * old.dailyPrice, currency: old.currency };
     } else {
       price = domain.quote(current.data, input, domain.today(), admin);
       if (admin && input.complimentary === true) price = { ...price, dailyPrice: 0, totalPrice: 0 };
     }
     if (['pending', 'approved'].includes(nextStatus)) {
-      const blocked = domain.availability(all, current.data, input.language, input.type, input.startDate, input.endDate, old?.id).filter(day => !day.remaining);
-      if (blocked.length) domain.fail('full', 409, blocked);
+      const windows = old?.source === 'public' ? domain.orderWindows(old) : [domain.windowFor(input.startDate, domain.dates(input.startDate, input.endDate).length)];
+      for (const window of windows) {
+        const free = domain.availabilityWindow(all, current.data, input.language, input.type, window.startAt, window.endAt, old?.id);
+        if (!free.remaining) domain.fail('full', 409, [free]);
+      }
     }
     if (!admin && input.type === 'STANDARD' && input.kind !== 'text') domain.fail('validation');
     if (input.type === 'PREMIUM' && input.kind === 'text') domain.fail('validation');
     if (input.region && !['all', 'flanders', 'wallonia', 'brussels'].includes(input.region)) domain.fail('validation');
     const creative = domain.creative(input);
     if (!admin && (body.expectedDailyPrice !== price.dailyPrice || body.expectedTotalPrice !== price.totalPrice)) domain.fail('priceChanged', 409);
-    const item = { ...creative, ...price, id: old?.id || crypto.randomUUID(), region: input.region || 'all', language: input.language, type: input.type, startDate: input.startDate, endDate: input.endDate, status: nextStatus, version: (old?.version || 0) + 1, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), source: old?.source || (admin ? 'manual' : 'public'), paymentStatus: old?.paymentStatus || (admin && input.complimentary ? 'not_required' : 'unpaid'), paymentId: old?.paymentId || null, paymentProvider: old?.paymentProvider || null, paidAt: old?.paidAt || null, requestId: old?.requestId || (!admin ? body.requestId : null), fingerprint: old?.fingerprint || (!admin ? body.fingerprint : null) };
+    const item = { ...old, ...creative, ...price, id: old?.id || crypto.randomUUID(), region: input.region || 'all', language: input.language, type: input.type, startDate: input.startDate, endDate: input.endDate, status: nextStatus, version: (old?.version || 0) + 1, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), source: old?.source || (admin ? 'manual' : 'public'), paymentStatus: old?.paymentStatus || (admin && input.complimentary ? 'not_required' : 'unpaid'), reservationExpiresAt: old?.reservationExpiresAt || (!admin ? new Date(Date.now() + 31 * 60000).toISOString() : null), paymentId: old?.paymentId || null, paymentProvider: old?.paymentProvider || null, paidAt: old?.paidAt || null, requestId: old?.requestId || (!admin ? body.requestId : null), fingerprint: old?.fingerprint || (!admin ? body.fingerprint : null) };
+    if (admin && item.source === 'manual' && !isNaN(Date.parse(item.startDate)) && !domain.isShowcase(item) && (!old || !unchangedSchedule)) {
+      const window = domain.windowFor(item.startDate, item.days);
+      item.actualStartAt = window.startAt; item.actualEndAt = window.endAt;
+    }
     if (old?.groupId) { item.groupId = old.groupId; item.batchRequestId = old.batchRequestId; }
     if (old?.demoSet) item.demoSet = old.demoSet;
     statements.push(q(db, 'INSERT INTO ad_orders(id,data,created_at) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', item.id, JSON.stringify(item), item.createdAt));
+    if (admin) statements.push(q(db, 'INSERT INTO ad_order_history(order_id,actor_id,action,previous_status,new_status,created_at) VALUES(?,?,?,?,?,?)', item.id, adminUser?.id || null, old ? 'edit' : 'create', old?.status || null, item.status, item.updatedAt));
     return { statements, output: admin ? { ...item, effectiveStatus: domain.status(item) } : { id: item.id, status: item.status, totalPrice: item.totalPrice, currency: item.currency } };
   });
 }
@@ -149,7 +229,7 @@ export async function handleAds({ request, env }) {
     const query = new URL(request.url).searchParams;
     const action = query.get('action') || 'public';
     const admin = action.startsWith('admin');
-    if (admin) await currentUser(request, env);
+    const adminUser = admin ? await currentUser(request, env, { admin: true }) : null;
     if (!['GET', 'POST', 'PUT', 'DELETE'].includes(request.method)) fail('method', 405);
     if (request.method === 'GET') {
       if (action === 'image' || action === 'admin-detail') {
@@ -158,19 +238,46 @@ export async function handleAds({ request, env }) {
         return action === 'image' ? imageResponse(item, query.get('variant')) : json({ ...item, effectiveStatus: domain.status(item) });
       }
       const current = await settings(env.DB);
-      if (action === 'config' || action === 'admin-settings') return json({ ...current, languages, today: domain.today() });
-      if (action === 'public') return json({ ads: publicAds(await orders(env.DB), query.get('language')) });
+      if (action === 'config' || action === 'admin-settings') return json({ ...current, languages, today: domain.today(), paymentsEnabled: env.STRIPE_TEST_MODE === '1' && env.STRIPE_SECRET_KEY?.startsWith('sk_test_') && env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_'), turnstileSiteKey:env.TURNSTILE_SITE_KEY || '' });
+      if (action === 'public') return new Response(JSON.stringify({ ads: publicAds(await orders(env.DB), query.get('language')) }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       if (action === 'availability') {
         const input = Object.fromEntries(query);
         const price = domain.quote(current.data, input, domain.today(), true);
-        const daysAvailable = domain.availability(await orders(env.DB), current.data, input.language, input.type, input.startDate, input.endDate);
+        const all = await orders(env.DB);
+        const durationDays = Number(input.durationDays) || 1;
+        if (!Number.isSafeInteger(durationDays) || durationDays < 1 || durationDays > 90) domain.fail('dates');
+        const lastAllowed = new Date(Date.parse(domain.today()) + 730 * 86400000).toISOString().slice(0, 10);
+        const daysAvailable = domain.dates(input.startDate, input.endDate).map(date => {
+          const candidateLast = new Date(Date.parse(date) + (durationDays - 1) * 86400000).toISOString().slice(0, 10);
+          if (date < domain.today() || candidateLast > lastAllowed) return { date, used: 0, capacity: current.data.types[input.type].capacity, remaining: 0 };
+          const window = domain.windowFor(date, durationDays);
+          return { date, ...domain.availabilityWindow(all, current.data, input.language, input.type, window.startAt, window.endAt) };
+        });
         return json({ ...price, enabled: current.data.markets[input.language].enabled && (input.type !== 'PREMIUM' || current.data.markets[input.language].prices.PREMIUM > 0), daysAvailable });
       }
       if (action === 'admin-orders') return json({ orders: (await orders(env.DB)).map(item => ({ ...item, effectiveStatus: domain.status(item) })) });
+      if (action === 'admin-payment-events') {
+        const groupId = query.get('groupId');
+        if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(groupId || '')) domain.fail('validation');
+        return json({ events: (await q(env.DB, 'SELECT id,event_type,received_at FROM ad_payment_events WHERE group_id=? ORDER BY received_at DESC LIMIT 50', groupId).all()).results });
+      }
+      if (action === 'admin-order-history') {
+        const id = query.get('id');
+        if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id || '')) domain.fail('validation');
+        return json({ changes: (await q(env.DB, 'SELECT action,previous_status,new_status,created_at,actor_id FROM ad_order_history WHERE order_id=? ORDER BY created_at DESC LIMIT 50', id).all()).results });
+      }
+      if (action === 'admin-payment-events') {
+        const groupId = query.get('groupId');
+        if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(groupId || '')) domain.fail('validation');
+        return json({ events: (await q(env.DB, 'SELECT id,event_type,received_at FROM ad_payment_events WHERE group_id=? ORDER BY received_at DESC LIMIT 50', groupId).all()).results });
+      }
       domain.fail('notFound', 404);
     }
-    const body = await readJson(request, 1450000);
+    const body = await readJson(request, action === 'translate' ? 4000 : action === 'order-batch' ? 4000000 : 1450000);
+    if (action === 'translate' && request.method === 'POST') return translateAd(request,env,body);
     if (action === 'admin-order' && request.method === 'DELETE') {
+      const existing = await order(env.DB, body.id);
+      if (existing?.source === 'public') return json(await moderateGroup(env.DB, { ...body, status: 'cancelled' }, adminUser));
       const output = await withWrite(env.DB, async ({ all }) => {
         const item = all.find(entry => entry.id === body.id);
         if (!item) domain.fail('notFound', 404);
@@ -180,6 +287,8 @@ export async function handleAds({ request, env }) {
       return json(output);
     }
     if (action === 'order-batch' && request.method === 'POST') return json(await reserveBatch(env.DB, body, request.headers.get('cf-connecting-ip')), 201);
+    if (action === 'admin-moderate-group' && request.method === 'PUT') return json(await moderateGroup(env.DB, body, adminUser));
+    if (action === 'admin-reschedule-group' && request.method === 'PUT') return json(await rescheduleGroup(env.DB, body, adminUser));
     if (action === 'admin-settings' && request.method === 'PUT') {
       const next = domain.validateSettings(body.data);
       const output = await withWrite(env.DB, async ({ current }) => {
@@ -190,7 +299,8 @@ export async function handleAds({ request, env }) {
       return json(output);
     }
     if (!((action === 'order' && request.method === 'POST') || (action === 'admin-order' && ['POST', 'PUT'].includes(request.method)))) domain.fail('notFound', 404);
-    const output = await writeOrder(env.DB, body, request.method, admin, request.headers.get('cf-connecting-ip'));
+    const output = await writeOrder(env.DB, body, request.method, admin, request.headers.get('cf-connecting-ip'), adminUser);
     return json(output, request.method === 'POST' ? 201 : 200);
   } catch (error) { return errorResponse(error); }
 }
+export { orders, order, withWrite, reserveBatch };

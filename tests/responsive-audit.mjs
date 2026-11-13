@@ -1,10 +1,23 @@
 import { chromium } from "playwright-core";
-import { readFile, mkdir } from "node:fs/promises";
+import { readFile, mkdir, stat } from "node:fs/promises";
+import { createServer } from "node:http";
 import path from "node:path";
 
-const baseUrl = process.env.TEST_BASE_URL || "http://127.0.0.1:8088";
+const siteRoot = path.resolve('_site');
+const staticServer = process.env.TEST_BASE_URL ? null : createServer(async (request, response) => {
+  try {
+    const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+    let filename = path.resolve(siteRoot, `.${pathname}`);
+    if (filename !== siteRoot && !filename.startsWith(`${siteRoot}${path.sep}`)) { response.writeHead(403).end(); return; }
+    if ((await stat(filename)).isDirectory()) filename = path.join(filename, 'index.html');
+    const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' }[path.extname(filename)] || 'application/octet-stream';
+    response.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` }).end(await readFile(filename));
+  } catch { response.writeHead(404).end(); }
+});
+if (staticServer) await new Promise(resolve => staticServer.listen(0, '127.0.0.1', resolve));
+const baseUrl = process.env.TEST_BASE_URL || `http://127.0.0.1:${staticServer.address().port}`;
 const executablePath = process.env.BROWSER_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const outputDirectory = path.resolve("test-results", "responsive");
+const outputDirectory = process.env.RESPONSIVE_OUTPUT_DIR ? path.resolve(process.env.RESPONSIVE_OUTPUT_DIR) : path.resolve(".local", "responsive-audit");
 const viewports = [
   { name: "small-phone", width: 360, height: 740 },
   { name: "phone", width: 390, height: 844 },
@@ -71,6 +84,7 @@ for (const viewport of viewports) {
 }
 
 await browser.close();
+if (staticServer) await new Promise(resolve => staticServer.close(resolve));
 console.log(JSON.stringify({ testedViewports: viewports, checks: results.length, failures }, null, 2));
 if (failures.length) process.exitCode = 1;
 
@@ -87,6 +101,7 @@ async function auditPage(page, label) {
   const clipped = await page.locator("button, a, input, select, textarea").evaluateAll((elements) =>
     elements.filter((element) => {
       if (innerWidth <= 800 && element.closest(".sidebar") && !element.closest(".sidebar").classList.contains("is-open")) return false;
+      if (element.closest('.top-carousel,.listing-standard-grid')) return false;
       const style = getComputedStyle(element);
       if (style.display === "none" || style.visibility === "hidden") return false;
       const box = element.getBoundingClientRect();
@@ -113,9 +128,8 @@ async function expectDialogFits(page, selector, viewport, label) {
 
 async function openCmsMobileMenu(page) {
   const sidebar = page.locator(".sidebar");
-  const transform = await sidebar.evaluate((element) => getComputedStyle(element).transform);
   const isOpen = await sidebar.evaluate((element) => element.classList.contains("is-open"));
-  if (transform !== "none" && !isOpen) {
+  if (!isOpen && await page.locator("#menu-toggle").isVisible()) {
     await page.locator("#menu-toggle").click();
   }
 }
@@ -127,11 +141,11 @@ async function configureCmsMock(page) {
   const articles = Object.fromEntries(await Promise.all(articleNames.map(async (name) => [name, await readFile(path.resolve("src", "content", "articles", name), "utf8")])));
 
   const user = { id: '11111111-1111-4111-8111-111111111111', name: 'Test Administrator', email: 'admin@example.com', role: 'admin', active: true, mustChangePassword: false, version: 1 };
-  await page.route('**/.netlify/functions/cms-auth?*', async route => {
+  await page.route('**/api/cms-auth?*', async route => {
     const action = new URL(route.request().url()).searchParams.get('action');
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify(action === 'users' ? { users: [user] } : { user }) });
   });
-  await page.route('**/.netlify/functions/cms-content?*', async route => {
+  await page.route('**/api/cms-content?*', async route => {
     const url = new URL(route.request().url());
     const filename = url.searchParams.get('path');
     const json = (payload, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(payload) });

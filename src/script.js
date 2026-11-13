@@ -123,9 +123,22 @@ const translations = {
   }
 };
 
+const extraTranslations = {
+  pl: { 'nav.ads':'Ogłoszenia','events.label':'Wydarzenia','events.calendar':'Kalendarz wydarzeń','events.close':'Zamknij kalendarz','events.eyebrow':'Kalendarz','events.homeTitle':'Co się dzieje w Belgii?','events.homeIntro':'Odkryj sprawdzone wydarzenia i wybierz dzień w kalendarzu.','events.open':'Otwórz kalendarz','legal.heading':'Informacje prawne','legal.portal':'Regulamin portalu','legal.ads':'Regulamin ogłoszeń','legal.privacy':'Polityka prywatności','legal.cookies':'Polityka cookies','legal.sources':'Źródła i licencje','legal.draft':'Projekt dokumentu do weryfikacji przed uruchomieniem rzeczywistych płatności.','legal.fallback':'Treść tego projektu dokumentu jest dostępna po polsku.' },
+  en: { 'nav.ads':'Listings','events.label':'Events','events.calendar':'Events calendar','events.close':'Close calendar','events.eyebrow':'Calendar','events.homeTitle':'What is happening in Belgium?','events.homeIntro':'Explore verified events and choose a day on the calendar.','events.open':'Open calendar','legal.heading':'Legal information','legal.portal':'Website terms','legal.ads':'Listing terms','legal.privacy':'Privacy policy','legal.cookies':'Cookie policy','legal.sources':'Sources and licences','legal.draft':'Draft for review before real payments are enabled.','legal.fallback':'The text of this draft document is available in Polish.' },
+  nl: { 'nav.ads':'Advertenties','events.label':'Evenementen','events.calendar':'Evenementenkalender','events.close':'Kalender sluiten','events.eyebrow':'Kalender','events.homeTitle':'Wat gebeurt er in België?','events.homeIntro':'Ontdek gecontroleerde evenementen en kies een dag in de kalender.','events.open':'Kalender openen','legal.heading':'Juridische informatie','legal.portal':'Gebruiksvoorwaarden','legal.ads':'Advertentievoorwaarden','legal.privacy':'Privacybeleid','legal.cookies':'Cookiebeleid','legal.sources':'Bronnen en licenties','legal.draft':'Ontwerp ter controle voordat echte betalingen worden ingeschakeld.','legal.fallback':'De tekst van dit ontwerpdocument is beschikbaar in het Pools.' },
+  fr: { 'nav.ads':'Annonces','events.label':'Événements','events.calendar':'Calendrier des événements','events.close':'Fermer le calendrier','events.eyebrow':'Calendrier','events.homeTitle':'Que se passe-t-il en Belgique ?','events.homeIntro':'Découvrez les événements vérifiés et choisissez un jour dans le calendrier.','events.open':'Ouvrir le calendrier','legal.heading':'Informations juridiques','legal.portal':'Conditions du site','legal.ads':'Conditions des annonces','legal.privacy':'Politique de confidentialité','legal.cookies':'Politique des cookies','legal.sources':'Sources et licences','legal.draft':'Projet à vérifier avant l’activation des paiements réels.','legal.fallback':'Le texte de ce projet de document est disponible en polonais.' }
+};
+const adsPageCopy = {
+  pl:{'adsPage.title':'Ogłoszenia w Belgii','adsPage.intro':'Aktualne oferty zatwierdzone przez redakcję.','adsPage.add':'Dodaj swoje ogłoszenie','adsPage.addArrow':'Dodaj swoje ogłoszenie →','adsPage.empty':'Nie ma teraz aktywnych ogłoszeń.','adsPage.all':'Wszystkie ogłoszenia →'},
+  en:{'adsPage.title':'Listings in Belgium','adsPage.intro':'Current offers approved by the editorial team.','adsPage.add':'Add your listing','adsPage.addArrow':'Add your listing →','adsPage.empty':'There are no active listings at the moment.','adsPage.all':'All listings →'},
+  nl:{'adsPage.title':'Advertenties in België','adsPage.intro':'Actuele aanbiedingen goedgekeurd door de redactie.','adsPage.add':'Plaats je advertentie','adsPage.addArrow':'Plaats je advertentie →','adsPage.empty':'Er zijn momenteel geen actieve advertenties.','adsPage.all':'Alle advertenties →'},
+  fr:{'adsPage.title':'Annonces en Belgique','adsPage.intro':'Offres actuelles approuvées par la rédaction.','adsPage.add':'Ajouter votre annonce','adsPage.addArrow':'Ajouter votre annonce →','adsPage.empty':'Aucune annonce active pour le moment.','adsPage.all':'Toutes les annonces →'}
+};
+for (const language of Object.keys(adsPageCopy)) Object.assign(extraTranslations[language],adsPageCopy[language]);
 const languageData = window.siteLanguages;
 for (const language of Object.keys(languageData)) {
-  translations[language] = { ...(translations[language] || {}), ...(window.adTranslations[language] || window.adTranslations.pl) };
+  translations[language] = { ...(translations[language] || {}), ...(window.adTranslations[language] || window.adTranslations.pl), ...(extraTranslations[language] || {}) };
 }
 
 const pageTitles = {
@@ -170,9 +183,17 @@ function applyLanguage(language) {
   document.querySelectorAll('[data-i18n-aria]').forEach(element => {
     element.setAttribute('aria-label', dictionary[element.dataset.i18nAria] || element.getAttribute('aria-label'));
   });
-  const articleBody = document.querySelector(".prose[data-i18n-html]");
+  const articleBody = document.querySelector(".single-article .prose");
   const translatedBody = document.querySelector(`template[data-article-translation="${selected}"]`);
-  if (articleBody && translatedBody) articleBody.innerHTML = translatedBody.innerHTML;
+  if (articleBody) {
+    if (!originalContent.has(articleBody)) originalContent.set(articleBody,articleBody.innerHTML);
+    const translatedHtml = selected !== 'pl' ? translatedBody?.innerHTML || dictionary[articleBody.dataset.i18nHtml] : null;
+    articleBody.innerHTML = translatedHtml || originalContent.get(articleBody);
+    let fallback = document.querySelector('.article-language-fallback');
+    if (!fallback) { fallback=document.createElement('p'); fallback.className='article-language-fallback container'; articleBody.before(fallback); }
+    fallback.hidden = selected === 'pl' || !!translatedHtml;
+    fallback.textContent = {en:'This article is available in Polish.',nl:'Dit artikel is beschikbaar in het Pools.',fr:'Cet article est disponible en polonais.'}[selected] || '';
+  }
   document.querySelectorAll("[data-translation-en], [data-translation-nl], [data-translation-fr]").forEach((element) => {
     if (!originalContent.has(element)) originalContent.set(element, element.textContent);
     const translated = element.getAttribute(`data-translation-${selected}`);
@@ -197,8 +218,12 @@ function applyLanguage(language) {
   });
 
   document.documentElement.lang = selected;
+  const legalSlugs=['regulamin','regulamin-ogloszen','polityka-prywatnosci','polityka-cookies','zrodla-i-licencje'];
+  for (const slug of legalSlugs) document.querySelectorAll(`a[data-i18n^="legal."][href$="/${slug}/"]`).forEach(link => { link.href=selected==='pl'?`/${slug}/`:`/${selected}/${slug}/`; });
+  const legalFallback=document.querySelector('.legal-language-fallback');
+  if (legalFallback) legalFallback.hidden=selected===(document.body.dataset.legalLanguage||'pl');
   const articleHeading = document.querySelector(".single-article__header h1");
-  const pageTitle = articleHeading?.textContent || (document.body.dataset.page === 'order' ? dictionary['ads.order'] : pageTitles[selected]?.[document.body.dataset.page]);
+  const pageTitle = articleHeading?.textContent || (document.body.dataset.page === 'legal' ? document.querySelector('.page-hero h1')?.textContent : document.body.dataset.page === 'order' ? dictionary['ads.order'] : pageTitles[selected]?.[document.body.dataset.page]);
   if (selected === "pl") document.title = originalDocumentTitle;
   else if (pageTitle) document.title = `${pageTitle} | Polacy w Belgii`;
   const description = document.querySelector('meta[name="description"]');
@@ -210,6 +235,10 @@ function applyLanguage(language) {
     button.classList.toggle("is-active", button.dataset.lang === selected)
   );
   localStorage.setItem("siteLanguage", selected);
+  if (document.body.dataset.page==='legal') {
+    const parts=location.pathname.split('/').filter(Boolean),slug=parts.at(-1);
+    if (legalSlugs.includes(slug)) { const target=selected==='pl'?`/${slug}/`:`/${selected}/${slug}/`; if(location.pathname!==target) { location.replace(target); return; } }
+  }
   applyCmsContent(selected);
   localizePlaceholderImages(selected);
   document.dispatchEvent(new CustomEvent("languagechange", { detail: selected }));
@@ -273,4 +302,4 @@ if (languagePicker && languageButton) {
   });
 }
 
-applyLanguage(localStorage.getItem("siteLanguage") || "pl");
+applyLanguage(localStorage.getItem("siteLanguage") || document.documentElement.lang || "pl");

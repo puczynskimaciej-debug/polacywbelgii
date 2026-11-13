@@ -1,0 +1,47 @@
+{
+  "id": "holiday-pay-2026",
+  "sourceId": "embassy-pl",
+  "externalId": "holiday-pay-2026",
+  "url": "https://www.gov.pl/web/belgia/praca-i-pobyt",
+  "kind": "article",
+  "title": "Nieodebrany belgijski ekwiwalent wakacyjny za rok urlopowy 2024 — termin mija 31 grudnia 2026",
+  "summary": "Aktualny w listopadzie 2026 poradnik dla Polaków, którzy pracowali w Belgii jako robotnicy lub niezależni artyści i nie otrzymali ekwiwalentu wakacyjnego. Wyjaśnij różnicę między rokiem pracy 2023 a rokiem urlopowym 2024, zakres systemu funduszy wakacyjnych, konieczność sprawdzenia własnej sprawy i bezpieczne przekazanie numeru konta. Nie twierdź, że każdy pracownik ma nieodebrane pieniądze. Nie podawaj indywidualnych kwot ani gwarancji wypłaty.",
+  "official": true,
+  "publishedAt": null,
+  "region": "all",
+  "category": "Praca",
+  "claims": [
+    {
+      "text": "Ambasada RP w Belgii podaje, że ekwiwalent wakacyjny za rok urlopowy 2024 można odebrać do 31 grudnia 2026 r.; za rok urlopowy 2025 termin upływa z końcem 2027 r.",
+      "sourceUrls": ["https://www.gov.pl/web/belgia/praca-i-pobyt"],
+      "statistic": true,
+      "year": 2026,
+      "definition": "termin dochodzenia wypłaty za belgijski rok urlopowy 2024, nie rok wykonywania pracy",
+      "unit": "data graniczna"
+    },
+    {
+      "text": "RJV wyjaśnia zasadę przedawnienia na przykładzie pracy wykonanej w 2023 r., roku urlopowego 2024 i ostatniego dnia wypłaty 31 grudnia 2026 r.",
+      "sourceUrls": ["https://www.gov.pl/web/belgia/praca-i-pobyt", "https://www.rjv.fgov.be/sites/default/files/2025-04/Fiche_Generale_NL.pdf"],
+      "statistic": true,
+      "year": 2026,
+      "definition": "przykład RJV dotyczący roku pracy i następującego po nim roku urlopowego",
+      "unit": "lata kalendarzowe"
+    },
+    {
+      "text": "Według Ambasady pracownikom umysłowym ekwiwalent wypłaca pracodawca; robotnikom i niezależnym artystom podstawowy i dodatkowy ekwiwalent wypłaca właściwy fundusz wakacyjny. Nazwę funduszu można znaleźć na pasku wypłaty.",
+      "sourceUrls": ["https://www.gov.pl/web/belgia/praca-i-pobyt"]
+    },
+    {
+      "text": "RJV informuje, że bez numeru rachunku bankowego nie może wypłacić ekwiwalentu. Numer można przekazać przez Mijnvakantierekening.be lub formularz RJV, a dane własnej sprawy sprawdzić po bezpiecznym zalogowaniu.",
+      "sourceUrls": ["https://www.gov.pl/web/belgia/praca-i-pobyt", "https://www.rjv.fgov.be/sites/default/files/2025-04/Fiche_Generale_NL.pdf"]
+    },
+    {
+      "text": "W broszurze RJV podano, że walidacja rachunku bankowego może potrwać 3–4 tygodnie; sprawy nie należy odkładać do ostatniego dnia terminu.",
+      "sourceUrls": ["https://www.gov.pl/web/belgia/praca-i-pobyt", "https://www.rjv.fgov.be/sites/default/files/2025-04/Fiche_Generale_NL.pdf"],
+      "statistic": true,
+      "year": 2026,
+      "definition": "szacowany przez RJV czas walidacji numeru rachunku przed wypłatą",
+      "unit": "tygodnie"
+    }
+  ]
+}

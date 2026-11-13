@@ -26,8 +26,8 @@ async function reserve(body, ip) {
     for (const variant of body.variants) {
       if (!Object.hasOwn(languages, variant.language)) domain.fail('market');
       const content = body.kind === 'text'
-        ? domain.creative({ kind: 'text', description: variant.text, contact: body.contact, email: body.email })
-        : domain.creative({ kind: 'image', company: body.company, title: variant.title, description: variant.description, url: body.url, email: body.email, customerName: body.customerName, image: body.image, imageMobile: body.type === 'PREMIUM' ? body.imageMobile : '', phone: body.phone || '' });
+        ? domain.creative({ kind: 'text', type:body.type, title:variant.title, description: variant.description || variant.text, contact: body.contact, company:body.company, publicPhone:body.publicPhone, publicEmail:body.publicEmail, url:body.url, email: body.email, customerName:body.customerName })
+        : domain.creative({ kind: 'image', type:body.type, company: body.company, contact:body.contact, publicPhone:body.publicPhone, publicEmail:body.publicEmail, title: variant.title, description: variant.description, url: body.url, email: body.email, customerName: body.customerName, image: body.image, imageMobile: body.type === 'PREMIUM' ? body.imageMobile : '', phone: body.phone || '' });
       if (body.kind === 'image') {
         domain.validateImageDimensions(content.image, 1200, body.type === 'PREMIUM' ? 200 : 720);
         if (body.type === 'PREMIUM') domain.validateImageDimensions(content.imageMobile, 660, 300);
