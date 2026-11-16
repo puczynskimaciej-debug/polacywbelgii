@@ -1,7 +1,7 @@
 ---
 layout: legal.njk
-title: Politique de confidentialitĂ©
-description: Politique de confidentialitĂ© PolacywBelgii.eu.
+title: Politique de confidentialité
+description: Politique de confidentialité PolacywBelgii.eu.
 pageKey: legal
 legalKey: legal.privacy
 permalink: /fr/polityka-prywatnosci/index.html
@@ -25,7 +25,7 @@ Cloudflare fournit l'hébergement, les fonctions et le stockage D1. Stripe inter
 
 ## Conservation et droits
 
-Les sessions CMS durent au maximum 8 heures ; sessionStorage dure jusqu'à la fermeture de l'onglet. Sur TEST, la conservation automatisée supprime les messages de contact 365 jours après la clôture signalée d'un dossier, l'historique des conversations IA après 30 jours, les sessions CMS expirées et les journaux de sécurité après 90 jours. Les commandes annulées ou refusées et impayées peuvent être supprimées 365 jours après leur clôture. Les dossiers ouverts et les blocages juridiques restent protégés. Les commandes payées et leurs événements de paiement ne sont pas supprimés automatiquement : un délai légal approuvé séparément et la clôture explicite du dossier sont requis. Ces paramètres de test ne constituent pas une validation juridique pour la production. Avant activation en production, le responsable doit approuver les durées, les exceptions et le traitement des pièces fiscales et des réclamations.
+Les règles opérationnelles approuvées prévoient la suppression des messages de contact 365 jours après la clôture du dossier, de l'historique IA après 30 jours, des sessions CMS à leur expiration (au plus tard après 8 heures), des journaux de sécurité après 90 jours et des commandes impayées annulées ou refusées 365 jours après la clôture. Les dossiers ouverts, réclamations, litiges, incidents de sécurité et obligations légales suspendent la suppression des données concernées. Les commandes payées et documents de transaction ne sont pas supprimés automatiquement tant que les obligations fiscales, comptables et liées aux recours n'ont pas été établies pour chaque cas. La règle approuvée pour les sauvegardes manuelles impose le chiffrement, un accès limité et leur suppression sous 30 jours, sauf obligation légale concrète justifiant une durée plus longue. La conservation automatisée fonctionne sur TEST ; le calendrier de production reste désactivé jusqu'à la migration et aux vérifications. Les données de sessionStorage disparaissent à la fermeture de l'onglet.
 
 Vous pouvez demander l'accès, la rectification, l'effacement et la limitation, et selon le cas la portabilité, et vous opposer au traitement fondé sur l'intérêt légitime. Écrivez à l'adresse ci-dessus. Vous pouvez saisir l'autorité de contrôle compétente, notamment l'UODO polonaise ou l'APD/GBA belge.
 

@@ -1,6 +1,6 @@
-# Bramka produkcyjna — stan 16.11.2026
+# Bramka produkcyjna — zasady operacyjne zatwierdzone 16.11.2026
 
-To jest lista decyzji do zatwierdzenia, a nie oświadczenie o zawartych umowach lub aktywacji usług.
+Okresy retencji poniżej zostały zatwierdzone jako zasady operacyjne. Pozostałe punkty wymagają potwierdzenia przed wydaniem; dokument nie stwierdza zawarcia umów z dostawcami ani aktywacji usług.
 
 ## Wdrożenie i izolacja
 
@@ -8,7 +8,7 @@ To jest lista decyzji do zatwierdzenia, a nie oświadczenie o zawartych umowach 
 - Cloudflare zapisywał zdarzenie GitHub `github:push` w starym projekcie jako zadanie `queued`; wcześniejsze zadanie ma `skip_reason=production_deployments_disabled`. Nie był to build. Workflow `.github/workflows/deploy.yml` uruchamia GitHub Pages tylko dla `main` i nie wywołuje Cloudflare. Źródłem zdarzenia nie był deploy hook.
 - Stary projekt ma teraz `deployments_enabled=false`, `production_deployments_enabled=false`, `preview_deployment_setting=none`; TEST pozostaje włączony. Nie wykonano próbnego pusha.
 - Domyślny `wrangler.toml` jest konfiguracją TEST. Przy wydaniu produkcyjnym nie wolno go stosować do starego projektu: wskazuje testową bazę. Osobny `wrangler.production.toml` zawiera prawidłową produkcyjną D1 i wyłączone Stripe/AI. Przed wydaniem uruchomić `node scripts/check-pages-release-config.mjs` i użyć odizolowanego katalogu wydania, w którym **produkcyjny plik** zostanie zapisany pod nazwą `wrangler.toml`. Bieżąca wersja Wrangler Pages nie udostępnia `--config` w `pages deploy`; nie zakładać, że sama nazwa `wrangler.production.toml` zostanie odczytana.
-- Przed wdrożeniem kodu: zatwierdzić polityki, wykonać nowy backup produkcyjnej D1, sprawdzić schemat i zastosować brakującą migrację `cloudflare-d1-0004-retention.sql` do produkcyjnej D1. Kod API kontaktu odwołuje się do `closed_at`, więc odwrotna kolejność spowoduje błąd. Automatyczna retencja produkcyjna pozostaje wyłączona.
+- Przed wdrożeniem kodu: zatwierdzić polityki, wykonać nowy backup produkcyjnej D1, sprawdzić schemat i zastosować brakujące migracje `cloudflare-d1-0004-retention.sql` oraz `cloudflare-d1-0005-security-log-holds.sql` do produkcyjnej D1. Kod API kontaktu odwołuje się do `closed_at`, a retencja logów do `security_log_holds`, więc odwrotna kolejność spowoduje błąd. Automatyczna retencja produkcyjna pozostaje wyłączona.
 
 ## Dostawcy — stan techniczny i dokumenty
 
@@ -20,25 +20,25 @@ To jest lista decyzji do zatwierdzenia, a nie oświadczenie o zawartych umowach 
 | Google Gemini | Po aktywacji: wpisane prompty, treść reklam do tłumaczenia, ewentualne dane osobowe w tych tekstach | [Warunki Gemini](https://ai.google.dev/gemini-api/terms) rozróżniają zasady usług płatnych i bezpłatnych | AI automatyczne i publiczne tłumaczenie pozostają wyłączone. Warunki dopuszczają udostępnianie klienta API osobom w EOG tylko w ramach Paid Services; nie włączać publicznej funkcji na Free Tier. Potwierdzić projekt z rozliczaniem i warunki przetwarzania przed aktywacją. [Google opisuje też przechowywanie danych do monitorowania nadużyć](https://ai.google.dev/gemini-api/docs/usage-policies). |
 | Poczta i domena | Wiadomości kierowane na adres kontaktowy, metadane e-mail, dane rejestracyjne domeny | Do ustalenia na podstawie paneli właściciela, nie tylko rekordów DNS | Potwierdzić faktycznego dostawcę skrzynki, rejestratora domeny, umowy, lokalizacje i przekierowania. |
 
-## Proponowana retencja do zatwierdzenia
+## Zatwierdzona retencja operacyjna
 
-| Kategoria | Propozycja | Wyjątek / uzasadnienie |
+| Kategoria | Okres | Wyjątek / uzasadnienie |
 | --- | --- | --- |
-| Kontakt | 12 miesięcy od udokumentowanego zamknięcia sprawy | Otwarta sprawa, reklamacja lub spór zatrzymują usunięcie. Potwierdzić, czy 12 miesięcy wystarcza na ewentualne roszczenia. |
+| Kontakt | 365 dni od udokumentowanego zamknięcia sprawy | Otwarta sprawa, reklamacja lub spór zatrzymują usunięcie; nadrzędny obowiązek prawny ma pierwszeństwo. |
 | Historia AI | 30 dni od wpisu / zakończenia zadania | Wpisy powiązane z aktywną sprawą lub blokadą pozostają. Nie przekazywać do Gemini zbędnych danych osobowych. |
 | Sesje CMS | Maksymalnie 8 godzin; usuwać po wygaśnięciu | Sesja może zostać unieważniona wcześniej. |
-| Logi bezpieczeństwa | 90 dni | Potrzebny mechanizm wstrzymania usuwania logów objętych incydentem lub sporem przed włączeniem produkcyjnego Crona. |
-| Nieopłacone zamówienia anulowane/odrzucone | 12 miesięcy od zamknięcia sprawy | Wyłącznie bez zdarzenia płatniczego i aktywnego sporu/reklamacji. |
+| Logi bezpieczeństwa | 90 dni | Aktywna blokada zakresu incydentu lub obowiązku zachowania dowodów zatrzymuje usunięcie; mechanizm działa na TEST. |
+| Nieopłacone zamówienia anulowane/odrzucone | 365 dni od zamknięcia sprawy | Wyłącznie bez zdarzenia płatniczego i aktywnego sporu/reklamacji. |
 | Opłacone zamówienia i dokumenty podatkowe | Nie ustawiać automatycznego sztywnego okresu; dla dokumentów podatkowych zwykle do upływu przedawnienia zobowiązania: co do zasady 5 lat od końca roku, w którym minął termin płatności podatku | Termin może się zawiesić lub przerwać; faktury w KSeF mają odrębne zasady. Właściciel/księgowy/prawnik musi ustalić dokumentację, datę `retentionUntil`, reklamację, chargeback i roszczenia. [Ministerstwo Finansów](https://www.podatki.gov.pl/abc-podatkow/uprawnienia-i-obowiazki-podatnika/). |
-| Backupy | D1 Time Travel: według planu 7 dni (Free) lub 30 dni (Paid); osobne eksporty: proponowany maks. 30 dni od wykonania, szyfrowanie, ograniczony dostęp i usunięcie po zakończeniu celu | Eksport obejmuje również dane usunięte później z aktywnej bazy. Potwierdzić plan Cloudflare i ewidencję kopii. Nie trzymać pełnego eksportu z danymi osobowymi przez okres dokumentacji podatkowej; dokumenty podatkowe wydzielić. [Limity D1](https://developers.cloudflare.com/d1/platform/limits/). |
+| Backupy | D1 Time Travel: według planu 7 dni (Free) lub 30 dni (Paid); ręczne eksporty: maks. 30 dni od wykonania, szyfrowanie, ograniczony dostęp | Dłużej tylko gdy konkretny obowiązek prawny uzasadnia wyjątek. Eksport obejmuje również dane później usunięte z aktywnej bazy. Potwierdzić plan Cloudflare i spis starych kopii. [Limity D1](https://developers.cloudflare.com/d1/platform/limits/). |
 
-Podstawą ograniczenia przechowywania oraz wyjątków dla obowiązku prawnego i obrony roszczeń są [art. 5 i 17 RODO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng/). TEST realizuje pierwsze pięć kategorii według testowych okresów. Produkcyjny Worker retencji nie jest wdrożony. W jego obecnym kodzie nie ma odrębnej blokady incydentowej dla logów bezpieczeństwa; jest to dodatkowa bramka przed włączeniem produkcyjnego czyszczenia.
+Podstawą ograniczenia przechowywania oraz wyjątków dla obowiązku prawnego i obrony roszczeń są [art. 5 i 17 RODO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng/). TEST realizuje zatwierdzone okresy i blokady incydentowe. Produkcyjny Worker retencji nie jest wdrożony.
 
 ## Dane i potwierdzenia od właściciela
 
 1. Potwierdzenie pełnych danych firmy z polityk PL/NL/FR/EN, adresu do żądań RODO, podmiotu wystawiającego faktury i właściwej jurysdykcji podatkowej.
-2. Akceptacja okresów i definicji zamknięcia sprawy; decyzja, kto oznacza reklamacje, spory, incydenty i obowiązki podatkowe oraz kiedy zwalnia blokady.
-3. Informacja o planie Cloudflare, wszystkich ręcznych eksportach/backupach i ich miejscu przechowywania; decyzja o szyfrowaniu, dostępie i kasowaniu.
+2. Okresy są zatwierdzone. Wyznaczyć osobę oznaczającą zakończenie spraw, reklamacje, spory i incydenty oraz zwalniającą blokady po ustaniu podstawy.
+3. Informacja o planie Cloudflare oraz spis wszystkich istniejących ręcznych eksportów/backupów, ich celu, wieku i miejscu przechowywania. Zasady szyfrowania i 30 dni dotyczą nowych kopii; starych nie usuwano bez inwentaryzacji.
 4. Potwierdzenie warunków Cloudflare, dostawcy poczty i rejestratora, ich DPA i transferów; planu GitHub oraz zakresu integracji.
 5. Decyzja, czy i kiedy uruchamiać Stripe i Gemini. Dla udostępnienia Gemini użytkownikom w EOG wymagana jest weryfikacja Paid Services i warunków przetwarzania.
 6. Weryfikacja przez właściciela/prawnika/księgowego czterech projektów polityki prywatności i polityki cookies przed wydaniem produkcyjnym.

@@ -21,11 +21,24 @@ export async function onRequest({ request, env }) {
     if (request.method === 'GET') {
       const preview = await previewRetention(db);
       const runs = (await db.prepare('SELECT started_at,finished_at,status,counts_json,error_code FROM retention_runs ORDER BY started_at DESC LIMIT 10').all()).results;
-      return json({dryRun:true,...preview,runs});
+      const securityHolds = (await db.prepare('SELECT id,reason_code,start_at,end_at,created_at FROM security_log_holds WHERE released_at IS NULL ORDER BY created_at DESC LIMIT 100').all()).results;
+      return json({dryRun:true,...preview,runs,securityHolds});
     }
     if (request.method !== 'POST') fail('method',405);
     const input = await readJson(request,1000);
     const at = new Date().toISOString();
+    if (input.action === 'hold-security-logs') {
+      if (!['incident','legal_evidence'].includes(input.reasonCode) || !iso(input.startAt) || input.endAt != null && !iso(input.endAt) || input.endAt && input.endAt < input.startAt) fail('validation');
+      const id=crypto.randomUUID();
+      await q(db,'INSERT INTO security_log_holds(id,reason_code,start_at,end_at) VALUES(?,?,?,?)',id,input.reasonCode,input.startAt,input.endAt || null).run();
+      return json({held:true,id});
+    }
+    if (input.action === 'release-security-hold') {
+      if (!uuid(input.id)) fail('validation');
+      const done=await q(db,'UPDATE security_log_holds SET released_at=? WHERE id=? AND released_at IS NULL',at,input.id).run();
+      if (!done.meta?.changes) fail('notFound',404);
+      return json({released:true});
+    }
     if (input.action === 'close-contact') {
       if (!uuid(input.id)) fail('validation');
       const done = await q(db,'UPDATE contact_messages SET closed_at=COALESCE(closed_at,?) WHERE id=?',at,input.id).run();

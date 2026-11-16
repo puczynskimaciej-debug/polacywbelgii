@@ -8,14 +8,14 @@
 
 ## Co usuwa zadanie
 
-Konfiguracja jest w tabeli `retention_policy`, osobno dla sześciu kategorii. Poniższe wartości są **testowe**, a nie zatwierdzonymi prawnie terminami produkcyjnymi.
+Konfiguracja jest w tabeli `retention_policy`, osobno dla sześciu kategorii. Właściciel zatwierdził poniższe okresy jako zasady operacyjne, z pierwszeństwem nadrzędnych wymogów prawa. Na produkcji automatyczny Worker pozostaje wyłączony.
 
 | Kategoria | Konfiguracja TEST | Warunek i działanie |
 | --- | --- | --- |
 | Kontakt | 365 dni | Usunięcie całej wiadomości dopiero po `closed_at`; sprawa otwarta lub aktywna blokada są zachowane. |
 | Historia AI | 30 dni | Usunięcie starych wpisów i zakończonych zadań; aktywne zadanie lub blokada rozmowy wstrzymują usunięcie. |
 | Sesje CMS | 0 dni po wygaśnięciu | Usunięcie tokenu sesji, gdy minie `expires_at`; samo uwierzytelnienie wygasa po maks. 8 godzinach. |
-| Logi bezpieczeństwa | 90 dni | Usunięcie `cms_audit`, `cms_login_limits`, `ad_rate_limits` i starych dzienników retencji. |
+| Logi bezpieczeństwa | 90 dni | Usunięcie `cms_audit`, `cms_login_limits`, `ad_rate_limits` i starych dzienników retencji, z wyłączeniem zakresów objętych aktywną blokadą incydentu lub obowiązku dowodowego. |
 | Nieopłacone zamówienia | 365 dni | Tylko anulowane/odrzucone, po jawnym zamknięciu sprawy, bez zdarzeń płatniczych i bez blokady; usuwane razem z `ad_order_history`. Cała grupa językowa jest oceniana razem. |
 | Opłacone zamówienia | wyłączone | Kod obsługuje przyszły, zatwierdzony okres oraz indywidualne `retentionUntil`; przed ich ustawieniem zachowuje zamówienie i zdarzenia Stripe. |
 
@@ -25,13 +25,14 @@ Nie stosujemy pozornej anonimizacji. Po spełnieniu warunków rekord i jego dane
 
 - `GET /api/retention` wymaga zalogowanego administratora. Zwraca dry-run (same liczby), konfigurację oraz 10 ostatnich uruchomień. Niczego nie kasuje.
 - `POST /api/retention` umożliwia administratorowi zamknięcie/otwarcie sprawy kontaktowej, zamknięcie grupy zamówienia oraz ustanowienie/zwolnienie blokady (`open_case`, `complaint`, `dispute`, `tax`, `legal_other`). Nie wysyła do logów treści sprawy.
+- `security_log_holds` przechowuje wyłącznie zakres czasu i kod `incident`/`legal_evidence`. Administrator ustanawia lub zwalnia blokadę w CMS. Dry-run oraz samo `DELETE` sprawdzają zakres, aby blokada zapisana po wyborze kandydata również chroniła wpis. Blokada bez końca zakresu chroni też późniejsze logi do czasu zwolnienia.
 - `retention_lock` z 15-minutową dzierżawą zapobiega równoległym uruchomieniom. Przetwarzanie jest porcjowane; kolejne uruchomienie usuwa następną porcję. Zapisy powiązanych rekordów zamówień wykonuje transakcja D1.
 - `retention_runs` przechowuje stan `completed`/`failed`, liczniki i bezpieczny kod błędu. Błąd jest zgłaszany również w logu Workera bez treści rekordu. Monitorować nieudane przebiegi i brak przebiegu w oczekiwanym oknie.
-- Migracja `cloudflare-d1-0004-retention.sql` wymaga wcześniejszego backupu. Na produkcji nie została wykonana.
+- Migracje `cloudflare-d1-0004-retention.sql` i `cloudflare-d1-0005-security-log-holds.sql` wymagają wcześniejszego backupu. Na produkcji nie zostały wykonane. Procedura jest w `PRODUCTION_DEPLOY_RUNBOOK.md`.
 
 ## Kwestie właściciela przed produkcją
 
-1. Zatwierdzić okresy dla każdego celu i dokładną definicję zamknięcia sprawy oraz reklamacji.
+1. Okresy operacyjne zostały zatwierdzone. Potwierdzić osoby odpowiedzialne za zamykanie spraw, oznaczanie i zwalnianie blokad oraz obsługę żądań osób, których dane dotyczą.
 2. Ustalić dokumentację podatkową/księgową i datę `retentionUntil` dla opłaconych transakcji, uwzględniając przedawnienie, ewentualne przerwy i spory. Nie wpisywać automatycznie sztywnego terminu do produkcji.
 3. Zweryfikować umowy i role dostawców: Cloudflare (Pages/D1/DNS), OVHcloud (rekordy MX poczty), GitHub (kod i ewentualnie historia), Stripe (po aktywacji Checkout), Google Gemini (po aktywacji funkcji). Ustalić rejestr podmiotów przetwarzających i transfery poza EOG. Publiczny DNS nie identyfikuje pewnie rejestratora domeny; wymaga potwierdzenia w panelu właściciela.
 4. Metadane obu istniejących D1 wskazują `jurisdiction: null` (TEST działa obecnie w `EEUR`, produkcja w `WEUR`). Cloudflare pozwala wybrać jurysdykcję tylko przy tworzeniu bazy; sam region działania nie dowodzi formalnego ograniczenia składowania do UE. Właściciel musi ocenić tę konfigurację i ewentualne transfery.

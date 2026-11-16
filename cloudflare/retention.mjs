@@ -5,6 +5,7 @@ const terminalJobs = "('done','failed','cancelled')";
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
 const cutoff = (at, days) => new Date(Date.parse(at) - days * DAY).toISOString();
 const activeHold = "released_at IS NULL AND (until_at IS NULL OR until_at>?)";
+const securityLogWhere = column => `${column}<? AND NOT EXISTS (SELECT 1 FROM security_log_holds h WHERE h.released_at IS NULL AND ${column}>=h.start_at AND (h.end_at IS NULL OR ${column}<=h.end_at))`;
 const count = async (db, sql, ...params) => Number((await q(db, sql, ...params).first())?.n || 0);
 const ids = async (db, sql, ...params) => (await q(db, sql, ...params).all()).results.map(row => row.id);
 
@@ -64,7 +65,7 @@ export async function previewRetention(db, at = new Date().toISOString()) {
   if (rules.sessions !== null) result.sessions = await count(db,'SELECT count(*) n FROM cms_sessions WHERE expires_at<?',cutoff(at,rules.sessions));
   if (rules.security_logs !== null) {
     const limit = cutoff(at,rules.security_logs);
-    for (const [table,column] of [['cms_login_limits','started_at'],['ad_rate_limits','started_at'],['cms_audit','created_at'],['retention_runs','started_at']]) result.security_logs += await count(db,`SELECT count(*) n FROM ${table} WHERE ${column}<?`,limit);
+    for (const [table,column] of [['cms_login_limits','started_at'],['ad_rate_limits','started_at'],['cms_audit','created_at'],['retention_runs','started_at']]) result.security_logs += await count(db,`SELECT count(*) n FROM ${table} WHERE ${securityLogWhere(`${table}.${column}`)}`,limit);
   }
   for (const group of await eligibleOrderGroups(db,rules,at)) result[group.paid ? 'paid_orders' : 'unpaid_orders'] += group.ids.length;
   return {at,counts:result,policy:rules};
@@ -111,8 +112,8 @@ export async function runRetention(env, { dryRun = false, at = new Date().toISOS
     if (rules.security_logs !== null) {
       const limit = cutoff(at,rules.security_logs);
       for (const [table,key,column] of [['cms_login_limits','key','started_at'],['ad_rate_limits','key','started_at'],['cms_audit','id','created_at'],['retention_runs','id','started_at']]) {
-        const selected = await ids(db,`SELECT ${key} AS id FROM ${table} WHERE ${column}<? LIMIT 100`,limit);
-        if (selected.length) totals.security_logs += Number((await q(db,`DELETE FROM ${table} WHERE ${key} IN (${selected.map(()=>'?').join(',')})`,...selected).run()).meta?.changes || 0);
+        const selected = await ids(db,`SELECT ${key} AS id FROM ${table} WHERE ${securityLogWhere(`${table}.${column}`)} LIMIT 100`,limit);
+        if (selected.length) totals.security_logs += Number((await q(db,`DELETE FROM ${table} WHERE ${key} IN (${selected.map(()=>'?').join(',')}) AND ${securityLogWhere(`${table}.${column}`)}`,...selected,limit).run()).meta?.changes || 0);
       }
     }
     for (const group of (await eligibleOrderGroups(db,rules,at)).slice(0,20)) {

@@ -164,6 +164,7 @@
         <p id="retention-notice" role="status"></p>
         <div class="editor-card"><h2>Przegląd bez usuwania</h2><div id="retention-preview"></div></div>
         <div class="editor-card"><h2>Ostatnie wykonania</h2><div id="retention-runs"></div></div>
+        <div class="editor-card"><h2>Blokady logów incydentów</h2><p class="muted">Zakres obejmuje logi od początku do końca incydentu. Brak daty końcowej chroni wszystkie późniejsze wpisy, aż do zwolnienia blokady. Nie wpisuj tutaj danych osobowych.</p><form id="security-hold-form"><label>Początek zakresu <input type="datetime-local" name="startAt" required></label><label>Koniec zakresu, opcjonalnie <input type="datetime-local" name="endAt"></label><label>Powód <select name="reasonCode"><option value="incident">Trwający incydent</option><option value="legal_evidence">Obowiązek zachowania dowodów</option></select></label><button type="submit" class="secondary">Zablokuj usuwanie logów</button></form><div id="security-holds"></div></div>
         <div class="editor-card"><h2>Sprawy z formularza kontaktowego</h2><p class="muted">Sprawę zamknij dopiero po odpowiedzi i zakończeniu obsługi. W razie reklamacji lub sporu ustaw blokadę.</p><div id="retention-contacts"></div></div>
       </section>
 

@@ -10,7 +10,7 @@ const { onRequest: retentionRequest } = await import(`data:text/javascript;base6
 
 function database() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','deploy/cloudflare-d1-0003-stripe.sql','agent/migrations/005_chat.sql','deploy/cloudflare-d1-0004-retention.sql']) sqlite.exec(readFileSync(file,'utf8'));
+  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','deploy/cloudflare-d1-0003-stripe.sql','agent/migrations/005_chat.sql','deploy/cloudflare-d1-0004-retention.sql','deploy/cloudflare-d1-0005-security-log-holds.sql']) sqlite.exec(readFileSync(file,'utf8'));
   const statement = (sql,values=[]) => ({
     bind(...next) { return statement(sql,next); },
     first() { return Promise.resolve(sqlite.prepare(sql).get(...values) || null); },
@@ -106,5 +106,55 @@ test('administrator-only dry run and case controls use the real API handler',asy
   const hold=await retentionRequest({request:new Request('https://test.example/api/retention',{method:'POST',headers:{cookie,origin:'https://test.example','content-type':'application/json'},body:JSON.stringify({action:'hold',entityType:'contact',entityId:contactId,reasonCode:'complaint'})}),env});
   assert.equal(hold.status,200);
   assert.equal(db.sqlite.prepare('SELECT reason_code FROM retention_holds WHERE entity_id=?').get(contactId).reason_code,'complaint');
+  const call=body=>retentionRequest({request:new Request('https://test.example/api/retention',{method:'POST',headers:{cookie,origin:'https://test.example','content-type':'application/json'},body:JSON.stringify(body)}),env});
+  assert.equal((await call({action:'hold-security-logs',reasonCode:'incident',startAt:'2025-01-02T00:00:00.000Z',endAt:'2025-01-01T00:00:00.000Z'})).status,400);
+  const created=await call({action:'hold-security-logs',reasonCode:'legal_evidence',startAt:'2025-01-01T00:00:00.000Z'});
+  assert.equal(created.status,200);
+  const holdId=(await created.json()).id;
+  assert.equal(db.sqlite.prepare('SELECT reason_code FROM security_log_holds WHERE id=?').get(holdId).reason_code,'legal_evidence');
+  assert.equal((await call({action:'release-security-hold',id:holdId})).status,200);
+  assert.equal((await call({action:'release-security-hold',id:holdId})).status,404);
+  db.sqlite.close();
+});
+
+test('incident range protects old security logs until release, including interleaved hold',async()=>{
+  const db=database(),at='2026-11-16T13:00:00.000Z',old='2024-01-01T00:00:00.000Z';
+  db.sqlite.prepare('INSERT INTO cms_login_limits(key,started_at,attempts) VALUES(?,?,1)').run('held-limit',old);
+  db.sqlite.prepare('INSERT INTO ad_rate_limits(key,started_at,attempts) VALUES(?,?,1)').run('held-ad-limit',old);
+  db.sqlite.prepare("INSERT INTO cms_audit(action,target,created_at) VALUES('test','synthetic',?)").run(old);
+  db.sqlite.prepare("INSERT INTO security_log_holds(id,reason_code,start_at,end_at) VALUES('incident-1','incident','2023-12-31T00:00:00.000Z','2024-01-02T00:00:00.000Z')").run();
+  const env={DB:db,RETENTION_ENABLED:'1',RETENTION_SCOPE:'test'};
+  assert.equal((await runRetention(env,{dryRun:true,at})).counts.security_logs,0);
+  assert.equal((await runRetention(env,{at})).counts.security_logs,0);
+  assert.equal(db.sqlite.prepare('SELECT count(*) n FROM cms_audit').get().n,1);
+  db.sqlite.prepare("UPDATE security_log_holds SET released_at='2026-11-16T12:00:00.000Z' WHERE id='incident-1'").run();
+  assert.equal((await runRetention(env,{dryRun:true,at})).counts.security_logs,3);
+  let injected=false;
+  const prepare=db.prepare;
+  db.prepare=sql=>{
+    if(!injected && sql.startsWith('DELETE FROM cms_audit WHERE')){
+      injected=true;
+      db.sqlite.prepare("INSERT INTO security_log_holds(id,reason_code,start_at) VALUES('incident-2','legal_evidence','2023-12-31T00:00:00.000Z')").run();
+    }
+    return prepare(sql);
+  };
+  const result=await runRetention(env,{at});
+  assert.equal(injected,true);
+  assert.equal(result.counts.security_logs,2);
+  assert.equal(db.sqlite.prepare('SELECT count(*) n FROM cms_audit').get().n,1);
+  assert.deepEqual(db.sqlite.prepare('PRAGMA foreign_key_check').all(),[]);
+  db.sqlite.prepare("UPDATE security_log_holds SET released_at='2026-11-16T12:30:00.000Z' WHERE id='incident-2'").run();
+  assert.equal((await runRetention(env,{at})).counts.security_logs,1);
+  db.sqlite.close();
+});
+
+test('failed retention run journals a safe code and releases the lease',async()=>{
+  const db=database(),env={DB:db,RETENTION_ENABLED:'1',RETENTION_SCOPE:'test'};
+  db.sqlite.prepare("UPDATE retention_policy SET period_days=NULL,enabled=1 WHERE category='contact'").run();
+  await assert.rejects(runRetention(env,{at:'2026-11-16T13:00:00.000Z'}),/retention_error/);
+  const run=db.sqlite.prepare('SELECT status,error_code,counts_json FROM retention_runs').get();
+  assert.equal(run.status,'failed');
+  assert.equal(run.error_code,'retention_error');
+  assert.equal(db.sqlite.prepare('SELECT owner FROM retention_lock WHERE id=1').get().owner,'');
   db.sqlite.close();
 });
