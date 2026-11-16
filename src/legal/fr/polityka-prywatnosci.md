@@ -21,7 +21,7 @@ Le CMS conserve comptes administrateurs, empreintes de mots de passe, sessions, 
 
 ## Destinataires et transferts
 
-Cloudflare fournit l'hébergement, les fonctions et le stockage D1. Stripe intervient seulement si les paiements sont activés ; ils ne sont actuellement pas configurés sur l'environnement de test. Google Gemini peut intervenir après configuration et utilisation manuelle. Les contrats de sous-traitance, lieux de stockage et éventuels transferts hors EEE restent à vérifier par le responsable ; aucune garantie non vérifiée n'est affirmée.
+Cloudflare fournit l'hébergement, les fonctions et le stockage D1. OVHcloud gère la boîte kontakt@polacywbelgii.eu et reçoit les messages qui lui sont adressés ainsi que nos réponses. Stripe intervient seulement si les paiements sont activés ; ils ne sont actuellement pas configurés sur l'environnement de test. Google Gemini peut intervenir après configuration et utilisation manuelle. Les contrats de sous-traitance, lieux de stockage et éventuels transferts hors EEE restent à vérifier par le responsable ; aucune garantie non vérifiée n'est affirmée.
 
 ## Conservation et droits
 

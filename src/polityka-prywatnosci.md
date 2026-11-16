@@ -21,7 +21,7 @@ CMS przechowuje konta administratorów, hashe haseł, sesje, decyzje redakcyjne 
 
 ## Odbiorcy i transfery
 
-Cloudflare zapewnia hosting, funkcje aplikacji i bazę D1. Stripe jest używany dopiero przy uruchomionym procesie płatności; na środowisku testowym płatności nie są obecnie skonfigurowane. Google Gemini może być użyty po ręcznym uruchomieniu funkcji AI, jeśli jest skonfigurowana. Szczegóły umów powierzenia, lokalizacji danych i ewentualnych transferów poza EOG wymagają potwierdzenia przez administratora; nie deklarujemy niezweryfikowanych gwarancji transferowych.
+Cloudflare zapewnia hosting, funkcje aplikacji i bazę D1. Skrzynkę kontakt@polacywbelgii.eu obsługuje OVHcloud; otrzymuje wiadomości wysłane na ten adres i korespondencję zwrotną. Stripe jest używany dopiero przy uruchomionym procesie płatności; na środowisku testowym płatności nie są obecnie skonfigurowane. Google Gemini może być użyty po ręcznym uruchomieniu funkcji AI, jeśli jest skonfigurowana. Szczegóły umów powierzenia, lokalizacji danych i ewentualnych transferów poza EOG wymagają potwierdzenia przez administratora; nie deklarujemy niezweryfikowanych gwarancji transferowych.
 
 ## Okresy i prawa
 

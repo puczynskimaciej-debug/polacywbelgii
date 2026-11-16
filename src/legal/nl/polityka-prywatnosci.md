@@ -21,7 +21,7 @@ Het CMS bewaart beheerdersaccounts, wachtwoordhashes, sessies, redactionele besl
 
 ## Ontvangers en doorgiften
 
-Cloudflare levert hosting, applicatiefuncties en D1-opslag. Stripe is pas betrokken als betalingen zijn ingeschakeld; op de testomgeving zijn ze momenteel niet geconfigureerd. Google Gemini kan worden gebruikt na configuratie en handmatige activering. Verwerkersovereenkomsten, gegevenslocaties en mogelijke doorgiften buiten de EER moeten nog door de verantwoordelijke worden gecontroleerd; wij geven geen ongeverifieerde garanties.
+Cloudflare levert hosting, applicatiefuncties en D1-opslag. OVHcloud beheert de mailbox kontakt@polacywbelgii.eu en ontvangt berichten die daarheen worden gestuurd en onze antwoorden. Stripe is pas betrokken als betalingen zijn ingeschakeld; op de testomgeving zijn ze momenteel niet geconfigureerd. Google Gemini kan worden gebruikt na configuratie en handmatige activering. Verwerkersovereenkomsten, gegevenslocaties en mogelijke doorgiften buiten de EER moeten nog door de verantwoordelijke worden gecontroleerd; wij geven geen ongeverifieerde garanties.
 
 ## Bewaring en rechten
 

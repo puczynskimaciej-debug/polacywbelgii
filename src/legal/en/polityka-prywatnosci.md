@@ -21,7 +21,7 @@ The CMS stores administrator accounts, password hashes, sessions, editorial deci
 
 ## Recipients and transfers
 
-Cloudflare provides hosting, application functions and D1 storage. Stripe is involved only when payments are enabled; payments are not currently configured on the test environment. Google Gemini may be used if manual AI features are configured and invoked. Processor agreements, data locations and possible transfers outside the EEA still need the controller's verification; we make no unverified transfer assurances.
+Cloudflare provides hosting, application functions and D1 storage. OVHcloud operates the kontakt@polacywbelgii.eu mailbox and receives messages sent to it and our replies. Stripe is involved only when payments are enabled; payments are not currently configured on the test environment. Google Gemini may be used if manual AI features are configured and invoked. Processor agreements, data locations and possible transfers outside the EEA still need the controller's verification; we make no unverified transfer assurances.
 
 ## Retention and rights
 
