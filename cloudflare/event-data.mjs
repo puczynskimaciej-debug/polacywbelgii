@@ -8,7 +8,9 @@ export function validateEvent(value, { allowPast = false, manual = false } = {})
   if (value.end && Date.parse(value.end) < Date.parse(value.start)) return false;
   if (!allowPast && !manual && (value.end || value.start) && Date.parse(value.end || value.start) <= Date.now()) return false;
   if (manual ? value.timezone !== undefined && value.timezone !== 'Europe/Brussels' : value.timezone !== 'Europe/Brussels') return false;
-  if (!(manual ? [undefined,null,'','brussels','flanders','wallonia'].includes(value.region) : ['brussels','flanders','wallonia'].includes(value.region))) return false;
+  if (!(manual ? [undefined,null,'','all','brussels','flanders','wallonia'].includes(value.region) : ['brussels','flanders','wallonia'].includes(value.region))) return false;
+  if (value.isHoliday !== undefined && (typeof value.isHoliday !== 'boolean' || !manual)) return false;
+  if (value.isHoliday && (!value.date || value.start || value.end || value.endDate && value.endDate !== value.date)) return false;
   if (!['scheduled','cancelled','postponed'].includes(value.status || 'scheduled')) return false;
   for (const key of ['organizer','category']) if (manual && value[key] === undefined) continue; else if (typeof value[key] !== 'string' || !manual && !value[key].trim() || value[key].length > 200) return false;
   for (const key of ['city','venue']) if (manual ? value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > 200) : typeof value[key] !== 'string' || !value[key].trim() || value[key].length > 200) return false;

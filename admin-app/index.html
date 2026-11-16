@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Panel redakcji | Polacy w Belgii</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/fonts.css">
   <link rel="stylesheet" href="/admin/admin.css">
   <link rel="stylesheet" href="/admin/cms-extra.css">
   <link rel="stylesheet" href="/admin/redesign.css">
+  <script src="/calendar-days.js" defer></script>
   <script type="module" src="/admin/ui.js"></script>
   <script type="module" src="/admin/app.js"></script>
   <script type="module" src="/admin/ai-editor-redesign.js"></script>
   <script type="module" src="/admin/ai-chat.js"></script>
   <script type="module" src="/admin/events-editor.js"></script>
   <script type="module" src="/admin/ads.js"></script>
+  <script type="module" src="/admin/retention.js"></script>
 </head>
 <body>
   <div id="auth-view" class="auth-shell">
@@ -65,6 +65,7 @@
         <button class="nav-item" data-view="media">▧ <span>Biblioteka mediów</span></button>
         <button class="nav-item" data-view="contact">✉ <span>Kontakt i SEO</span></button>
         <button class="nav-item admin-only" data-view="history">↺ <span>Historia zmian</span></button>
+        <button class="nav-item admin-only" data-view="retention">◷ <span>Retencja danych</span></button>
         <button class="nav-item admin-only" data-view="users">♙ <span>Użytkownicy i role</span></button>
       </nav>
       <a class="site-link" href="/" target="_blank" rel="noopener">Otwórz stronę ↗</a>
@@ -158,6 +159,14 @@
         <div class="table-card"><div id="history-list"><p>Ładowanie historii…</p></div></div>
       </section>
 
+      <section class="view admin-only" data-panel="retention">
+        <div class="page-heading"><div><p class="kicker">Ochrona danych</p><h1>Retencja danych</h1><p class="section-description">Podgląd kwalifikujących się rekordów nie usuwa żadnych danych. Zamykanie sprawy rozpoczyna bieg okresu przechowywania.</p></div><button class="secondary" type="button" id="retention-refresh">Odśwież</button></div>
+        <p id="retention-notice" role="status"></p>
+        <div class="editor-card"><h2>Przegląd bez usuwania</h2><div id="retention-preview"></div></div>
+        <div class="editor-card"><h2>Ostatnie wykonania</h2><div id="retention-runs"></div></div>
+        <div class="editor-card"><h2>Sprawy z formularza kontaktowego</h2><p class="muted">Sprawę zamknij dopiero po odpowiedzi i zakończeniu obsługi. W razie reklamacji lub sporu ustaw blokadę.</p><div id="retention-contacts"></div></div>
+      </section>
+
       <section class="view admin-only" data-panel="users">
         <div class="page-heading"><div><p class="kicker">Tylko administrator</p><h1>Użytkownicy i role</h1></div><button class="primary" data-action="new-user">+ Dodaj osobę</button></div>
         <div class="editor-card"><p class="muted">Edytor zarządza treściami, mediami i reklamami. Administrator dodatkowo tworzy konta, zmienia role, ustawia hasła tymczasowe i blokuje dostęp.</p></div>
@@ -210,7 +219,8 @@
         <label class="wide">Oryginalny opis po polsku<textarea name="body" rows="8"></textarea></label>
         <label>Kategoria<input name="category" maxlength="120" list="event-categories"></label>
         <datalist id="event-categories"><option value="Kultura"><option value="Koncert"><option value="Rodzina"><option value="Sport"><option value="Edukacja"><option value="Spotkanie"></datalist>
-        <label>Region<select name="region"><option value="">Nieokreślony</option><option value="brussels">Bruksela</option><option value="flanders">Flandria</option><option value="wallonia">Walonia</option></select></label>
+        <label>Region<select name="region"><option value="">Nieokreślony</option><option value="all">Cała Belgia</option><option value="brussels">Bruksela</option><option value="flanders">Flandria</option><option value="wallonia">Walonia</option></select></label>
+        <label class="wide event-check"><input name="isHoliday" type="checkbox"><span>Święto lub dzień wolny — cały dzień (bez godziny)</span></label>
         <fieldset class="event-date-group"><legend>Rozpoczęcie (czas Brukseli)</legend><label>Data rozpoczęcia<input name="startDate" type="date"></label><label>Godzina rozpoczęcia<input name="startTime" type="time"></label></fieldset>
         <fieldset class="event-date-group"><legend>Zakończenie, jeśli dotyczy</legend><label>Data zakończenia<input name="endDate" type="date"></label><label>Godzina zakończenia<input name="endTime" type="time"></label></fieldset>
         <label>Miasto<input name="city" maxlength="120"></label>

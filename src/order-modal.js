@@ -10,7 +10,7 @@
       company: 'Firma / reklamodawca', url: 'Adres strony reklamy', image: 'Baner (PNG, JPEG lub WebP, do 500 KB)', customer: 'Imię i nazwisko zamawiającego',
       contact: 'Kontakt widoczny pod ogłoszeniem', contactHint: 'Telefon, e-mail lub adres — wpisz tylko to, co chcesz upublicznić.',
       email: 'Twój e-mail — tylko dla administratorów', privacy: 'Ten adres służy do obsługi zamówienia i nie pojawi się w ogłoszeniu.',
-      consent: 'Zgadzam się na publikację treści i przetwarzanie podanych danych w celu obsługi zamówienia.', terms: 'Akceptuję projekt regulaminu płatnych ogłoszeń', earlyService: 'Wyraźnie żądam rozpoczęcia emisji przed upływem terminu odstąpienia (jeżeli dotyczy).', total: 'Łącznie', days: 'Wybrane dni',
+      consent: 'Zgadzam się na publikację podanej treści i publicznych danych reklamodawcy.', terms: 'Akceptuję projekt regulaminu płatnych ogłoszeń', earlyService: 'Wyraźnie żądam rozpoczęcia emisji przed upływem terminu odstąpienia (jeżeli dotyczy).', total: 'Łącznie', days: 'Wybrane dni',
       review: 'Sprawdź zamówienie', send: 'Złóż zamówienie', back: 'Wróć do edycji', close: 'Zamknij', loading: 'Sprawdzanie dostępności…',
       unavailable: 'Zamawianie w wybranym języku jest obecnie wyłączone.', error: 'Nie udało się pobrać danych. Spróbuj ponownie.',
       full: 'Wybrany termin obejmuje zajęte dni. Wybierz inny zakres.', changed: 'Cena zmieniła się. Sprawdź nową cenę.',
@@ -29,7 +29,7 @@
       company: 'Company / advertiser', url: 'Advertiser website', image: 'Banner (PNG, JPEG or WebP, up to 500 KB)', customer: 'Customer name',
       contact: 'Contact details shown with the listing', contactHint: 'Phone, email or address — enter only what you want to make public.',
       email: 'Your email — visible to administrators only', privacy: 'This address is used to handle your order and is not shown in the listing.',
-      consent: 'I agree to publication of the content and processing of my details to handle this order.', terms: 'I accept the draft paid listings terms', earlyService: 'I expressly request that the listing start before the withdrawal period ends (if applicable).', total: 'Total', days: 'Selected days',
+      consent: 'I agree to publication of the content and public advertiser details I provided.', terms: 'I accept the draft paid listings terms', earlyService: 'I expressly request that the listing start before the withdrawal period ends (if applicable).', total: 'Total', days: 'Selected days',
       review: 'Review order', send: 'Submit order', back: 'Back to editing', close: 'Close', loading: 'Checking availability…',
       unavailable: 'Orders are currently disabled for the chosen language.', error: 'Could not load the data. Please try again.',
       full: 'The chosen range contains fully booked days. Choose another range.', changed: 'The price changed. Review the new total.',
@@ -48,7 +48,7 @@
       company: 'Bedrijf / adverteerder', url: 'Website van de adverteerder', image: 'Banner (PNG, JPEG of WebP, maximaal 500 KB)', customer: 'Naam van de klant',
       contact: 'Contactgegevens bij de advertentie', contactHint: 'Telefoon, e-mail of adres — vul alleen in wat openbaar mag zijn.',
       email: 'Je e-mail — alleen voor beheerders', privacy: 'Dit adres wordt gebruikt voor je bestelling en niet getoond in de advertentie.',
-      consent: 'Ik stem in met publicatie van de inhoud en verwerking van mijn gegevens voor deze bestelling.', terms: 'Ik aanvaard het ontwerpreglement voor betaalde advertenties', earlyService: 'Ik verzoek uitdrukkelijk om de advertentie vóór het einde van de herroepingstermijn te starten (indien van toepassing).', total: 'Totaal', days: 'Geselecteerde dagen',
+      consent: 'Ik stem in met publicatie van de opgegeven inhoud en openbare adverteerdersgegevens.', terms: 'Ik aanvaard het ontwerpreglement voor betaalde advertenties', earlyService: 'Ik verzoek uitdrukkelijk om de advertentie vóór het einde van de herroepingstermijn te starten (indien van toepassing).', total: 'Totaal', days: 'Geselecteerde dagen',
       review: 'Controleer bestelling', send: 'Bestelling plaatsen', back: 'Terug naar bewerken', close: 'Sluiten', loading: 'Beschikbaarheid controleren…',
       unavailable: 'Bestellen is momenteel uitgeschakeld voor de gekozen taal.', error: 'Gegevens laden mislukt. Probeer opnieuw.',
       full: 'De gekozen periode bevat volzette dagen. Kies een andere periode.', changed: 'De prijs is gewijzigd. Controleer het nieuwe bedrag.',
@@ -67,7 +67,7 @@
       company: 'Entreprise / annonceur', url: 'Site de l’annonceur', image: 'Bannière (PNG, JPEG ou WebP, 500 Ko maximum)', customer: 'Nom du client',
       contact: 'Coordonnées affichées avec l’annonce', contactHint: 'Téléphone, e-mail ou adresse — indiquez uniquement ce qui peut être public.',
       email: 'Votre e-mail — réservé aux administrateurs', privacy: 'Cette adresse sert à gérer la commande et n’apparaît pas dans l’annonce.',
-      consent: 'J’accepte la publication du contenu et le traitement de mes données pour gérer cette commande.', terms: 'J’accepte le projet de conditions des annonces payantes', earlyService: 'Je demande expressément le début de la diffusion avant la fin du délai de rétractation (le cas échéant).', total: 'Total', days: 'Jours sélectionnés',
+      consent: 'J’accepte la publication du contenu et des coordonnées publiques de l’annonceur fournis.', terms: 'J’accepte le projet de conditions des annonces payantes', earlyService: 'Je demande expressément le début de la diffusion avant la fin du délai de rétractation (le cas échéant).', total: 'Total', days: 'Jours sélectionnés',
       review: 'Vérifier la commande', send: 'Envoyer la commande', back: 'Retour à la modification', close: 'Fermer', loading: 'Vérification des disponibilités…',
       unavailable: 'Les commandes sont actuellement désactivées pour la langue choisie.', error: 'Impossible de charger les données. Réessayez.',
       full: 'La période choisie contient des jours complets. Choisissez une autre période.', changed: 'Le prix a changé. Vérifiez le nouveau montant.',
@@ -77,6 +77,11 @@
       demoNotice: 'Mode démonstration — prix et disponibilités fictifs. Rien ne sera enregistré.', demoSuccess: 'Ceci était un aperçu. Rien n’a été envoyé.'
     }
   };
+
+  Object.assign(copy.pl, { privacyNotice:'Dane zamówienia przetwarzamy, aby przygotować i obsłużyć ogłoszenie. Dane kontaktowe wskazane jako publiczne pojawią się przy reklamie.', privacyPolicy:'Polityka prywatności' });
+  Object.assign(copy.en, { privacyNotice:'We process order details to prepare and manage your listing. Contact details marked public will appear with the ad.', privacyPolicy:'Privacy policy' });
+  Object.assign(copy.nl, { privacyNotice:'Wij verwerken bestelgegevens om uw advertentie voor te bereiden en te beheren. Als openbaar opgegeven contactgegevens verschijnen bij de advertentie.', privacyPolicy:'Privacybeleid' });
+  Object.assign(copy.fr, { privacyNotice:'Nous traitons les données de commande pour préparer et gérer votre annonce. Les coordonnées indiquées comme publiques apparaîtront avec l’annonce.', privacyPolicy:'Politique de confidentialité' });
 
   Object.assign(copy.pl, { topImage: 'Grafika TOP: 1200 × 720 px (PNG, JPEG lub WebP, do 500 KB).', premiumImage: 'Grafika PREMIUM: komputer 1200 × 200 px i telefon 660 × 300 px. Każdy plik PNG, JPEG lub WebP, do 500 KB.', mobileImage: 'Grafika na telefon (660 × 300 px)', dimensionError: 'Grafika ma inne wymiary niż wymagane dla wybranego miejsca publikacji.' });
   Object.assign(copy.en, { topImage: 'TOP image: 1200 × 720 px (PNG, JPEG or WebP, up to 500 KB).', premiumImage: 'PREMIUM images: desktop 1200 × 200 px and mobile 660 × 300 px. Each PNG, JPEG or WebP, up to 500 KB.', mobileImage: 'Mobile image (660 × 300 px)', dimensionError: 'The image dimensions do not match the selected placement.' });
@@ -306,7 +311,7 @@
     for (let index = 0; index < 7; index++) grid.append(node('span', new Intl.DateTimeFormat(languages[locale]?.locale || 'pl-PL', { weekday: 'short' }).format(new Date(2026, 5, 1 + index)), 'calendar-weekday'));
     const spaces = (new Date(year, monthNumber - 1, 1).getDay() + 6) % 7;
     for (let index = 0; index < spaces; index++) grid.append(node('span'));
-    for (let day = 1; day <= Number(last.slice(-2)); day++) { const button = node('button', String(day)); button.type = 'button'; button.disabled = true; grid.append(button); }
+    for (let day = 1; day <= Number(last.slice(-2)); day++) { const date = `${month}-${String(day).padStart(2,'0')}`; const button = node('button', String(day)); button.type = 'button'; button.disabled = true; button.classList.toggle('is-holiday',!!(window.PbeCalendar?.holidays(date).some(item => item.scope === 'federal') || window.PbeCalendar?.sunday(date))); button.classList.toggle('is-today',date === window.PbeCalendar?.today()); grid.append(button); }
     if (last < config.today || first > lastAllowed) return;
     $('#calendar-status').textContent = t('loading');
     try {
@@ -342,6 +347,7 @@
 
   function render() {
     const termsHref = document.documentElement.lang === 'pl' ? '/regulamin-ogloszen/' : `/${document.documentElement.lang}/regulamin-ogloszen/`;
+    const privacyHref = document.documentElement.lang === 'pl' ? '/polityka-prywatnosci/' : `/${document.documentElement.lang}/polityka-prywatnosci/`;
     dialog.innerHTML = `<div class="order-heading"><div><span class="eyebrow">Polacy w Belgii</span><h2 id="order-title">${t('title')}</h2></div><button type="button" id="order-close" aria-label="${t('close')}">×</button></div>
       <p>${t('intro')}</p>${demoMode ? `<p class="order-demo" role="note">${t('demoNotice')}</p>` : ''}<p id="order-message" role="status"></p>
       <form id="order-form"><fieldset class="order-panel order-panel--primary"><legend><span aria-hidden="true">◎</span> ${t('languageSection')}</legend><p>${t('languageHint')}</p><select id="order-primary" class="order-primary-native" aria-label="${t('baseLanguage')}" tabindex="-1">${keys.map(language => `<option value="${language}" ${language === primaryLanguage ? 'selected' : ''}>${languages[language].name}</option>`).join('')}</select><div class="order-primary-choices">${visualOrder.map(language => `<label class="order-primary-choice"><input type="radio" name="primaryChoice" value="${language}" ${language===primaryLanguage?'checked':''}><span class="order-flag order-flag--${language}" aria-hidden="true"></span><span>${visualNames[locale]?.[language] || languages[language].name}</span></label>`).join('')}</div></fieldset>
@@ -358,7 +364,7 @@
       <fieldset id="order-banner-fields" hidden><legend>${t('bannerContent')}</legend><div id="order-banner-copy"></div><p id="order-image-hint"></p><p>${t('fallback')}</p><p>${t('graphicWarning')}</p><label>${t('image')}<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></label><p id="order-image-name"></p><div id="order-mobile-image"><label>${t('mobileImage')}<input name="imageMobileFile" type="file" accept="image/png,image/jpeg,image/webp"></label><p id="order-mobile-image-name"></p></div><p class="order-note">${t('imageWarning')}</p></fieldset>
       <fieldset id="order-public-fields"><legend>${t('publicData')}</legend><p>${t('publicHint')}</p><label>${t('company')}<input name="company" maxlength="120"></label><label>${t('publicPhone')}<input name="publicPhone" type="tel" maxlength="40"></label><label>${t('publicEmail')}<input name="publicEmail" type="email" maxlength="254"></label><label>${t('url')}<input name="url" type="url" maxlength="2048" placeholder="https://"></label><label>${t('otherContact')}<input name="contact" maxlength="160"></label><p id="order-click-behavior" class="order-note"></p></fieldset>
       <fieldset id="order-buyer-fields"><legend>${t('buyerData')}</legend><label>${t('customer')}<input name="customerName" maxlength="120" required></label><label>${t('email')}<input name="email" type="email" maxlength="254" autocomplete="email" required><small>${t('privacy')}</small></label></fieldset>
-      <label class="order-choice"><input name="consent" type="checkbox" required>${t('consent')}</label><label class="order-choice"><input name="termsAccepted" type="checkbox" required>${t('terms')} <a href="${termsHref}" target="_blank" rel="noopener">↗</a></label><label class="order-choice"><input name="earlyServiceRequest" type="checkbox">${t('earlyService')}</label><p id="order-breakdown" class="order-note"></p><div class="order-total"><span>${t('total')}</span><strong id="order-total"></strong></div><p class="order-note">${demoMode ? t('unpaid') : config.paymentsEnabled ? t('payNote') : t('paymentDisabled')}</p><button class="button" id="order-review">${t('review')}</button></form><section id="order-confirm" hidden></section>`;
+      <p class="order-note">${t('privacyNotice')} <a href="${privacyHref}" target="_blank" rel="noopener">${t('privacyPolicy')}</a>.</p><label class="order-choice"><input name="consent" type="checkbox" required>${t('consent')}</label><label class="order-choice"><input name="termsAccepted" type="checkbox" required>${t('terms')} <a href="${termsHref}" target="_blank" rel="noopener">↗</a></label><label class="order-choice"><input name="earlyServiceRequest" type="checkbox">${t('earlyService')}</label><p id="order-breakdown" class="order-note"></p><div class="order-total"><span>${t('total')}</span><strong id="order-total"></strong></div><p class="order-note">${demoMode ? t('unpaid') : config.paymentsEnabled ? t('payNote') : t('paymentDisabled')}</p><button class="button" id="order-review">${t('review')}</button></form><section id="order-confirm" hidden></section>`;
     $('[name=contact]').value = contact; $('[name=publicPhone]').value = publicPhone; $('[name=publicEmail]').value = publicEmail; $('[name=email]').value = email; $('[name=company]').value = company; $('[name=url]').value = url; $('[name=customerName]').value = customerName;
     for (const sampleType of ['PREMIUM','TOP']) { const price = config?.data.markets[primaryLanguage]?.prices[sampleType]; $('#order-example-' + sampleType.toLowerCase() + '-price').textContent = price ? `${money(price)} ${t('perDay')}` : ''; }
     $('[name=imageFile]').required = false;

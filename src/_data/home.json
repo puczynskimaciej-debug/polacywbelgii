@@ -1,242 +1,38 @@
 {
   "hero": {
-    "eyebrow": "Testowa wersja serwisu",
-    "title": "Testowa strona Polaków w Belgii",
-    "description": "To przykładowa treść sekcji głównej. Pokazuje miejsce na najważniejszy komunikat, krótki opis portalu i przyciski prowadzące do artykułów oraz ogłoszeń."
+    "eyebrow": "Polacy w Belgii",
+    "title": "Informacje dla Polaków w Belgii",
+    "description": "Artykuły, wydarzenia i ogłoszenia społeczności w jednym miejscu."
   },
-  "news": [
-    {
-      "title": "Testowy news o pierwszych dniach w Belgii",
-      "category": "Test: formalności",
-      "description": "Przykładowy opis kafelka prezentującego wiadomość o dokumentach i pierwszych krokach po przeprowadzce.",
-      "image": "/images/placeholders/start-belgia.svg",
-      "link": "/artykuly/test/"
-    },
-    {
-      "title": "Testowy news o pracy",
-      "category": "Test: praca",
-      "description": "Przykładowy opis materiału dotyczącego dnia pracy, obowiązków oraz organizacji dokumentów.",
-      "image": "/images/placeholders/praca-belgia.svg",
-      "link": "/artykuly/test-praca/"
-    },
-    {
-      "title": "Testowy pomysł na weekend",
-      "category": "Test: czas wolny",
-      "description": "Lekki placeholder pokazujący, jak może wyglądać kafelek o wydarzeniach, rodzinie i wolnym czasie.",
-      "image": "/images/placeholders/weekend-belgia.svg",
-      "link": "/artykuly/test-weekend/"
-    }
-  ],
-  "notices": [
-    {
-      "title": "Testowe ogłoszenie społecznościowe",
-      "category": "Test: społeczność",
-      "date": "Lipiec 2026",
-      "description": "To przykładowa treść ogłoszenia. W tym miejscu można później opublikować informację o wydarzeniu albo lokalnej inicjatywie.",
-      "contact": "test@polacywbelgii.eu"
-    },
-    {
-      "title": "Testowe ogłoszenie redakcyjne",
-      "category": "Test: redakcja",
-      "date": "Lipiec 2026",
-      "description": "Drugi, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
-      "contact": "Dane kontaktowe są przykładowe"
-    },
-    {
-      "title": "Testowe ogłoszenie redakcyjne",
-      "category": "Test: redakcja",
-      "date": "Wrzesień",
-      "description": "Trzeci, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
-      "contact": "Tel: 123-456-789"
-    },
-    {
-      "title": "Testowe ogłoszenie redakcyjne",
-      "category": "Test: odbiorca",
-      "date": "Wrzesień",
-      "description": "Czwarty, niezależny placeholder służący do sprawdzenia wyglądu dłuższego komunikatu na stronie głównej.",
-      "contact": "https://www.google.com/"
-    }
-  ],
+  "news": [],
+  "notices": [],
   "locales": {
     "nl": {
       "hero": {
-        "eyebrow": "Testversie van de website",
-        "title": "Testwebsite voor Polen in België",
-        "description": "Dit is voorbeeldinhoud voor het hoofdgedeelte. Het toont ruimte voor een belangrijke boodschap, een korte beschrijving en links naar artikels en berichten."
+        "eyebrow": "Polen in België",
+        "title": "Informatie voor Polen in België",
+        "description": "Artikels, evenementen en advertenties van de gemeenschap op één plek."
       },
-      "news": [
-        {
-          "title": "Testbericht over de eerste dagen in België",
-          "category": "Test: administratie",
-          "description": "Een voorbeeldbeschrijving van een kaart over documenten en de eerste stappen na een verhuizing.",
-          "image": "/images/placeholders/start-belgia.svg",
-          "link": "/artykuly/test/"
-        },
-        {
-          "title": "Testbericht over werk",
-          "category": "Test: werk",
-          "description": "Een voorbeeldtekst over een werkdag, verplichtingen en het organiseren van documenten.",
-          "image": "/images/placeholders/praca-belgia.svg",
-          "link": "/artykuly/test-praca/"
-        },
-        {
-          "title": "Testidee voor het weekend",
-          "category": "Test: vrije tijd",
-          "description": "Een lichte placeholder die toont hoe een kaart over evenementen, gezin en vrije tijd eruitziet.",
-          "image": "/images/placeholders/weekend-belgia.svg",
-          "link": "/artykuly/test-weekend/"
-        }
-      ],
-      "notices": [
-        {
-          "title": "Testbericht voor de gemeenschap",
-          "category": "Test: gemeenschap",
-          "date": "Juli 2026",
-          "description": "Dit is voorbeeldinhoud. Hier kan later informatie over een evenement of lokaal initiatief verschijnen.",
-          "contact": "test@polacywbelgii.eu"
-        },
-        {
-          "title": "Testbericht van de redactie",
-          "category": "Test: redactie",
-          "date": "Juli 2026",
-          "description": "Een tweede, onafhankelijke placeholder om een langer bericht op de startpagina te testen.",
-          "contact": "Voorbeeldcontactgegevens"
-        },
-        {
-          "title": "Nog een testbericht van de redactie",
-          "category": "Test: redactie",
-          "date": "September",
-          "description": "Een derde voorbeeldbericht dat toont hoe een langere mededeling op de startpagina verschijnt.",
-          "contact": "Tel: 123-456-789"
-        },
-        {
-          "title": "Testbericht voor lezers",
-          "category": "Test: lezers",
-          "date": "September",
-          "description": "Een vierde voorbeeldbericht om de opmaak van het prikbord te controleren.",
-          "contact": "https://www.google.com/"
-        }
-      ]
+      "news": [],
+      "notices": []
     },
     "fr": {
       "hero": {
-        "eyebrow": "Version test du site",
-        "title": "Site test pour les Polonais en Belgique",
-        "description": "Ceci est un contenu d’exemple pour la section principale. Il montre l’emplacement d’un message important, d’une courte présentation et des liens vers les articles et annonces."
+        "eyebrow": "Polonais en Belgique",
+        "title": "Informations pour les Polonais en Belgique",
+        "description": "Articles, événements et annonces de la communauté au même endroit."
       },
-      "news": [
-        {
-          "title": "Actualité test sur les premiers jours en Belgique",
-          "category": "Test : démarches",
-          "description": "Une description d’exemple pour une carte consacrée aux documents et aux premières démarches.",
-          "image": "/images/placeholders/start-belgia.svg",
-          "link": "/artykuly/test/"
-        },
-        {
-          "title": "Actualité test sur le travail",
-          "category": "Test : travail",
-          "description": "Un exemple de texte sur une journée de travail, les obligations et l’organisation des documents.",
-          "image": "/images/placeholders/praca-belgia.svg",
-          "link": "/artykuly/test-praca/"
-        },
-        {
-          "title": "Idée test pour le week-end",
-          "category": "Test : loisirs",
-          "description": "Un placeholder léger montrant une carte consacrée aux événements, à la famille et aux loisirs.",
-          "image": "/images/placeholders/weekend-belgia.svg",
-          "link": "/artykuly/test-weekend/"
-        }
-      ],
-      "notices": [
-        {
-          "title": "Annonce communautaire test",
-          "category": "Test : communauté",
-          "date": "Juillet 2026",
-          "description": "Ceci est un contenu d’exemple. Une information sur un événement ou une initiative locale pourra apparaître ici.",
-          "contact": "test@polacywbelgii.eu"
-        },
-        {
-          "title": "Annonce test de la rédaction",
-          "category": "Test : rédaction",
-          "date": "Juillet 2026",
-          "description": "Un deuxième placeholder indépendant permettant de tester un message plus long sur la page d’accueil.",
-          "contact": "Coordonnées d’exemple"
-        },
-        {
-          "title": "Autre annonce test de la rédaction",
-          "category": "Test : rédaction",
-          "date": "Septembre",
-          "description": "Une troisième annonce d’exemple montrant une communication plus longue sur la page d’accueil.",
-          "contact": "Tel: 123-456-789"
-        },
-        {
-          "title": "Annonce test pour les lecteurs",
-          "category": "Test : lecteurs",
-          "date": "Septembre",
-          "description": "Une quatrième annonce d’exemple pour vérifier la présentation du tableau communautaire.",
-          "contact": "https://www.google.com/"
-        }
-      ]
+      "news": [],
+      "notices": []
     },
     "en": {
       "hero": {
-        "eyebrow": "Test version of the site",
-        "title": "A test site for Poles in Belgium",
-        "description": "This sample hero introduces the portal and links to practical articles and community listings."
+        "eyebrow": "Poles in Belgium",
+        "title": "Information for Poles in Belgium",
+        "description": "Articles, events and community listings in one place."
       },
-      "news": [
-        {
-          "title": "Sample story: first days in Belgium",
-          "category": "Test: administration",
-          "description": "A sample guide to documents and the first steps after moving.",
-          "image": "/images/placeholders/start-belgia.svg",
-          "link": "/artykuly/test/"
-        },
-        {
-          "title": "Sample story: working in Belgium",
-          "category": "Test: work",
-          "description": "An example of how a practical article about work could appear.",
-          "image": "/images/placeholders/praca-belgia.svg",
-          "link": "/artykuly/test-praca/"
-        },
-        {
-          "title": "Sample idea for the weekend",
-          "category": "Test: leisure",
-          "description": "A sample card about events, family life and free time.",
-          "image": "/images/placeholders/weekend-belgia.svg",
-          "link": "/artykuly/test-weekend/"
-        }
-      ],
-      "notices": [
-        {
-          "title": "Sample community notice",
-          "category": "Test: community",
-          "date": "July 2026",
-          "description": "A sample notice. A real local event or initiative could be announced here.",
-          "contact": "test@polacywbelgii.eu"
-        },
-        {
-          "title": "Sample editorial notice",
-          "category": "Test: editorial",
-          "date": "July 2026",
-          "description": "A second sample notice showing a longer announcement on the home page.",
-          "contact": "Sample contact details"
-        },
-        {
-          "title": "Another sample notice",
-          "category": "Test: editorial",
-          "date": "September 2026",
-          "description": "A third sample notice showing how a longer community message could look.",
-          "contact": "Phone: 123-456-789"
-        },
-        {
-          "title": "Sample notice for readers",
-          "category": "Test: readers",
-          "date": "September 2026",
-          "description": "A fourth sample notice for checking the layout of the community board.",
-          "contact": "https://www.google.com/"
-        }
-      ]
+      "news": [],
+      "notices": []
     }
   }
 }

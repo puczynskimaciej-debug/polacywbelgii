@@ -21,12 +21,16 @@ function toUtc(value) {
 function eventFromForm(form) {
   const date = form.elements.startDate.value, startTime = form.elements.startTime.value;
   const endDate = form.elements.endDate.value, endTime = form.elements.endTime.value;
+  const isHoliday = form.elements.isHoliday.checked;
+  if (isHoliday && !date) throw new Error('Wybierz datę święta.');
+  if (isHoliday && !form.elements.region.value) throw new Error('Wybierz obszar obowiązywania święta.');
   if (startTime && !date || endTime && !endDate || endDate && !date) throw new Error('Godzina wymaga daty, a data zakończenia wymaga daty rozpoczęcia.');
   const start = date && startTime ? toUtc(`${date}T${startTime}`) : null, end = endDate && endTime ? toUtc(`${endDate}T${endTime}`) : null;
   if (endDate && endDate < date || end && start && Date.parse(end) < Date.parse(start)) throw new Error(label('endBeforeStart','Zakończenie nie może być wcześniejsze od rozpoczęcia.'));
   const sourceUrl = form.elements.sourceUrl.value.trim();
   if (sourceUrl && !/^https:\/\/[^\s]+$/.test(sourceUrl)) throw new Error(label('invalidSource','Oficjalne źródło musi być poprawnym adresem HTTPS.'));
   const event = { date:date || null, start, endDate:endDate || null, end, timezone:'Europe/Brussels', city:form.elements.city.value.trim(), venue:form.elements.venue.value.trim(), address:form.elements.address.value.trim(), organizer:form.elements.organizer.value.trim(), category:form.elements.category.value.trim(), region:form.elements.region.value, sourceUrl, status:form.elements.eventStatus.value, familyFriendly:form.elements.familyFriendly.checked };
+  if (isHoliday) event.isHoliday = true;
   if (form.elements.image.value.trim()) { event.image = form.elements.image.value.trim(); event.imageRightsConfirmed = form.elements.imageRightsConfirmed.checked; }
   if (form.elements.price.value !== '') { event.price = Number(form.elements.price.value); event.priceCurrency = 'EUR'; }
   return event;
@@ -67,11 +71,14 @@ function renderCalendar() {
   for (let day=1;day<=days;day++) {
     const key = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const events = rows.filter(row => { const event = JSON.parse(row.event_json || '{}'); const first = event.date || dateKey(event.start), last = event.endDate || dateKey(event.end) || first; return first && first <= key && last >= key && row.status !== 'archived'; });
-    cells.push(`<div class="calendar-day"><strong>${day}</strong>${events.map(row => `<button type="button" class="calendar-entry status-${escapeHtml(row.status)}" data-event-edit="${row.id}" title="${escapeHtml(row.title || label('untitled','Wydarzenie bez tytułu'))}">${escapeHtml(row.title || label('untitled','Wydarzenie bez tytułu'))} · ${escapeHtml(statusLabel(row.status))}</button>`).join('')}</div>`);
+    const holidays = window.PbeCalendar?.holidays(key) || [];
+    const isSunday = window.PbeCalendar?.sunday(key);
+    const isToday = key === window.PbeCalendar?.today();
+    cells.push(`<div class="calendar-day${holidays.length || isSunday || events.some(row => JSON.parse(row.event_json || '{}').isHoliday) ? ' is-holiday' : ''}${isToday ? ' is-today' : ''}"><div class="calendar-day-head"><strong>${day}</strong><button type="button" class="calendar-add" data-event-new-date="${key}" aria-label="Dodaj wydarzenie ${key}" title="Dodaj wydarzenie">+</button></div>${holidays.map(item => `<span class="calendar-holiday" title="${escapeHtml(window.PbeCalendar.label(item,language))}">${escapeHtml(window.PbeCalendar.label(item,language))}</span>`).join('')}${events.map(row => `<button type="button" class="calendar-entry status-${escapeHtml(row.status)}" data-event-edit="${row.id}" title="${escapeHtml(row.title || label('untitled','Wydarzenie bez tytułu'))}">${escapeHtml(row.title || label('untitled','Wydarzenie bez tytułu'))} · ${escapeHtml(statusLabel(row.status))}</button>`).join('')}</div>`);
   }
   grid.innerHTML = cells.join('');
 }
-function open(row = null) {
+function open(row = null, initialDate = '') {
   selected = row;
   const form = $('#event-editor-form'); form.reset(); form.dataset.dirty = 'false'; $('#event-editor-error').textContent = '';
   const event = row ? JSON.parse(row.event_json || '{}') : {};
@@ -80,6 +87,9 @@ function open(row = null) {
   form.elements.eventStatus.value = event.status || 'scheduled';
   form.elements.imageRightsConfirmed.checked = event.imageRightsConfirmed === true;
   for (const key of ['start','end']) { const value = local(event[key]); form.elements[`${key}Date`].value = event[key === 'start' ? 'date' : 'endDate'] || value.slice(0,10); form.elements[`${key}Time`].value = value.slice(11,16); }
+  if (!row) form.elements.startDate.value = initialDate;
+  form.elements.isHoliday.checked = event.isHoliday === true;
+  syncHolidayTime(form);
   form.elements.price.value = event.price ?? '';
   form.elements.familyFriendly.checked = event.familyFriendly === true;
   $('#event-editor-verify').hidden = !row || ['published','archived','rejected'].includes(row.status);
@@ -98,7 +108,13 @@ $('#event-new').addEventListener('click',() => open());
 $('#event-calendar-new').addEventListener('click',() => open());
 $('#event-calendar-prev').addEventListener('click',() => { calendarMonth.setMonth(calendarMonth.getMonth()-1); renderCalendar(); });
 $('#event-calendar-next').addEventListener('click',() => { calendarMonth.setMonth(calendarMonth.getMonth()+1); renderCalendar(); });
-$('#event-calendar-grid').addEventListener('click',event => { const button=event.target.closest('[data-event-edit]'); if (button) open(rows.find(row => row.id === button.dataset.eventEdit)); });
+$('#event-calendar-grid').addEventListener('click',event => { const create=event.target.closest('[data-event-new-date]'); if (create) return open(null,create.dataset.eventNewDate); const button=event.target.closest('[data-event-edit]'); if (button) open(rows.find(row => row.id === button.dataset.eventEdit)); });
+function syncHolidayTime(form) {
+  for (const key of ['startTime','endTime']) { form.elements[key].disabled = form.elements.isHoliday.checked; if (form.elements.isHoliday.checked) form.elements[key].value = ''; }
+  if (form.elements.isHoliday.checked) form.elements.endDate.value = form.elements.startDate.value;
+}
+$('#event-editor-form').elements.isHoliday.addEventListener('change',event => syncHolidayTime(event.target.form));
+$('#event-editor-form').elements.startDate.addEventListener('change',event => { if (event.target.form.elements.isHoliday.checked) syncHolidayTime(event.target.form); });
 document.addEventListener('cms:load-events',load);
 document.addEventListener('cmslanguagechange',() => { applyEventLanguage(); render(); renderCalendar(); });
 applyEventLanguage();

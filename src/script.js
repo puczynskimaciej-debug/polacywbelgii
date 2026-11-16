@@ -12,8 +12,8 @@ const translations = {
     "home.read": "Read the latest articles", "home.noticesLink": "View listings",
     "home.worth": "Good to know", "home.latest": "Latest information", "home.allArticles": "All articles",
     "home.community": "Community board", "home.notices": "Listings",
-    "home.question": "Sample contact section", "home.help": "Get in touch",
-    "home.helpText": "Use this space to send questions or suggest topics for future articles.",
+    "home.question": "Contact", "home.help": "Have a question or story idea?",
+    "home.helpText": "Write to our editorial team about issues that matter to Poles in Belgium.",
     "home.contact": "Contact us", "common.more": "Learn more",
     "news.0.category": "Test: administration", "news.0.title": "Sample story: first days in Belgium",
     "news.0.description": "A sample guide to documents and the first steps after moving.",
@@ -52,8 +52,8 @@ const translations = {
     "home.read": "Lees de nieuwste artikels", "home.noticesLink": "Bekijk berichten",
     "home.worth": "Goed om te weten", "home.latest": "Laatste informatie",
     "home.allArticles": "Alle artikels", "home.community": "Gemeenschapsbord", "home.notices": "Berichten",
-    "home.question": "Testcontactsectie", "home.help": "Voorbeeld van een oproep tot contact",
-    "home.helpText": "Dit is een testbeschrijving van een plaats die bezoekers later kan aanmoedigen om vragen en onderwerpen in te sturen.",
+    "home.question": "Contact", "home.help": "Heb je een vraag of een onderwerp?",
+    "home.helpText": "Schrijf onze redactie over onderwerpen die belangrijk zijn voor Polen in België.",
     "home.contact": "Neem contact op", "common.more": "Meer informatie",
     "news.0.category": "Test: administratie", "news.0.title": "Testbericht over de eerste dagen in België",
     "news.0.description": "Een voorbeeldbeschrijving van een kaart over documenten en de eerste stappen na een verhuizing.",
@@ -92,8 +92,8 @@ const translations = {
     "home.read": "Lire les derniers articles", "home.noticesLink": "Voir les annonces",
     "home.worth": "Bon à savoir", "home.latest": "Dernières informations",
     "home.allArticles": "Tous les articles", "home.community": "Tableau communautaire", "home.notices": "Annonces",
-    "home.question": "Section de contact test", "home.help": "Exemple d’appel à prendre contact",
-    "home.helpText": "Ceci est une description test d’un espace qui pourra ensuite inviter les visiteurs à envoyer leurs questions et idées de sujets.",
+    "home.question": "Contact", "home.help": "Une question ou une idée de sujet ?",
+    "home.helpText": "Écrivez à notre rédaction sur les sujets importants pour les Polonais en Belgique.",
     "home.contact": "Nous contacter", "common.more": "En savoir plus",
     "news.0.category": "Test : démarches", "news.0.title": "Actualité test sur les premiers jours en Belgique",
     "news.0.description": "Une description d’exemple pour une carte consacrée aux documents et aux premières démarches.",
@@ -140,6 +140,13 @@ const languageData = window.siteLanguages;
 for (const language of Object.keys(languageData)) {
   translations[language] = { ...(translations[language] || {}), ...(window.adTranslations[language] || window.adTranslations.pl), ...(extraTranslations[language] || {}) };
 }
+const privacyFormCopy = {
+  pl: { 'form.privacyNotice':'Dane z formularza wykorzystujemy, aby odpowiedzieć na wiadomość. Szczegóły znajdziesz w polityce prywatności.', 'form.privacyAcknowledged':'Zapoznałem się z informacją o przetwarzaniu danych.', 'form.privacyLink':'Polityka prywatności' },
+  en: { 'form.privacyNotice':'We use the form details to respond to your message. See the privacy policy for details.', 'form.privacyAcknowledged':'I have read the information about data processing.', 'form.privacyLink':'Privacy policy' },
+  nl: { 'form.privacyNotice':'We gebruiken de formuliergegevens om op uw bericht te antwoorden. Meer informatie staat in het privacybeleid.', 'form.privacyAcknowledged':'Ik heb de informatie over gegevensverwerking gelezen.', 'form.privacyLink':'Privacybeleid' },
+  fr: { 'form.privacyNotice':'Nous utilisons les données du formulaire pour répondre à votre message. Consultez la politique de confidentialité.', 'form.privacyAcknowledged':'J’ai lu les informations sur le traitement des données.', 'form.privacyLink':'Politique de confidentialité' }
+};
+for (const language of Object.keys(privacyFormCopy)) Object.assign(translations[language], privacyFormCopy[language]);
 
 const pageTitles = {
   pl: { home: "Strona główna", articles: "Artykuły", contact: "Kontakt", events: "Wydarzenia", regionalAds: "Ogłoszenia" },
@@ -168,7 +175,7 @@ function localizePlaceholderImages(language) {
   });
 }
 
-function applyLanguage(language) {
+function applyLanguage(language, remember = false) {
   const selected = languageData[language] ? language : "pl";
   const dictionary = translations[selected];
 
@@ -220,6 +227,7 @@ function applyLanguage(language) {
   document.documentElement.lang = selected;
   const legalSlugs=['regulamin','regulamin-ogloszen','polityka-prywatnosci','polityka-cookies','zrodla-i-licencje'];
   for (const slug of legalSlugs) document.querySelectorAll(`a[data-i18n^="legal."][href$="/${slug}/"]`).forEach(link => { link.href=selected==='pl'?`/${slug}/`:`/${selected}/${slug}/`; });
+  document.querySelectorAll('a[data-privacy-link]').forEach(link => { link.href=selected==='pl'?'/polityka-prywatnosci/':`/${selected}/polityka-prywatnosci/`; });
   const legalFallback=document.querySelector('.legal-language-fallback');
   if (legalFallback) legalFallback.hidden=selected===(document.body.dataset.legalLanguage||'pl');
   const articleHeading = document.querySelector(".single-article__header h1");
@@ -234,7 +242,7 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-lang]").forEach((button) =>
     button.classList.toggle("is-active", button.dataset.lang === selected)
   );
-  localStorage.setItem("siteLanguage", selected);
+  if (remember) sessionStorage.setItem("siteLanguage", selected);
   if (document.body.dataset.page==='legal') {
     const parts=location.pathname.split('/').filter(Boolean),slug=parts.at(-1);
     if (legalSlugs.includes(slug)) { const target=selected==='pl'?`/${slug}/`:`/${selected}/${slug}/`; if(location.pathname!==target) { location.replace(target); return; } }
@@ -260,6 +268,7 @@ function applyCmsContent(language) {
         if(group==='news'){const image=document.createElement('img');image.src=item.image;image.alt='';image.loading='lazy';const body=document.createElement('div');body.className='news-card__body';const link=add('a',translations[language]['common.more']||'Dowiedz się więcej','card-link');link.href=item.link;body.append(add('span',item.category,'tag'),add('h3',item.title),add('p',item.description),link);card.append(image,body);}
         else {const top=document.createElement('div');top.className='notice__top';top.append(add('span',item.category,'tag'),add('time',item.date));card.append(top,add('h3',item.title),add('p',item.description),add('p',item.contact,'notice__contact'));}return card;
       }));
+      if(group==='news' && !home[group].length){const empty=document.createElement('p');empty.className='empty-state';empty.textContent=({pl:'Nowe artykuły pojawią się tutaj po publikacji.',nl:'Nieuwe artikelen verschijnen hier na publicatie.',fr:'Les nouveaux articles apparaîtront ici après publication.',en:'New articles will appear here after publication.'})[language];container.append(empty);}
     }
   }
   if(site){set('contact.heading',site.contact.heading);set('contact.text',site.contact.description);set('contact.belgium',site.contact.area);const email=document.querySelector('.contact-detail a');if(email){email.textContent=site.contact.email;email.href='mailto:'+site.contact.email;}
@@ -290,7 +299,7 @@ if (languagePicker && languageButton) {
   languagePicker.addEventListener("click", (event) => {
     const option = event.target.closest("[data-lang]");
     if (!option) return;
-    applyLanguage(option.dataset.lang);
+    applyLanguage(option.dataset.lang, true);
     languageButton.setAttribute("aria-expanded", "false");
     languagePicker.classList.remove("is-open");
   });
@@ -302,4 +311,7 @@ if (languagePicker && languageButton) {
   });
 }
 
-applyLanguage(localStorage.getItem("siteLanguage") || document.documentElement.lang || "pl");
+const previousLanguage = localStorage.getItem('siteLanguage');
+if (previousLanguage) localStorage.removeItem('siteLanguage');
+const legalPathLanguage = document.body.dataset.page === 'legal' ? (languageData[location.pathname.split('/')[1]] ? location.pathname.split('/')[1] : 'pl') : null;
+applyLanguage(legalPathLanguage || sessionStorage.getItem('siteLanguage') || previousLanguage || document.documentElement.lang || 'pl');

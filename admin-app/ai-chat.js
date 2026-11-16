@@ -4,14 +4,15 @@ import { escapeHtml } from './ui.js';
 const history = document.querySelector('#ai-chat-history');
 const form = document.querySelector('#ai-chat-form');
 const notice = document.querySelector('#ai-chat-notice');
-let conversationId = localStorage.getItem('ai-chat-conversation') || crypto.randomUUID();
+localStorage.removeItem('ai-chat-conversation');
+let conversationId = sessionStorage.getItem('ai-chat-conversation') || crypto.randomUUID();
 let lastJobs = [];
 const status = { queued:'Oczekuje',running:'W trakcie',done:'Gotowe',failed:'Błąd',cancelled:'Anulowane' };
 const errorText = { official_source_url_required:'Podany adres źródła musi być oficjalnym adresem HTTPS.', official_source_not_found:'Nie udało się ustalić adresu urzędowego. Dodaj link HTTPS i ponów zadanie.', source_discovery_invalid:'Odpowiedź wyszukiwania źródła była niepoprawna. Ponów zadanie z linkiem urzędowym.', source_unavailable:'Nie udało się pobrać źródła.', source_not_relevant:'Źródło nie potwierdza tematu.', unsupported_article:'Wygenerowany tekst nie przeszedł kontroli źródeł.', unsupported_quote:'Cytat nie został potwierdzony w źródle.', quote_not_found:'Cytat nie został potwierdzony w źródle.', missing_quotes:'Brakuje cytatów ze źródła.', invalid_quote_shape:'Cytaty mają niepoprawny format.', invalid_article_body:'Treść wymaga ponownego przygotowania.', missing_source_link:'Brakuje linku do źródła.', gemini_unavailable:'Gemini jest lokalnie niedostępny.', daily_limit:'Dzienny limit zadań AI został osiągnięty.', The_operation_was_aborted_due_to_timeout:'Przekroczono czas odpowiedzi. Spróbuj ponownie.' };
 async function load() {
   try {
     const data = await cmsRequest('ai-chat');
-    if (data.entries.length && !data.entries.some(entry=>entry.conversation_id===conversationId)) { conversationId = data.entries.at(-1).conversation_id; localStorage.setItem('ai-chat-conversation',conversationId); }
+    if (data.entries.length && !data.entries.some(entry=>entry.conversation_id===conversationId)) { conversationId = data.entries.at(-1).conversation_id; sessionStorage.setItem('ai-chat-conversation',conversationId); }
     const entries = data.entries.filter(entry=>entry.conversation_id===conversationId);
     lastJobs = data.jobs.filter(job=>job.conversation_id===conversationId);
     history.innerHTML = `${entries.map(entry=>`<article class="ai-chat-message ${entry.role==='admin'?'from-admin':'from-agent'}"><strong>${entry.role==='admin'?'Administrator':'AI Redaktor'}</strong><p>${escapeHtml(entry.body)}</p><small>${escapeHtml(new Date(entry.created_at).toLocaleString('pl-PL'))}</small></article>`).join('')}${lastJobs.map(job=>`<article class="ai-chat-job"><strong>Zadanie: ${status[job.status] || job.status}</strong>${job.error_code?`<p>${escapeHtml(errorText[job.error_code] || 'Zadanie nie powiodło się. Sprawdź źródło lub ponów.')}</p>`:''}${job.candidate_id?`<button class="secondary" type="button" data-open-article="${escapeHtml(job.candidate_id)}">Otwórz artykuł</button>`:''}${job.status==='failed' && job.attempts<3?`<button class="secondary" type="button" data-retry="${escapeHtml(job.id)}">Ponów</button>`:''}</article>`).join('')}` || '<p class="empty-state">Rozpocznij rozmowę z agentem.</p>';
@@ -23,7 +24,7 @@ form.addEventListener('submit',async event=>{
   button.disabled=true; notice.textContent='Wysyłanie…';
   try {
     const payload=await cmsRequest('ai-chat',{},'POST',{action:'send',mode:form.elements.mode.value,text:form.elements.text.value.trim(),conversationId});
-    conversationId=payload.conversationId; localStorage.setItem('ai-chat-conversation',conversationId); form.elements.text.value='';
+    conversationId=payload.conversationId; sessionStorage.setItem('ai-chat-conversation',conversationId); form.elements.text.value='';
     notice.textContent=payload.jobId?'Zadanie zapisano w kolejce.':'Odpowiedź zapisana.'; await load();
   } catch(error){notice.textContent=error.message;} finally{button.disabled=false;}
 });

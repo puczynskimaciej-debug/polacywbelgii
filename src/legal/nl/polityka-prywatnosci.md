@@ -1,49 +1,32 @@
 ---
 layout: legal.njk
 title: Privacybeleid
-description: Ontwerp van het privacybeleid van PolacywBelgii.eu.
+description: Privacybeleid PolacywBelgii.eu.
 pageKey: legal
 legalKey: legal.privacy
-legalLanguage: nl
 permalink: /nl/polityka-prywatnosci/index.html
 ---
 
-## 1. Verwerkingsverantwoordelijke
+## Verwerkingsverantwoordelijke en contact
 
-De verwerkingsverantwoordelijke is Maciej Puczyński Doradztwo IT, NIP 9710672251, ul. Wojska Polskiego 28/10, 09-500 Gostynin, Polen. E-mail: kontakt@polacywbelgii.eu.
+Maciej Puczyński Doradztwo IT, fiscaal nummer 9710672251, ul. Wojska Polskiego 28/10, 09-500 Gostynin, Polen; kontakt@polacywbelgii.eu.
 
-## 2. Categorieën gegevens
+## Gegevens en doeleinden
 
-Afhankelijk van het gebruik kunnen contactgegevens, formuliergegevens, informatie over bestellingen en betalingen, advertentie-inhoud, technische veiligheidsgegevens en gegevens over keuzes of toestemming worden verwerkt.
+Het contactformulier bewaart naam, e-mail, onderwerp en bericht in de portaaldatabase om uw vraag te beantwoorden. Een hash van het IP-adres beperkt misbruik. De grondslag is het gerechtvaardigd belang (AVG artikel 6, lid 1, f); voor vragen over een overeenkomst gelden precontractuele stappen (artikel 6, lid 1, b). Misbruikpreventie berust op gerechtvaardigd belang.
 
-## 3. Doeleinden en rechtsgronden
+Een advertentiebestelling bevat klantgegevens, advertentietekst en taalversies, data, pakket, voor publicatie gekozen contactgegevens en informatie over betaling en moderatie. Het privé e-mailadres van de klant wordt niet automatisch gepubliceerd. De uitvoering van de overeenkomst berust op artikel 6, lid 1, b; toepasselijke boekhoudplichten op artikel 6, lid 1, c. Als openbaar aangegeven gegevens verschijnen bij een goedgekeurde advertentie. Instemming met publicatie staat los van de grondslag voor noodzakelijke bestelverwerking.
 
-Gegevens kunnen worden gebruikt voor correspondentie, bestellingen, betalingen en klachten; fiscale en boekhoudkundige verplichtingen; beveiliging van de website; en het vaststellen, uitoefenen of verdedigen van aanspraken. Voor elk proces moet vóór goedkeuring de juiste rechtsgrond volgens artikel 6 AVG worden vastgesteld. Dat kan onder meer uitvoering van een overeenkomst, een wettelijke verplichting, gerechtvaardigd belang of toestemming zijn waar vereist.
+Het CMS bewaart beheerdersaccounts, wachtwoordhashes, sessies, redactionele beslissingen en geschiedenis om de toegang te beveiligen op grond van artikel 6, lid 1, f. Bij gebruik van AI door een bevoegde beheerder kunnen opdrachten en gesprekken worden bewaard. Handmatige vertaling kan advertentietekst naar Google Gemini sturen wanneer die functie is geconfigureerd en gebruikt. Voer geen onnodige persoonsgegevens in.
 
-## 4. Ontvangers
+## Ontvangers en doorgiften
 
-Technische, hosting- en betalingsdienstverleners kunnen gegevens ontvangen voor zover nodig. De website gebruikt of plant Cloudflare, Stripe, e-maildienstverleners en AI-hulpmiddelen voor zover zij werkelijk betrokken zijn. De feitelijke ontvangers en hun rollen moeten nog worden bevestigd.
+Cloudflare levert hosting, applicatiefuncties en D1-opslag. Stripe is pas betrokken als betalingen zijn ingeschakeld; op de testomgeving zijn ze momenteel niet geconfigureerd. Google Gemini kan worden gebruikt na configuratie en handmatige activering. Verwerkersovereenkomsten, gegevenslocaties en mogelijke doorgiften buiten de EER moeten nog door de verantwoordelijke worden gecontroleerd; wij geven geen ongeverifieerde garanties.
 
-## 5. Doorgifte buiten de EER
+## Bewaring en rechten
 
-Eventuele doorgifte buiten de Europese Economische Ruimte moet gebruikmaken van waarborgen die de AVG vereist. De feitelijke doorgiften, ontvangers en waarborgen moeten vóór goedkeuring worden bevestigd.
+CMS-sessies duren maximaal 8 uur; sessionStorage duurt tot het tabblad wordt gesloten. Op TEST verwijdert automatische retentie contactberichten 365 dagen nadat een zaak als afgesloten is gemarkeerd, AI-chatgeschiedenis na 30 dagen, verlopen CMS-sessies en beveiligingslogboeken na 90 dagen. Geannuleerde of afgewezen onbetaalde bestellingen kunnen 365 dagen na afsluiting worden verwijderd. Open zaken en juridische blokkeringen blijven beschermd. Betaalde bestellingen en bijbehorende betalingsgebeurtenissen worden niet automatisch verwijderd: daarvoor zijn een afzonderlijk goedgekeurde wettelijke termijn en expliciete afsluiting vereist. Dit zijn testinstellingen, geen juridische goedkeuring voor productie. Voor productie moet de verantwoordelijke termijnen, uitzonderingen en de behandeling van belastingstukken en vorderingen goedkeuren.
 
-## 6. Bewaartermijn
+U kunt inzage, rectificatie, wissing en beperking verzoeken, waar toepasselijk overdraagbaarheid, en bezwaar maken tegen verwerking op basis van gerechtvaardigd belang. Schrijf naar het bovenstaande adres. U kunt klagen bij de bevoegde toezichthouder, waaronder de Poolse UODO of Belgische GBA/APD.
 
-Gegevens worden bewaard zolang nodig voor het doel, rekening houdend met wettelijke verplichtingen, verjaringstermijnen en fiscale of boekhoudkundige regels. Concrete termijnen of criteria per categorie moeten nog worden bevestigd.
-
-## 7. Uw rechten
-
-Onder de voorwaarden van de AVG kunnen betrokkenen toegang, rectificatie, verwijdering, beperking of overdraagbaarheid vragen, bezwaar maken en toestemming intrekken wanneer de verwerking daarop berust. Neem contact op met de verantwoordelijke om deze rechten uit te oefenen. Een klacht kan ook worden ingediend bij een bevoegde toezichthouder, waaronder de voorzitter van de Poolse autoriteit voor gegevensbescherming.
-
-## 8. Betalingen
-
-Stripe verwerkt betalingen voor advertenties. De website kan transactie-ID's, betaalstatussen en bestelgegevens bewaren; de feitelijke gegevensstroom moet worden gedocumenteerd.
-
-## 9. Kunstmatige intelligentie
-
-AI-hulpmiddelen kunnen redactioneel werk en informatieonderzoek ondersteunen. De werkelijke gegevensstromen in de Gemini-integratie moeten vóór goedkeuring worden bevestigd.
-
-## 10. Wijzigingen
-
-Dit beleid kan worden bijgewerkt wanneer wetgeving of werking van de website verandert. De geldende versie wordt op de website beschikbaar gesteld.
+[Cookiebeleid](/nl/polityka-cookies/). Controle door de verantwoordelijke is vereist vóór productiegebruik.

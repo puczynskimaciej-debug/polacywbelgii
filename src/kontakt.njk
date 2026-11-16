@@ -54,7 +54,9 @@ permalink: /kontakt/index.html
         <label for="message" data-i18n="form.message">Wiadomość</label>
         <textarea id="message" name="message" rows="7" required></textarea>
       </div>
-      <label class="consent"><input type="checkbox" name="consent" value="yes" required> <span data-i18n="form.consent">Zgadzam się na przetwarzanie danych w celu obsługi wiadomości.</span></label>
+      <p data-i18n="form.privacyNotice">Dane z formularza wykorzystujemy, aby odpowiedzieć na wiadomość. Szczegóły znajdziesz w polityce prywatności.</p>
+      <label class="consent"><input type="checkbox" name="privacyNoticeAcknowledged" value="yes" required> <span data-i18n="form.privacyAcknowledged">Zapoznałem się z informacją o przetwarzaniu danych.</span></label>
+      <a data-privacy-link href="/polityka-prywatnosci/" data-i18n="form.privacyLink">Polityka prywatności</a>
       <button class="button" type="submit" data-i18n="form.send">Wyślij wiadomość</button>
     </form>
   </div>
@@ -63,6 +65,6 @@ permalink: /kontakt/index.html
   if (new URLSearchParams(location.search).has('sent')) {
     const notice = document.getElementById('contact-result');
     notice.hidden = false;
-    notice.textContent = { pl: 'Wiadomość została zapisana. Dziękujemy!', en: 'Your message was saved. Thank you!', fr: 'Votre message a été enregistré. Merci !', nl: 'Je bericht is opgeslagen. Bedankt!' }[localStorage.getItem('siteLanguage') || 'pl'] || 'Wiadomość została zapisana. Dziękujemy!';
+    notice.textContent = { pl: 'Wiadomość została zapisana. Dziękujemy!', en: 'Your message was saved. Thank you!', fr: 'Votre message a été enregistré. Merci !', nl: 'Je bericht is opgeslagen. Bedankt!' }[sessionStorage.getItem('siteLanguage') || 'pl'] || 'Wiadomość została zapisana. Dziękujemy!';
   }
 </script>

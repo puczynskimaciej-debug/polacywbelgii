@@ -10,14 +10,23 @@ module.exports = function (eleventyConfig) {
       if (path.dirname(target) !== output) throw new Error('Unexpected local demo path');
       fs.rmSync(target, { recursive: name === 'demo-assets', force: true });
     }
+    for (const name of ['artykuly/test', 'artykuly/test-praca', 'artykuly/test-weekend', 'images/placeholders']) {
+      const target = path.resolve(output, name);
+      if (!target.startsWith(output + path.sep)) throw new Error('Unexpected stale test output path');
+      fs.rmSync(target, { recursive: true, force: true });
+    }
   });
   if (process.env.CONTEXT !== 'production' && !process.env.CF_PAGES) eleventyConfig.setUseGitIgnore(false);
   eleventyConfig.addGlobalData('buildVersion', process.env.CF_PAGES_COMMIT_SHA || process.env.COMMIT_REF || String(Date.now()));
   const markdown = require("markdown-it")({ html: false, linkify: true, typographer: true });
   eleventyConfig.addPassthroughCopy("src/style.css");
+  eleventyConfig.addPassthroughCopy("src/fonts.css");
+  eleventyConfig.addPassthroughCopy("src/fonts");
   eleventyConfig.addPassthroughCopy("src/script.js");
   eleventyConfig.addPassthroughCopy("src/region.js");
   eleventyConfig.addPassthroughCopy("src/events.js");
+  eleventyConfig.addPassthroughCopy("src/calendar-days.js");
+  eleventyConfig.addPassthroughCopy("src/name-days-pl.json");
   eleventyConfig.addPassthroughCopy("src/ad-creative.js");
   eleventyConfig.addPassthroughCopy({ "src/ads.js": "listings.js" });
   eleventyConfig.addPassthroughCopy("src/order-modal.js");

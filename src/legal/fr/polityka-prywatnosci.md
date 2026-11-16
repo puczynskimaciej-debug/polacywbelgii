@@ -1,49 +1,32 @@
 ---
 layout: legal.njk
-title: Politique de confidentialité
-description: Projet de politique de confidentialité de PolacywBelgii.eu.
+title: Politique de confidentialitĂ©
+description: Politique de confidentialitĂ© PolacywBelgii.eu.
 pageKey: legal
 legalKey: legal.privacy
-legalLanguage: fr
 permalink: /fr/polityka-prywatnosci/index.html
 ---
 
-## 1. Responsable du traitement
+## Responsable du traitement et contact
 
-Le responsable est Maciej Puczyński Doradztwo IT, NIP 9710672251, ul. Wojska Polskiego 28/10, 09-500 Gostynin, Pologne. E-mail : kontakt@polacywbelgii.eu.
+Maciej Puczyński Doradztwo IT, numéro fiscal 9710672251, ul. Wojska Polskiego 28/10, 09-500 Gostynin, Pologne ; kontakt@polacywbelgii.eu.
 
-## 2. Catégories de données
+## Données et finalités
 
-Selon l’utilisation du site, des coordonnées, données de formulaires, informations de commande et de paiement, contenus d’annonces, données techniques de sécurité et traces des choix ou consentements peuvent être traités.
+Le formulaire de contact enregistre nom, e-mail, objet et message dans la base du portail pour répondre à votre demande. Une empreinte de l'adresse IP limite les abus. La base juridique est l'intérêt légitime (RGPD, article 6, paragraphe 1, f) ; pour une demande contractuelle, les mesures précontractuelles (article 6, paragraphe 1, b). La prévention des abus repose sur l'intérêt légitime.
 
-## 3. Finalités et bases légales
+Une commande d'annonce comprend les coordonnées du client, les textes et versions linguistiques, les dates, la formule, les coordonnées choisies pour publication et les informations de paiement et de modération. L'e-mail privé du client n'est pas publié automatiquement. L'exécution du contrat repose sur l'article 6, paragraphe 1, b ; les obligations comptables applicables sur l'article 6, paragraphe 1, c. Les coordonnées désignées publiques apparaissent avec une annonce approuvée. L'accord de publication du contenu est distinct de la base juridique du traitement nécessaire de la commande.
 
-Les données peuvent servir à traiter la correspondance, les commandes, paiements et réclamations ; respecter les obligations fiscales et comptables ; sécuriser le site ; et établir, exercer ou défendre des droits. La base appropriée selon l’article 6 du RGPD doit être précisée pour chaque traitement avant approbation. Il peut notamment s’agir de l’exécution du contrat, d’une obligation légale, d’un intérêt légitime ou du consentement lorsque requis.
+Le CMS conserve comptes administrateurs, empreintes de mots de passe, sessions, décisions éditoriales et historique pour sécuriser l'accès, selon l'article 6, paragraphe 1, f. Lorsqu'un administrateur autorisé utilise l'IA, ses instructions et conversations peuvent être conservées. La traduction manuelle peut transmettre le texte de l'annonce à Google Gemini si la fonction est configurée et utilisée. Évitez les données personnelles inutiles.
 
-## 4. Destinataires
+## Destinataires et transferts
 
-Les prestataires techniques, d’hébergement et de paiement peuvent recevoir les données nécessaires. Le site utilise ou prévoit d’utiliser Cloudflare, Stripe, des fournisseurs de messagerie et des outils d’IA dans la mesure où ils interviennent réellement. Les destinataires et leurs rôles doivent être confirmés.
+Cloudflare fournit l'hébergement, les fonctions et le stockage D1. Stripe intervient seulement si les paiements sont activés ; ils ne sont actuellement pas configurés sur l'environnement de test. Google Gemini peut intervenir après configuration et utilisation manuelle. Les contrats de sous-traitance, lieux de stockage et éventuels transferts hors EEE restent à vérifier par le responsable ; aucune garantie non vérifiée n'est affirmée.
 
-## 5. Transferts hors de l’EEE
+## Conservation et droits
 
-Tout transfert hors de l’Espace économique européen doit bénéficier des garanties exigées par le RGPD. Les transferts réels, destinataires et garanties doivent être confirmés avant approbation.
+Les sessions CMS durent au maximum 8 heures ; sessionStorage dure jusqu'à la fermeture de l'onglet. Sur TEST, la conservation automatisée supprime les messages de contact 365 jours après la clôture signalée d'un dossier, l'historique des conversations IA après 30 jours, les sessions CMS expirées et les journaux de sécurité après 90 jours. Les commandes annulées ou refusées et impayées peuvent être supprimées 365 jours après leur clôture. Les dossiers ouverts et les blocages juridiques restent protégés. Les commandes payées et leurs événements de paiement ne sont pas supprimés automatiquement : un délai légal approuvé séparément et la clôture explicite du dossier sont requis. Ces paramètres de test ne constituent pas une validation juridique pour la production. Avant activation en production, le responsable doit approuver les durées, les exceptions et le traitement des pièces fiscales et des réclamations.
 
-## 6. Conservation
+Vous pouvez demander l'accès, la rectification, l'effacement et la limitation, et selon le cas la portabilité, et vous opposer au traitement fondé sur l'intérêt légitime. Écrivez à l'adresse ci-dessus. Vous pouvez saisir l'autorité de contrôle compétente, notamment l'UODO polonaise ou l'APD/GBA belge.
 
-Les données sont conservées pendant la durée nécessaire à leur finalité, compte tenu des obligations légales, délais de prescription et règles fiscales ou comptables. Les durées ou critères précis par catégorie restent à confirmer.
-
-## 7. Vos droits
-
-Sous les conditions du RGPD, les personnes peuvent demander l’accès, la rectification, l’effacement, la limitation ou la portabilité de leurs données, s’opposer au traitement et retirer leur consentement lorsqu’il en constitue la base. Contactez le responsable pour exercer ces droits. Une plainte peut aussi être déposée auprès d’une autorité de contrôle compétente, notamment le président de l’autorité polonaise de protection des données.
-
-## 8. Paiements
-
-Stripe traite les paiements des annonces. Le site peut conserver des identifiants de transaction, statuts de paiement et détails de commande ; les flux réels doivent être documentés.
-
-## 9. Intelligence artificielle
-
-Des outils d’IA peuvent aider la rédaction et la recherche d’informations. Les flux réels de l’intégration Gemini doivent être confirmés avant approbation.
-
-## 10. Modifications
-
-La politique peut être mise à jour si la loi ou le fonctionnement du site change. La version en vigueur sera disponible sur le site.
+[Politique des cookies](/fr/polityka-cookies/). Une vérification par le responsable est nécessaire avant toute utilisation en production.

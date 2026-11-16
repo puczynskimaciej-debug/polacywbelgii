@@ -1,49 +1,32 @@
 ---
 layout: legal.njk
 title: Privacy policy
-description: Draft privacy policy for PolacywBelgii.eu.
+description: Privacy policy PolacywBelgii.eu.
 pageKey: legal
 legalKey: legal.privacy
-legalLanguage: en
 permalink: /en/polityka-prywatnosci/index.html
 ---
 
-## 1. Controller
+## Controller and contact
 
-The controller is Maciej Puczyński Doradztwo IT, NIP 9710672251, ul. Wojska Polskiego 28/10, 09-500 Gostynin, Poland. Email: kontakt@polacywbelgii.eu.
+Maciej Puczyński Doradztwo IT, tax ID 9710672251, ul. Wojska Polskiego 28/10, 09-500 Gostynin, Poland; kontakt@polacywbelgii.eu.
 
-## 2. Categories of data
+## Data and purposes
 
-Depending on how the website is used, contact details, form entries, order and payment information, listing content, technical security data and records of choices or consent may be processed.
+The contact form stores your name, email, subject and message in the portal database to answer your inquiry. A hash of the IP address limits abuse. The basis is the controller's legitimate interest (GDPR Article 6(1)(f)); if the inquiry concerns a contract, pre-contractual steps (Article 6(1)(b)). Abuse prevention is based on legitimate interest.
 
-## 3. Purposes and legal bases
+A listing order includes buyer details, ad text and language versions, dates, package, contact details selected for publication, and payment and moderation information. The buyer's private email is not published automatically. Contract performance and pre-contractual steps rely on Article 6(1)(b); applicable accounting duties on Article 6(1)(c). Details marked public appear with an approved ad. Agreement to publish content is separate from the legal basis for necessary order processing.
 
-Data may be used to handle correspondence, orders, payments and complaints; meet tax and accounting duties; secure the website; and establish, pursue or defend claims. The appropriate legal basis under Article 6 GDPR must be specified for each process before this policy is approved. It may include contract performance, legal obligation, legitimate interest or consent where required.
+The CMS stores administrator accounts, password hashes, sessions, editorial decisions and history to secure access under Article 6(1)(f). If an authorised administrator invokes AI, prompts and conversations may be stored. Manual ad translation may transmit ad text to Google Gemini when that feature is configured and used. Avoid unnecessary personal data in these features.
 
-## 4. Recipients
+## Recipients and transfers
 
-Technical, hosting and payment providers may receive data where necessary. The website uses or plans to use Cloudflare, Stripe, email providers and AI tools to the extent actually involved. The actual recipients and their roles require confirmation.
+Cloudflare provides hosting, application functions and D1 storage. Stripe is involved only when payments are enabled; payments are not currently configured on the test environment. Google Gemini may be used if manual AI features are configured and invoked. Processor agreements, data locations and possible transfers outside the EEA still need the controller's verification; we make no unverified transfer assurances.
 
-## 5. Transfers outside the EEA
+## Retention and rights
 
-Any transfers outside the European Economic Area must use safeguards required by GDPR. The actual transfers, recipients and safeguards require confirmation before approval of this policy.
+CMS sessions last at most 8 hours; sessionStorage lasts until the tab closes. On TEST, automatic retention removes contact messages 365 days after a case is marked closed, AI chat history after 30 days, expired CMS sessions, and security logs after 90 days. Cancelled or rejected unpaid orders may be removed 365 days after case closure. Open cases and legal holds are protected. Paid orders and related payment events are not automatically removed: they need a separately approved legal deadline and explicit case closure. These are test settings, not legal approval for production. Before production retention is enabled, the controller must approve periods, exceptions and the treatment of tax records and claims.
 
-## 6. Retention
+You can request access, correction, erasure and restriction, and where applicable portability, and object to processing based on legitimate interest. Contact us at the address above. You may complain to the competent data protection authority, including the Polish UODO or Belgian APD/GBA.
 
-Data is held for the period needed for its purpose, taking account of legal duties, limitation periods and tax or accounting rules. Specific periods or criteria for each category still require confirmation.
-
-## 7. Your rights
-
-Subject to GDPR conditions, individuals may request access, correction, deletion, restriction or portability of their data, object to processing and withdraw consent where processing is based on consent. Contact the controller to exercise these rights. A complaint may also be lodged with a competent supervisory authority, including the President of the Polish Personal Data Protection Office.
-
-## 8. Payments
-
-Stripe handles listing payments. The website may store transaction identifiers, payment statuses and order details; the actual data flow must be documented.
-
-## 9. Artificial intelligence
-
-AI tools may assist editorial work and information discovery. The actual data flows in the Gemini integration require confirmation before this policy is approved.
-
-## 10. Changes
-
-The policy may be updated when the law or website operation changes. The current version will be available on the website.
+[Cookie policy](/en/polityka-cookies/). Controller review is required before production use.

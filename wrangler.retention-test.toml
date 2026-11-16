@@ -1,0 +1,17 @@
+name = "polacywbelgii-retention-test"
+main = "retention-worker.mjs"
+compatibility_date = "2026-10-21"
+workers_dev = false
+
+[vars]
+RETENTION_ENABLED = "1"
+RETENTION_SCOPE = "test"
+AI_AUTOMATION_ENABLED = "0"
+
+[triggers]
+crons = ["0 3 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "polacywbelgii-test"
+database_id = "76deb616-3e1d-4a64-9c68-7275336a91d4"

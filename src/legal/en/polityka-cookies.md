@@ -1,37 +1,25 @@
 ---
 layout: legal.njk
 title: Cookie policy
-description: Draft cookie policy for PolacywBelgii.eu.
+description: Cookie policy PolacywBelgii.eu.
 pageKey: legal
 legalKey: legal.cookies
-legalLanguage: en
 permalink: /en/polityka-cookies/index.html
 ---
 
-## 1. General information
+## Browser storage
 
-PolacywBelgii.eu may use cookies and similar technologies required to run the website. Optional analytics or advertising technologies would be described here if introduced.
+On the public site, the first visit does not set cookies or localStorage. We do not run analytics, advertising pixels or externally hosted fonts. There is no consent banner because the current version does not activate optional tracking.
 
-## 2. Essential technologies
+| Mechanism | When and why | Duration and access |
+| --- | --- | --- |
+| `siteLanguage` (sessionStorage) | After choosing a language, to retain that choice while browsing. | Until the tab closes; site scripts only. |
+| `pbe-order-{id}` (sessionStorage) | After placing an order, to return to its status after payment. | Until the tab closes; site scripts only. |
+| `__Host-pbe_session` (cookie) | After administrator login, to authenticate the CMS; HttpOnly, Secure, SameSite=Strict. | At most 8 hours; sent to this site's server. |
+| `ai-chat-conversation` (sessionStorage) | After an administrator uses AI chat, to identify the current conversation. | Until the tab closes; CMS scripts only. |
 
-Essential technologies may support security, login sessions, user settings and technical website functions. Their use is subject to applicable law.
+These mechanisms support the requested language, order and secure administration functions. They are not used for profiling or behavioural advertising. You can clear site data in your browser; logging out ends the CMS session.
 
-## 3. Analytics
+If payments are enabled, the user actively continues to Stripe, which may use its own technologies on its site. Any future analytics, marketing or other optional storage requires a policy and consent review before activation. Cloudflare may conditionally use security measures depending on configuration; these should be checked again if settings change.
 
-Analytics technologies that require consent, if introduced, must not run before consent is given. The actual use of analytics must be checked before this document is approved.
-
-## 4. Advertising technologies
-
-If third-party advertising or tracking is introduced, this policy will be updated. Technologies that require consent must not run before it is given.
-
-## 5. Consent choices
-
-If optional technologies are used, visitors must be able to accept or reject them and change their choice. Rejecting optional technologies should not prevent use of essential website functions.
-
-## 6. Technology inventory
-
-Before approval, the actual cookies, `localStorage`, `sessionStorage` and external scripts must be audited. The inventory must identify each technology, provider, purpose, lifetime, category and consent requirement. These details are not yet verified.
-
-## 7. Contact
-
-Questions can be sent to kontakt@polacywbelgii.eu.
+Questions: kontakt@polacywbelgii.eu. [Privacy policy](/en/polityka-prywatnosci/).

@@ -1,37 +1,25 @@
 ---
 layout: legal.njk
 title: Cookiebeleid
-description: Ontwerp van het cookiebeleid van PolacywBelgii.eu.
+description: Cookiebeleid PolacywBelgii.eu.
 pageKey: legal
 legalKey: legal.cookies
-legalLanguage: nl
 permalink: /nl/polityka-cookies/index.html
 ---
 
-## 1. Algemene informatie
+## Opslag in de browser
 
-PolacywBelgii.eu kan cookies en vergelijkbare technologieën gebruiken die nodig zijn voor de werking van de website. Optionele analyse- of advertentietechnologieën worden hier beschreven als ze worden ingevoerd.
+Bij het eerste bezoek aan de publieke website plaatsen wij geen cookies of gegevens in localStorage. Wij gebruiken geen analysetools, advertentiepixels of extern geladen lettertypen. Er is geen toestemmingsbanner omdat de huidige versie geen optionele tracking activeert.
 
-## 2. Noodzakelijke technologieën
+| Mechanisme | Wanneer en waarom | Duur en toegang |
+| --- | --- | --- |
+| `siteLanguage` (sessionStorage) | Na een taalkeuze, om die keuze tijdens het browsen te bewaren. | Tot het tabblad wordt gesloten; alleen websitescripts. |
+| `pbe-order-{id}` (sessionStorage) | Na een bestelling, om na de betaling terug te keren naar de bestelstatus. | Tot het tabblad wordt gesloten; alleen websitescripts. |
+| `__Host-pbe_session` (cookie) | Na aanmelding van een beheerder, voor CMS-authenticatie; HttpOnly, Secure, SameSite=Strict. | Maximaal 8 uur; verzonden naar de server van deze site. |
+| `ai-chat-conversation` (sessionStorage) | Na gebruik van AI-chat door een beheerder, om het huidige gesprek te identificeren. | Tot het tabblad wordt gesloten; alleen CMS-scripts. |
 
-Noodzakelijke technologieën kunnen beveiliging, aanmeldsessies, gebruikersinstellingen en technische functies ondersteunen. Het gebruik ervan valt onder het toepasselijke recht.
+Deze mechanismen ondersteunen de gevraagde taal-, bestel- en beheerdersfuncties. Ze dienen niet voor profilering of gedragsgerichte reclame. U kunt websitegegevens in de browser wissen; uitloggen beëindigt de CMS-sessie.
 
-## 3. Analyse
+Als betalingen worden ingeschakeld, gaat de gebruiker bewust verder naar Stripe, dat op zijn eigen site technologieën kan gebruiken. Toekomstige analytische, marketing- of andere optionele opslag vereist vooraf een herziening van dit beleid en de toestemming. Cloudflare kan afhankelijk van de configuratie voorwaardelijk beveiligingsmaatregelen inzetten; controleer dit opnieuw na wijzigingen.
 
-Analysetechnologieën waarvoor toestemming nodig is, mogen pas na toestemming worden geactiveerd. Het feitelijke gebruik moet vóór goedkeuring van dit document worden gecontroleerd.
-
-## 4. Advertentietechnologieën
-
-Als externe advertentiesystemen of tracking worden ingevoerd, wordt dit beleid bijgewerkt. Technologieën waarvoor toestemming nodig is, mogen niet eerder worden geactiveerd.
-
-## 5. Toestemmingskeuzes
-
-Als optionele technologieën worden gebruikt, moeten bezoekers ze kunnen aanvaarden of weigeren en hun keuze kunnen wijzigen. Weigering mag essentiële functies niet blokkeren.
-
-## 6. Inventaris
-
-Vóór goedkeuring moeten cookies, `localStorage`, `sessionStorage` en externe scripts worden gecontroleerd. De inventaris moet technologie, aanbieder, doel, levensduur, categorie en toestemmingsvereiste vermelden. Deze details zijn nog niet bevestigd.
-
-## 7. Contact
-
-Vragen kunnen naar kontakt@polacywbelgii.eu worden gestuurd.
+Vragen: kontakt@polacywbelgii.eu. [Privacybeleid](/nl/polityka-prywatnosci/).

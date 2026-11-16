@@ -7,9 +7,7 @@
   <meta name="description" content="{{ description if category else (site.seo[pageKey].description or description) }}" data-i18n-content="meta.description">
   <title>{{ title if category else (site.seo[pageKey].title or title) }}</title>
   {% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/fonts.css?v={{ buildVersion }}">
   <link rel="stylesheet" href="/style.css?v={{ buildVersion }}">
   <link rel="stylesheet" href="/listings.css?v={{ buildVersion }}">
   <script src="/listings-config.js?v={{ buildVersion }}" defer></script>
@@ -17,6 +15,7 @@
   <script src="/content-data.js?v={{ buildVersion }}" defer></script>
   <script src="/script.js?v={{ buildVersion }}" defer></script>
   <script src="/region.js?v={{ buildVersion }}" defer></script>
+  <script src="/calendar-days.js?v={{ buildVersion }}" defer></script>
   <script src="/events.js?v={{ buildVersion }}" defer></script>
   <script src="/ad-creative.js?v={{ buildVersion }}" defer></script>
   <script src="/listings.js?v={{ buildVersion }}" defer></script>
@@ -64,7 +63,6 @@
     <div class="event-month-controls"><button type="button" data-event-month="prev" aria-label="Poprzedni miesiąc">←</button><h3 id="event-month-title"></h3><button type="button" data-event-month="next" aria-label="Następny miesiąc">→</button></div>
     <div id="event-calendar-grid" class="event-calendar-grid" role="group" aria-label="Dni miesiąca"></div>
     <div id="event-day-details" class="event-day-details" aria-live="polite"></div>
-      <section id="event-undated" class="event-day-details" aria-label="Wydarzenia z nieustalonym terminem"></section>
   </dialog>
   {% endif %}
   <footer class="site-footer">
@@ -102,6 +100,7 @@
       <span>© 2026 Polacy w Belgii</span>
       <a href="/admin/" data-i18n="footer.admin">Panel redakcji</a>
     </div>
+    <p class="container footer-name-credit" lang="pl">Dane imienin: autorzy polskiej Wikipedii; opracowanie i normalizacja: <a href="https://imiennie.pl/o-danych/">imiennie.pl</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Zbiór z 18.10.2026, wykorzystany bez dalszych zmian w danych.</p>
   </footer>
 </body>
 </html>
