@@ -29,4 +29,6 @@ The approved operational rules provide for deletion of contact messages 365 days
 
 You can request access, correction, erasure and restriction, and where applicable portability, and object to processing based on legitimate interest. Contact us at the address above. You may complain to the competent data protection authority, including the Polish UODO or Belgian APD/GBA.
 
+Providing contact form data is voluntary, but without the required fields we cannot receive and answer your message. The required order details are needed to process a listing order; without them you cannot submit it. A CMS administrator approves publication of listings. The portal does not make solely automated decisions about users that produce legal or similarly significant effects.
+
 [Cookie policy](/en/polityka-cookies/). Controller review is required before production use.

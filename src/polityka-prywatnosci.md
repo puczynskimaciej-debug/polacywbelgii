@@ -29,4 +29,6 @@ Zatwierdzone zasady operacyjne przewidują usunięcie wiadomości kontaktowych p
 
 Możesz żądać dostępu, sprostowania, usunięcia lub ograniczenia przetwarzania, a w odpowiednich przypadkach przeniesienia danych i zgłosić sprzeciw wobec przetwarzania opartego na uzasadnionym interesie. Napisz na adres powyżej. Przysługuje też skarga do właściwego organu ochrony danych, w szczególności polskiego UODO lub belgijskiej APD/GBA.
 
+Podanie danych w formularzu kontaktowym jest dobrowolne, lecz bez pól wymaganych formularzem nie możemy przyjąć wiadomości i odpowiedzieć. Dane wymagane przy zamówieniu są potrzebne do jego obsługi; bez nich nie można złożyć zamówienia. Publikację ogłoszenia zatwierdza administrator CMS. Portal nie podejmuje wobec użytkownika decyzji wyłącznie automatycznych wywołujących skutki prawne lub podobnie istotne skutki.
+
 [Polityka cookies](/polityka-cookies/). Dokument wymaga weryfikacji administratora przed zastosowaniem na produkcji.

@@ -29,4 +29,6 @@ De goedgekeurde operationele regels voorzien in verwijdering van contactberichte
 
 U kunt inzage, rectificatie, wissing en beperking verzoeken, waar toepasselijk overdraagbaarheid, en bezwaar maken tegen verwerking op basis van gerechtvaardigd belang. Schrijf naar het bovenstaande adres. U kunt klagen bij de bevoegde toezichthouder, waaronder de Poolse UODO of Belgische GBA/APD.
 
+Het verstrekken van gegevens via het contactformulier is vrijwillig, maar zonder de verplichte velden kunnen wij uw bericht niet ontvangen en beantwoorden. De verplichte bestelgegevens zijn nodig om een advertentiebestelling te verwerken; zonder deze gegevens kunt u geen bestelling plaatsen. Een CMS-beheerder keurt de publicatie van advertenties goed. Het portaal neemt geen uitsluitend geautomatiseerde besluiten over gebruikers met rechtsgevolgen of vergelijkbaar belangrijke gevolgen.
+
 [Cookiebeleid](/nl/polityka-cookies/). Controle door de verantwoordelijke is vereist vóór productiegebruik.

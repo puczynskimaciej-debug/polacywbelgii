@@ -29,4 +29,6 @@ Les règles opérationnelles approuvées prévoient la suppression des messages 
 
 Vous pouvez demander l'accès, la rectification, l'effacement et la limitation, et selon le cas la portabilité, et vous opposer au traitement fondé sur l'intérêt légitime. Écrivez à l'adresse ci-dessus. Vous pouvez saisir l'autorité de contrôle compétente, notamment l'UODO polonaise ou l'APD/GBA belge.
 
+La communication des données du formulaire de contact est volontaire, mais sans les champs obligatoires nous ne pouvons pas recevoir votre message ni y répondre. Les données obligatoires de commande sont nécessaires au traitement d'une annonce ; sans elles, vous ne pouvez pas passer commande. Un administrateur du CMS approuve la publication des annonces. Le portail ne prend pas de décisions concernant les utilisateurs fondées exclusivement sur un traitement automatisé et produisant des effets juridiques ou des effets d'importance comparable.
+
 [Politique des cookies](/fr/polityka-cookies/). Une vérification par le responsable est nécessaire avant toute utilisation en production.
