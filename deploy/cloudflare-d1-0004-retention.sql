@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS retention_policy (
   enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
--- Operational TEST defaults, not legal approval for production.
+-- Owner-approved operational periods; production automatic execution remains disabled.
 INSERT INTO retention_policy(category,period_days,enabled) VALUES
  ('contact',365,1),('ai_history',30,1),('sessions',0,1),
  ('security_logs',90,1),('unpaid_orders',365,1),('paid_orders',NULL,0);
