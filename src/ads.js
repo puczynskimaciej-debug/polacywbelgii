@@ -65,18 +65,24 @@
     banner.append(window.buildAdCreative(ad), caption);
     return banner;
   }
+  const placeholderCopy = {
+    pl: { title: 'Tu może być Twoja reklama', description: 'Zaprezentuj swoją ofertę Polakom w Belgii.', action: 'Zamów ogłoszenie' },
+    nl: { title: 'Hier kan jouw advertentie staan', description: 'Laat jouw aanbod zien aan Polen in België.', action: 'Plaats een advertentie' },
+    fr: { title: 'Votre publicité pourrait être ici', description: 'Présentez votre offre aux Polonais de Belgique.', action: 'Commander une annonce' },
+    en: { title: 'Your ad could be here', description: 'Show your offer to Poles in Belgium.', action: 'Place an ad' }
+  };
+  function placeholderCard(type) {
+    const copy = placeholderCopy[document.documentElement.lang] || placeholderCopy.pl;
+    const item = element(type === 'PREMIUM' ? 'div' : 'article', '', type === 'PREMIUM' ? 'premium-banner__link ad-placeholder ad-placeholder--premium' : `listing-card ad-placeholder ad-placeholder--${type.toLowerCase()}`);
+    const content = element('div', '', 'ad-placeholder__content');
+    const action = element('a', copy.action, 'ad-placeholder__action');
+    action.href = '/zamow-ogloszenie/';
+    content.append(element('h3', copy.title), element('p', copy.description), action);
+    item.append(content);
+    return item;
+  }
   let loadedAds = [];
   let expiryTimer;
-  const isLocalPreview = ['localhost','127.0.0.1'].includes(location.hostname);
-  let demoAds = null;
-  async function localDemos(language) {
-    if (!isLocalPreview) return [];
-    if (!demoAds) {
-      try { const response = await fetch('/local-demo-ads.json',{ cache:'no-store' }); demoAds = response.ok ? (await response.json()).ads || [] : []; }
-      catch { demoAds = []; }
-    }
-    return demoAds.filter(ad => ad.language === language).map(ad => ({...ad,isDemo:true}));
-  }
   function regionAds(ads, type) {
     if (document.body.dataset.page !== 'ads' || type !== 'STANDARD') return ads;
     const selected = window.portalRegion?.() || 'all';
@@ -87,22 +93,22 @@
       const list = $(`[data-ad-list="${type}"]`);
       if (!list) continue;
       const items = regionAds(loadedAds.filter(ad => ad.type === type && (ad.isDemo || (ad.periods?.length ? ad.periods.some(period => Date.parse(period.startAt) <= Date.now() && Date.now() < Date.parse(period.endAt)) : (!ad.actualStartAt || Date.parse(ad.actualStartAt) <= Date.now()) && (!ad.actualEndAt || Date.parse(ad.actualEndAt) > Date.now())))),type);
-      const signature = JSON.stringify(items);
+      const signature = JSON.stringify([document.documentElement.lang, items]);
       if (list.dataset.content !== signature) {
-        list.replaceChildren(...items.map(type === 'PREMIUM' ? premiumCard : card)); list.dataset.content = signature;
+        list.replaceChildren(...(items.length ? items.map(type === 'PREMIUM' ? premiumCard : card) : [placeholderCard(type)])); list.dataset.content = signature;
         if (type === 'PREMIUM') setupPremium(list);
         if (type === 'TOP') setupTop(list);
         if (type === 'STANDARD' && document.body.dataset.page === 'ads') setupMore(list);
         if (type === 'STANDARD' && document.body.dataset.page !== 'ads') setupScroller(list, 'STANDARD');
       }
-      if (type !== 'STANDARD') list.closest('section').hidden = !items.length;
+      if (type !== 'STANDARD') list.closest('section').hidden = false;
       if (type === 'STANDARD') {
-        if (document.body.dataset.page === 'ads') list.closest('section').hidden = !loadedAds.length;
-        const empty = $('[data-region-empty="ads"]'); if (empty) empty.hidden = items.length > 0;
+        if (document.body.dataset.page === 'ads') list.closest('section').hidden = false;
+        const empty = $('[data-region-empty="ads"]'); if (empty) empty.hidden = true;
       }
     }
     const emptyPage = $('#ads-page-empty');
-    if (emptyPage) emptyPage.hidden = loadedAds.some(ad => ad.type !== 'STANDARD') || regionAds(loadedAds.filter(ad => ad.type === 'STANDARD'),'STANDARD').length > 0;
+    if (emptyPage) emptyPage.hidden = true;
     clearTimeout(expiryTimer);
     const nearest = loadedAds.flatMap(ad => ad.periods?.length ? ad.periods.flatMap(period => [period.startAt,period.endAt]) : [ad.actualStartAt,ad.actualEndAt]).filter(value => value && Date.parse(value) > Date.now()).reduce((value, date) => Math.min(value, Date.parse(date)), Infinity);
     if (Number.isFinite(nearest)) expiryTimer = setTimeout(() => { renderAds(); loadAds(); }, Math.max(1, Math.min(nearest - Date.now(), 2147483647)));
@@ -171,9 +177,9 @@
     try {
       const { ads } = await api('public', { language: document.documentElement.lang });
       if (version !== publicVersion) return;
-      loadedAds = ads.length ? ads : await localDemos(document.documentElement.lang);
+      loadedAds = ads;
       renderAds();
-    } catch { if (isLocalPreview) { loadedAds = await localDemos(document.documentElement.lang); renderAds(); } }
+    } catch { /* Keep the last verified response when the API is unavailable. */ }
   }
   loadAds();
   setInterval(() => loadAds(), 60000);
