@@ -1,7 +1,7 @@
 ---
 layout: legal.njk
-title: Polityka prywatnoĹ›ci
-description: Polityka prywatnoĹ›ci PolacywBelgii.eu.
+title: Polityka prywatności
+description: Polityka prywatności PolacywBelgii.eu.
 pageKey: legal
 legalKey: legal.privacy
 permalink: /polityka-prywatnosci/index.html
