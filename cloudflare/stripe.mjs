@@ -26,7 +26,7 @@ export async function createCheckoutSession(env, { groupId, amount, email, type,
     expires_at: String(Math.floor(Date.now() / 1000) + 1860)
   });
   let response;
-  try { response = await fetcher('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Idempotency-Key': `pbe-${groupId}` }, body: form, signal: AbortSignal.timeout(15000), redirect: 'error' }); }
+  try { response = await fetcher('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Idempotency-Key': `pbe-${groupId}` }, body: form, signal: AbortSignal.timeout(15000), redirect: 'manual' }); }
   catch (error) { console.error(JSON.stringify({component:'stripe-checkout',phase:'transport',error:error?.name || 'unknown',reason:String(error?.message || '').slice(0,120),cause:error?.cause?.code || null})); fail('paymentUnavailable', 503); }
   if (!response.ok) { console.error(JSON.stringify({component:'stripe-checkout',phase:'response',status:response.status,requestId:response.headers?.get('request-id') || null})); fail('paymentUnavailable', 503); }
   const session = await response.json();
