@@ -81,9 +81,16 @@ test('durable article job reaches pending_review once and stays nonpublic',async
   DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(jobId,conversationId,'editor',`Napisz artykuł na podstawie ${url}`,at,at);
   const quote='Oficjalna informacja o procedurze dla obywateli polskich.';
   const output={title:'Procedura dla Polaków w Belgii',description:'Praktyczny opis procedury dla obywateli polskich w Belgii.',body:`${'Opis procedury potwierdzony oficjalnym źródłem. '.repeat(22)} [0:0]\n\nŹródło: [${url}]`,evidenceQuoteIds:['0:0']};
-  const fetcher=async endpoint=>endpoint===url?new Response(`<html><body>${quote.repeat(10)}</body></html>`,{headers:{'content-type':'text/html'}}):Response.json({candidates:[{content:{parts:[{text:JSON.stringify(output)}]}}]});
+  const modelUrls=[];
+  const fetcher=async endpoint=>{
+    if(endpoint===url)return new Response(`<html><body>${quote.repeat(10)}</body></html>`,{headers:{'content-type':'text/html'}});
+    modelUrls.push(endpoint);
+    if(modelUrls.length===1)return new Response(null,{status:503});
+    return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(output)}]}}]});
+  };
   const env={DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'};
   const first=await processChatJobs(env,{fetcher});assert.equal(first.status,'done');
+  assert.match(modelUrls[1],/gemini-3\.1-flash-lite/);
   assert.equal((await processChatJobs(env,{fetcher})).status,'empty');
   const row=DB.sqlite.prepare('SELECT status,candidate_id FROM ai_chat_jobs WHERE id=?').get(jobId);
   assert.equal(row.status,'done');assert.equal(DB.sqlite.prepare('SELECT status FROM ai_editorial WHERE candidate_id=?').get(row.candidate_id).status,'pending_review');
@@ -108,6 +115,35 @@ test('article job can discover and verify an official source without a supplied 
   const result=await processChatJobs({DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'},{fetcher});
   assert.equal(result.status,'done');assert.equal(calls,2);
   assert.equal(DB.sqlite.prepare('SELECT status FROM ai_editorial WHERE candidate_id=?').get(result.candidateId).status,'pending_review');
+  assert.equal(await publicEntry(DB,`ai-${result.candidateId}`),null);
+});
+
+test('Polish population request without links uses official statistics and distinguishes tourist arrivals',async()=>{
+  const DB=database(),jobId=randomUUID(),conversationId=randomUUID(),at=new Date().toISOString();
+  const populationUrl='https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/migr_pop1ctz?geo=BE&citizen=PL&age=TOTAL&sex=T&unit=NR&freq=A&lang=EN';
+  const arrivalsUrl='https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/tour_occ_arnraw?geo=BE&c_resid=PL&nace_r2=I551-I553&unit=NR&freq=A&lang=EN';
+  const definitionsUrl='https://statbel.fgov.be/en/themes/enterprises/tourist-accommodations';
+  DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(jobId,conversationId,'editor','Ilu Polaków mieszka w Belgii i ilu rocznie jeździ tam turystycznie?',at,at);
+  const dimensions=entries=>Object.fromEntries(Object.entries(entries).map(([key,value])=>[key,{category:{index:{[value]:0}}}]));
+  const population={label:'Population on 1 January by age group, sex and citizenship',id:['freq','citizen','age','unit','sex','geo','time'],size:[1,1,1,1,1,1,1],dimension:{...dimensions({freq:'A',citizen:'PL',age:'TOTAL',unit:'NR',sex:'T',geo:'BE'}),time:{category:{index:{2025:0}}}},value:{0:65705},updated:'2026-11-15'};
+  const arrivals={label:'Arrivals at tourist accommodation establishments by country of origin of the tourist',id:['freq','unit','c_resid','nace_r2','geo','time'],size:[1,1,1,1,1,1],dimension:{...dimensions({freq:'A',unit:'NR',c_resid:'PL',nace_r2:'I551-I553',geo:'BE'}),time:{category:{index:{2025:0}}}},value:{0:121946},updated:'2026-10-12'};
+  const body=`${'Te dwie miary opisują różne populacje i wymagają kontroli redakcyjnej. '.repeat(20)}\n\n${[populationUrl,arrivalsUrl,definitionsUrl].map(url=>`[Źródło](${url})`).join('\n')}`;
+  const output={title:'Polscy obywatele i przyjazdy mieszkańców Polski do Belgii',description:'Zestawienie dwóch różnych miar z Eurostatu i definicji pobytu w obiekcie noclegowym.',body,evidenceQuoteIds:['0:0','1:0']};
+  let geminiCalls=0,requestPrompt='';
+  const fetcher=async(url,options)=>{
+    if(process.env.LIVE_OFFICIAL_SOURCES==='1' && [populationUrl,arrivalsUrl,definitionsUrl].includes(url))return fetch(url,options);
+    if(url===populationUrl)return Response.json(population);
+    if(url===arrivalsUrl)return Response.json(arrivals);
+    if(url===definitionsUrl)return new Response(`<main>${'An arrival means a guest who stays at least one night in collective accommodation. '.repeat(8)}</main>`,{headers:{'content-type':'text/html'}});
+    geminiCalls++;requestPrompt=JSON.parse(options.body).contents[0].parts[0].text;
+    return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(output)}]}}]});
+  };
+  const result=await processChatJobs({DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'},{fetcher});
+  assert.equal(result.status,'done');assert.equal(geminiCalls,1);
+  assert.ok(requestPrompt.includes('65705'));assert.ok(requestPrompt.includes('121946'));
+  const candidate=DB.sqlite.prepare('SELECT status,sources_json,verification_json FROM ai_candidates WHERE id=?').get(result.candidateId);
+  assert.equal(candidate.status,'pending_review');assert.equal(JSON.parse(candidate.sources_json).length,3);
+  assert.equal(JSON.parse(candidate.verification_json).evidenceQuotes.length,2);
   assert.equal(await publicEntry(DB,`ai-${result.candidateId}`),null);
 });
 
