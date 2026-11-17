@@ -18,6 +18,7 @@ test('Sandbox Checkout validates test session and idempotency key',async()=>{
     assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');
     assert.equal(request.headers['Idempotency-Key'],`pbe-${groupId}`);
     assert.equal(request.redirect,'manual');
+    assert.equal(request.body.get('payment_method_types[0]'),'card');
     return {ok:true,async json(){return {id:'cs_test_example',url:'https://checkout.stripe.com/test',livemode:false,amount_total:500,currency:'eur',client_reference_id:groupId,expires_at:Math.floor(Date.now()/1000)+1800};}};
   });
   assert.equal(session.livemode,false);

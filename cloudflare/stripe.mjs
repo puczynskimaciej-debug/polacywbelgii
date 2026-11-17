@@ -15,7 +15,7 @@ export function stripeMode(env) {
 export async function createCheckoutSession(env, { groupId, amount, email, type, days, origin }, fetcher = fetch) {
   const { test } = stripeMode(env);
   if (!Number.isSafeInteger(amount) || amount <= 0) fail('paymentAmount');
-  const form = new URLSearchParams({ mode: 'payment', payment_method_types: 'card', client_reference_id: groupId, customer_email: email,
+  const form = new URLSearchParams({ mode: 'payment', 'payment_method_types[0]': 'card', client_reference_id: groupId, customer_email: email,
     success_url: `${origin}/zamow-ogloszenie/?payment=return&order=${groupId}`,
     cancel_url: `${origin}/zamow-ogloszenie/?payment=cancel&order=${groupId}`,
     'line_items[0][price_data][currency]': 'eur',
@@ -28,7 +28,7 @@ export async function createCheckoutSession(env, { groupId, amount, email, type,
   let response;
   try { response = await fetcher('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Idempotency-Key': `pbe-${groupId}` }, body: form, signal: AbortSignal.timeout(15000), redirect: 'manual' }); }
   catch (error) { console.error(JSON.stringify({component:'stripe-checkout',phase:'transport',error:error?.name || 'unknown',reason:String(error?.message || '').slice(0,120),cause:error?.cause?.code || null})); fail('paymentUnavailable', 503); }
-  if (!response.ok) { console.error(JSON.stringify({component:'stripe-checkout',phase:'response',status:response.status,requestId:response.headers?.get('request-id') || null})); fail('paymentUnavailable', 503); }
+  if (!response.ok) { const details=await response.clone().json().catch(()=>({})); console.error(JSON.stringify({component:'stripe-checkout',phase:'response',status:response.status,requestId:response.headers?.get('request-id') || null,errorCode:details.error?.code || null,param:details.error?.param || null})); fail('paymentUnavailable', 503); }
   const session = await response.json();
   if (session.livemode !== !test || !(test ? /^cs_test_/ : /^cs_live_/).test(session.id || '') || !/^https:\/\/checkout\.stripe\.com\//.test(session.url || '') || session.amount_total !== amount || session.currency !== 'eur' || session.client_reference_id !== groupId || !Number.isSafeInteger(session.expires_at)) fail('paymentResponse', 502);
   return session;
