@@ -80,13 +80,16 @@ test('durable article job reaches pending_review once and stays nonpublic',async
   const DB=database(),jobId=randomUUID(),conversationId=randomUUID(),url='https://www.gov.pl/web/belgia/test',at=new Date().toISOString();
   DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(jobId,conversationId,'editor',`Napisz artykuł na podstawie ${url}`,at,at);
   const quote='Oficjalna informacja o procedurze dla obywateli polskich.';
-  const output={title:'Procedura dla Polaków w Belgii',description:'Praktyczny opis procedury dla obywateli polskich w Belgii.',body:`${'Opis procedury potwierdzony oficjalnym źródłem. '.repeat(22)}\n\nŹródło: ${url}`,evidenceQuotes:[{url,quote}]};
+  const output={title:'Procedura dla Polaków w Belgii',description:'Praktyczny opis procedury dla obywateli polskich w Belgii.',body:`${'Opis procedury potwierdzony oficjalnym źródłem. '.repeat(22)} [0:0]\n\nŹródło: [${url}]`,evidenceQuoteIds:['0:0']};
   const fetcher=async endpoint=>endpoint===url?new Response(`<html><body>${quote.repeat(10)}</body></html>`,{headers:{'content-type':'text/html'}}):Response.json({candidates:[{content:{parts:[{text:JSON.stringify(output)}]}}]});
   const env={DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'};
   const first=await processChatJobs(env,{fetcher});assert.equal(first.status,'done');
   assert.equal((await processChatJobs(env,{fetcher})).status,'empty');
   const row=DB.sqlite.prepare('SELECT status,candidate_id FROM ai_chat_jobs WHERE id=?').get(jobId);
   assert.equal(row.status,'done');assert.equal(DB.sqlite.prepare('SELECT status FROM ai_editorial WHERE candidate_id=?').get(row.candidate_id).status,'pending_review');
+  assert.equal(JSON.parse(DB.sqlite.prepare('SELECT verification_json FROM ai_candidates WHERE id=?').get(row.candidate_id).verification_json).evidenceQuotes[0].quote,quote);
+  const body=DB.sqlite.prepare('SELECT body FROM ai_candidates WHERE id=?').get(row.candidate_id).body;
+  assert.ok(body.includes(`[źródło](${url})`));assert.ok(!body.includes('[0:0]'));
   assert.equal(await publicEntry(DB,`ai-${row.candidate_id}`),null);
 });
 

@@ -1,4 +1,7 @@
 const messages = {
+  geminiUnavailable: 'Pytania do agenta wymagają osobnej konfiguracji Gemini. Aby przygotować artykuł, wybierz „Zleć artykuł”.',
+  geminiNetwork: 'Gemini nie odpowiedział. Spróbuj ponownie później.',
+  queueFull: 'Kolejka artykułów jest pełna. Spróbuj ponownie po zakończeniu bieżących zadań.',
   unauthorized: 'Sesja wygasła. Zaloguj się ponownie.', invalidCredentials: 'Nieprawidłowy e-mail lub hasło.', forbidden: 'Nie masz uprawnień do tej operacji.',
   passwordChangeRequired: 'Zmień hasło tymczasowe przed rozpoczęciem pracy.', passwordResetRequired: 'To konto wymaga ustawienia nowego hasła po migracji. Skontaktuj się z administratorem.', passwordLength: 'Hasło musi mieć od 15 do 128 znaków.', passwordReuse: 'Nowe hasło musi różnić się od dotychczasowego.',
   rateLimit: 'Zbyt wiele prób. Spróbuj ponownie za 15 minut.', validation: 'Sprawdź dane formularza.', emailExists: 'Konto z tym adresem e-mail już istnieje.',
