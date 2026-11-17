@@ -99,6 +99,7 @@ function renderAll() {
   if (state.site) renderSite();
   renderMedia(); renderHistory(); renderUsers();
   renderDashboard();
+  document.dispatchEvent(new CustomEvent('cms:manual-articles',{detail:state.articles}));
 }
 function renderDashboard() {
   const rows = aiSnapshot?.candidates || [];
@@ -142,6 +143,16 @@ function renderRepeater(type, items) {
   $(`#${type}-editor`).innerHTML = items.map((item, index) => `<div class="repeat-item" data-index="${index}"><button class="remove" type="button" data-remove="${type}">×</button>${fields.map(([key,label]) => `<label class="${key === "description" ? "wide" : ""}">${label}${key === "description" ? `<textarea data-field="${key}" rows="2">${escapeHtml(item[key] || "")}</textarea>` : key === 'region' ? `<select data-field="region">${[['all','Cała Belgia'],['flanders','Flandria'],['wallonia','Walonia'],['brussels','Region Stołeczny Brukseli']].map(([value,text]) => `<option value="${value}" ${item.region === value ? 'selected' : ''}>${text}</option>`).join('')}</select>` : `<input data-field="${key}" value="${escapeHtml(item[key] || "")}">`}</label>`).join("")}${type === "news" ? `<button class="secondary" type="button" data-news-upload="${index}">Wgraj zdjęcie</button>` : ""}</div>`).join("");
 }
 function readRepeater(type) { return $$(`#${type}-editor .repeat-item`).map((row) => Object.fromEntries($$("[data-field]", row).map((field) => [field.dataset.field, field.value.trim()]))); }
+function publicationButtons(article,kind) {
+  const id=escapeHtml(kind==='ai'?article.id:article.slug);
+  const button=(action,label)=>`<button class="secondary" type="button" data-publication-action="${action}" data-publication-kind="${kind}" data-publication-id="${id}">${label}</button>`;
+  if (!state.isAdmin) return '';
+  if (article.status==='draft') return kind==='manual' ? button('publish-now','Opublikuj teraz')+button('schedule','Zaplanuj') : '';
+  if (article.status==='approved') return button('publish-now','Opublikuj teraz')+button('schedule','Zaplanuj');
+  if (article.status==='scheduled') return button('publish-now','Opublikuj teraz')+button('schedule','Zmień termin')+button('unschedule','Anuluj planowanie');
+  if (article.status==='published') return button('withdraw','Wycofaj');
+  return '';
+}
 function renderArticles() {
   const ui=articleUi[state.language] || articleUi.pl;
   const category=$('#articles-category'), previous=category.value;
@@ -153,8 +164,8 @@ function renderArticles() {
   const query=$('#articles-search').value.trim().toLocaleLowerCase('pl'), status=$('#articles-status').value;
   const matches=article=>(!query||`${article.title} ${article.category}`.toLocaleLowerCase('pl').includes(query))&&(!category.value||article.category===category.value)&&(!status||article.status===status);
   const articles=manual.filter(matches), aiArticles=ai.filter(matches);
-  const manualRows=articles.map(article=>`<div class="table-row"><div><h3>${escapeHtml((state.language==='pl'?article.title:article[`title_${state.language}`])||'Brak wersji w tym języku: '+article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${formatDate(article.date)} · ${escapeHtml(ui.statuses[article.status] || article.status)} · ${ui.editorial}</p></div><div class="row-actions"><button class="secondary" data-edit-article="${escapeHtml(article.slug)}">${ui.edit}</button>${article.status==='published' && state.isAdmin?`<button class="secondary" data-unpublish-article="${escapeHtml(article.slug)}">Wycofaj</button>`:''}<button class="ghost danger" data-delete-article="${escapeHtml(article.slug)}">${ui.remove}</button></div></div>`);
-  const aiRows=aiArticles.map(article=>`<div class="table-row"><div><h3>${escapeHtml(article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${escapeHtml(ui.statuses[article.status]||article.status)} · AI Redaktor</p></div><div class="row-actions">${['published','archived'].includes(article.status)?'':`<button class="secondary" data-edit-ai="${article.id}">${ui.edit}</button>`}<button class="secondary" data-open-ai="${article.id}">${ui.open}</button></div></div>`);
+  const manualRows=articles.map(article=>`<div class="table-row"><div><h3>${escapeHtml((state.language==='pl'?article.title:article[`title_${state.language}`])||'Brak wersji w tym języku: '+article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${formatDate(article.published_at||article.scheduled_at||article.date)} · ${escapeHtml(ui.statuses[article.status] || article.status)} · ${ui.editorial}</p></div><div class="row-actions"><button class="secondary" data-edit-article="${escapeHtml(article.slug)}">${ui.edit}</button>${publicationButtons(article,'manual')}<button class="ghost danger" data-delete-article="${escapeHtml(article.slug)}">${ui.remove}</button></div></div>`);
+  const aiRows=aiArticles.map(article=>`<div class="table-row"><div><h3>${escapeHtml(article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${escapeHtml(ui.statuses[article.status]||article.status)} · AI Redaktor</p></div><div class="row-actions"><button class="secondary" data-edit-ai="${article.id}">${ui.edit}</button>${publicationButtons(article,'ai')}<button class="secondary" data-open-ai="${article.id}">${ui.open}</button></div></div>`);
   $("#articles-list").innerHTML = [...aiRows,...manualRows].join('')||`<p class="empty-state">${ui.empty}</p>`;
 }
 $('#articles-search').addEventListener('input',renderArticles);
@@ -197,23 +208,24 @@ function formData(form) { return Object.fromEntries(new FormData(form).entries()
 function openArticle(article = null) {
   const form = $("#article-form"); form.reset(); state.editingAiId = article?.aiId || null; $("#article-dialog-title").textContent = article ? "Edytuj artykuł" : "Nowy artykuł";
   const values = article || { date: new Date().toISOString() }; Object.entries(values).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = key === "date" ? brusselsDateTime(value) : value || ""; });
-  form.elements.status.value = article?.status === 'published' ? 'published' : 'draft';
+  form.elements.status.value = ['draft','scheduled','published'].includes(article?.status) ? article.status : 'draft';
   form.elements.status.disabled = Boolean(state.editingAiId);
   form.elements.status.querySelector('[value="published"]').disabled = !state.isAdmin;
   $('#article-ai-note').hidden = !state.editingAiId;
-  form.slug.value = article?.slug || ""; $("#article-dialog").showModal(); document.querySelector(`[data-language-tab="${state.language}"]`).click();
+  $('#article-editor-publication').innerHTML=article ? publicationButtons(article,article.aiId?'ai':'manual') : '';
+  form.slug.value = article?.slug || ""; document.dispatchEvent(new Event('cms:article-editor-open')); $("#article-dialog").showModal(); document.querySelector(`[data-language-tab="${state.language}"]`).click();
 }
 function brusselsDateTime(value) {
   const date = new Date(value);
   if (!Number.isFinite(date.valueOf())) return '';
   return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(date).replace(' ','T');
 }
-function brusselsLocalToUtc(value) {
+function brusselsLocalToUtc(value,fold='earlier') {
   const base=Date.parse(`${value}:00Z`);
   if (!Number.isFinite(base)) throw new Error('Podaj poprawną datę publikacji.');
   const matches=[1,2].map(hours=>new Date(base-hours*3600000)).filter(date=>brusselsDateTime(date)===value);
   if (!matches.length) throw new Error('Ta godzina nie istnieje w Polsce i Belgii z powodu zmiany czasu.');
-  return matches[0].toISOString();
+  return (matches.length===2 && fold==='earlier' ? matches[1] : matches[0]).toISOString();
 }
 function aiArticle(row) {
   let fields={},sources=[];
@@ -224,6 +236,8 @@ function aiArticle(row) {
 async function uploadImage(target = null) { state.uploadTarget = target; $("#media-input").click(); }
 document.addEventListener('cms:upload-event-image', event => uploadImage(event.detail));
 document.addEventListener('cms:edit-ai-article',event => { const row=(aiSnapshot?.candidates||[]).find(item=>item.id===event.detail); if(row)openArticle(aiArticle(row)); });
+document.addEventListener('cms:edit-manual-article',event => { const row=state.articles.find(item=>item.slug===event.detail); if(row)openArticle(row); });
+document.addEventListener('cms:manual-articles-request',()=>document.dispatchEvent(new CustomEvent('cms:manual-articles',{detail:state.articles})));
 function renderArticlePreview(language = state.previewLanguage) {
   state.previewLanguage = language;
   const form = $("#article-form");
@@ -272,8 +286,9 @@ $("#site-form").addEventListener("submit", async (event) => {
   try { state.site.contact = { email:event.target.elements["contact.email"].value.trim(), area:event.target.elements["contact.area"].value.trim(), heading:event.target.elements["contact.heading"].value.trim(), description:event.target.elements["contact.description"].value.trim() }; $$("[data-seo]").forEach((field) => { const [page,key]=field.dataset.seo.split("."); state.site.seo[page][key]=field.value.trim(); }); const result=await state.repository.saveSite(state.siteAll,state.siteSha); state.siteSha=result.content.sha; notify("Ustawienia kontaktu i SEO zapisane."); } catch(error){notify(error.message,true);} finally{setBusy(button,false);}
 });
 $("#article-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button=event.submitter; setBusy(button,true); const values=formData(event.target); values.contentType='article'; const original=state.articles.find((article)=>article.slug===values.slug);
+  event.preventDefault(); const button=event.submitter; setBusy(button,true); const values=formData(event.target); values.contentType='article'; const original=state.articles.find((article)=>article.slug===values.slug); values.status=original?.status || 'draft';
   try {
+    if (!values.body?.trim()) throw new Error('Treść artykułu nie może być pusta.');
     if (state.editingAiId) {
       const row=(aiSnapshot?.candidates||[]).find(item=>item.id===state.editingAiId);
       if (!row) throw new Error('Nie znaleziono artykułu AI. Odśwież kolejkę.');
@@ -291,6 +306,62 @@ $("#media-input").addEventListener("change", async (event) => {
   const file=event.target.files[0]; if(!file)return;
   try { const uploaded=await state.repository.upload(file); if(state.uploadTarget) state.uploadTarget.value=uploaded.path; state.media=await state.repository.media(); renderAll(); notify("Obraz zapisany."); } catch(error){notify(error.message,true);} finally{state.uploadTarget=null;event.target.value="";}
 });
+let scheduleTarget=null;
+async function publicationAction(kind,id,action,scheduledAt=null,fold='earlier') {
+  if (!state.isAdmin) throw new Error('Tylko administrator może zmienić publikację.');
+  if (kind==='manual') {
+    const article=state.articles.find(item=>item.slug===id);
+    if (!article) throw new Error('Artykuł nie istnieje. Odśwież listę.');
+    await state.repository.publication(article,action,scheduledAt);
+    state.articles=await state.repository.articles();
+    renderAll();
+  } else {
+    const row=(aiSnapshot?.candidates||[]).find(item=>item.id===id);
+    if (!row) throw new Error('Materiał AI nie istnieje. Odśwież kolejkę.');
+    if (action==='publish-now') await cmsRequest('ai-editor',{},'POST',{action:'publish-now',id});
+    else if (action==='schedule') await cmsRequest('ai-editor',{},'POST',{action:'status',id,status:'scheduled',localTime:brusselsDateTime(scheduledAt),fold});
+    else await cmsRequest('ai-editor',{},'POST',{action:'status',id,status:action==='withdraw'?'archived':'draft'});
+    document.dispatchEvent(new Event('cms:load-ai'));
+  }
+  if ($('#article-dialog').open) $('#article-dialog').close();
+}
+document.addEventListener('cms:article-publication',event=>{
+  const {kind,id,action}=event.detail || {};
+  document.dispatchEvent(new CustomEvent('cms:publication-request',{detail:{kind,id,action}}));
+});
+document.addEventListener('cms:publication-request',async event=>{
+  const {kind,id,action}=event.detail || {};
+  if (!['manual','ai'].includes(kind) || !['publish-now','schedule','unschedule','withdraw'].includes(action)) return;
+  if (action==='schedule') {
+    scheduleTarget={kind,id};
+    const article=kind==='manual'?state.articles.find(item=>item.slug===id):(aiSnapshot?.candidates||[]).find(item=>item.id===id);
+    if (!article) { notify('Nie znaleziono artykułu. Odśwież listę.',true); return; }
+    $('#article-schedule-title').textContent=article.status==='scheduled'?'Zmień termin publikacji':'Zaplanuj publikację';
+    $('#article-schedule-form').elements.localTime.value=brusselsDateTime(article.scheduled_at || new Date(Date.now()+3600000).toISOString());
+    $('#article-schedule-error').textContent='';
+    $('#article-schedule-dialog').showModal();
+    return;
+  }
+  const labels={'publish-now':['Opublikować teraz?','Artykuł będzie od razu widoczny publicznie.'],'unschedule':['Anulować planowanie?','Artykuł wróci do szkiców.'],'withdraw':['Wycofać publikację?','Artykuł zniknie z publicznych list.']};
+  if (!await confirmAction(...labels[action])) return;
+  try { await publicationAction(kind,id,action); notify(action==='publish-now'?'Artykuł opublikowany.':action==='withdraw'?'Artykuł wycofany.':'Planowanie anulowane.'); }
+  catch(error){notify(`Nie udało się zmienić publikacji: ${error.message}`,true);}
+});
+$('#article-schedule-form').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,local=form.elements.localTime.value,error=$('#article-schedule-error');
+  let utc; try { utc=brusselsLocalToUtc(local,form.elements.fold.value); if(Date.parse(utc)<=Date.now()) throw new Error('Wybierz przyszły termin.'); }
+  catch(e){error.textContent=e.message;return;}
+  if(!await confirmAction('Zapisać termin publikacji?',`Publikacja: ${formatDateTime(utc)}.`))return;
+  try { await publicationAction(scheduleTarget.kind,scheduleTarget.id,'schedule',utc,form.elements.fold.value); $('#article-schedule-dialog').close(); notify('Termin publikacji zapisany.'); }
+  catch(e){error.textContent=`Nie zapisano terminu: ${e.message}`;}
+});
+$('#article-schedule-form').elements.localTime.addEventListener('input',event=>{
+  const value=event.target.value;
+  const base=Date.parse(`${value}:00Z`);
+  const matches=[1,2].map(hours=>new Date(base-hours*3600000)).filter(date=>brusselsDateTime(date)===value);
+  $('#article-schedule-fold').hidden=matches.length!==2;
+});
 document.addEventListener("click", async (event) => {
   const action=event.target.closest("[data-action]")?.dataset.action;
   if(action==="new-article")openArticle(); if(action==="add-news"){state.home.news.push({title:"",category:"",description:"",image:"",link:"/artykuly/"});renderRepeater("news",state.home.news);} if(action==="add-notice"){state.home.notices.push({title:"",category:"",date:"",description:"",contact:""});renderRepeater("notices",state.home.notices);} if(action==="upload-media")uploadImage(); if(action==="pick-article-image")uploadImage($("#article-form").image);
@@ -301,6 +372,7 @@ document.addEventListener("click", async (event) => {
   const remove=event.target.closest("[data-remove]"); if(remove&&await confirmAction('Usunąć element?','Element zniknie z formularza. Zmianę zapiszesz przyciskiem Zapisz.','Usuń')){const type=remove.dataset.remove;state.home[type].splice(Number(remove.closest("[data-index]").dataset.index),1);renderRepeater(type,state.home[type]);}
   const newsUpload=event.target.closest("[data-news-upload]"); if(newsUpload)uploadImage($(`#news-editor [data-index="${newsUpload.dataset.newsUpload}"] [data-field="image"]`));
   const edit=event.target.closest("[data-edit-article]"); if(edit)openArticle(state.articles.find((item)=>item.slug===edit.dataset.editArticle));
+  const publication=event.target.closest('[data-publication-action]'); if(publication)document.dispatchEvent(new CustomEvent('cms:publication-request',{detail:{kind:publication.dataset.publicationKind,id:publication.dataset.publicationId,action:publication.dataset.publicationAction}}));
   const unpublish=event.target.closest('[data-unpublish-article]');if(unpublish && await confirmAction('Wycofać artykuł?', 'Artykuł zniknie ze strony, ale pozostanie w CMS jako szkic.')){try{const article=state.articles.find(item=>item.slug===unpublish.dataset.unpublishArticle);await state.repository.saveArticle({...article,status:'draft'},article);state.articles=await state.repository.articles();renderAll();notify('Artykuł wycofano. Pozostał w CMS jako szkic.');}catch(error){notify(error.message,true);}}
   const editAi=event.target.closest('[data-edit-ai]');if(editAi){const row=(aiSnapshot?.candidates||[]).find(item=>item.id===editAi.dataset.editAi);if(row)openArticle(aiArticle(row));}
   const openAi=event.target.closest('[data-open-ai]'); if(openAi)document.dispatchEvent(new CustomEvent('cms:open-ai',{detail:openAi.dataset.openAi}));

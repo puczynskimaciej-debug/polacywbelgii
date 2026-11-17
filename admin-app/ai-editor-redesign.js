@@ -10,6 +10,7 @@ const parse = (value,fallback) => { try { return JSON.parse(value || '') || fall
 const localParts = value => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value)).replace(' ','T');
 let data = { candidates:[],sources:[],runs:[],history:[],config:{},canManage:false };
 let selected = null;
+let manualArticles=[];
 const item = id => data.candidates.find(row => row.id === id);
 const notice = text => { $('#ai-notice').textContent = text; };
 
@@ -76,7 +77,30 @@ function schedule(){const value=selected.scheduled_at||selected.proposed_publish
 function availability(){const form=$('#ai-schedule-form'),local=`${form.elements.date.value}T${form.elements.time.value}`,found=matches(local),day=data.candidates.filter(row=>row.id!==selected?.id&&row.scheduled_at&&localParts(row.scheduled_at).slice(0,10)===form.elements.date.value),occupied=day.some(row=>localParts(row.scheduled_at)===local);$('#ai-fold-label').hidden=found.length!==2;$('#ai-schedule-availability').textContent=`${day.length} zaplanowanych publikacji tego dnia.${occupied?' Ta godzina jest już zajęta.':''}${found.length===0?' Ta godzina nie istnieje w Brukseli z powodu zmiany czasu.':''}${found.length===2?' Wybierz pierwsze lub drugie wystąpienie godziny.':''}`;return{found,occupied,local};}
 function renderCalendar(){const host=$('#ai-calendar-list'),view=$('#ai-calendar-view').value,start=$('#ai-calendar-start');if(!start.value)start.value=localParts(new Date()).slice(0,10);const chosen=start.value,date=new Date(`${chosen}T12:00:00Z`);if(view==='month')date.setUTCDate(1);if(view!=='list')date.setUTCDate(date.getUTCDate()-((date.getUTCDay()+6)%7));const days=view==='week'?7:view==='month'?42:90,entries=data.candidates.filter(row=>row.scheduled_at),blocks=Array.from({length:days},(_,index)=>{const day=new Date(date);day.setUTCDate(day.getUTCDate()+index);const key=day.toISOString().slice(0,10);return{key,items:entries.filter(row=>localParts(row.scheduled_at).slice(0,10)===key),outside:view==='month'&&key.slice(0,7)!==chosen.slice(0,7)};});if(view==='list'){host.innerHTML=`<div class="calendar-list">${blocks.filter(day=>day.items.length).map(day=>`<div class="compact-item"><strong>${day.key} · ${day.items.length}</strong><span>${day.items.map(row=>`<button type="button" class="text-button" data-ai-open="${row.id}">${escapeHtml(row.title)} · ${escapeHtml(statusNames[row.status])}</button>`).join('')}</span></div>`).join('')||'<p class="empty-state">Brak publikacji w wybranym okresie.</p>'}</div>`;return;}host.innerHTML=`<div class="calendar-grid">${['Pon','Wt','Śr','Czw','Pt','Sob','Niedz'].map(day=>`<div class="calendar-weekday">${day}</div>`).join('')}${blocks.map(day=>`<div class="calendar-day${day.outside?' is-outside':''}${(window.PbeCalendar?.holidays(day.key).length || window.PbeCalendar?.sunday(day.key))?' is-holiday':''}${day.key === window.PbeCalendar?.today()?' is-today':''}"><strong>${Number(day.key.slice(8))}</strong><small>${day.items.length||''}</small>${day.items.map(row=>`<button type="button" class="calendar-entry status-${escapeHtml(row.status)}" data-ai-open="${row.id}" title="${escapeHtml(row.title)}">${escapeHtml(row.title)}</button>`).join('')}</div>`).join('')}</div>`;}
 
-$('#ai-calendar-list').addEventListener('click',event=>{const button=event.target.closest('[data-ai-open]');if(button)openDetail(item(button.dataset.aiOpen));});
+const renderAiCalendar=renderCalendar;
+// Wrap the existing calendar renderer to include scheduled CMS articles.
+// eslint-disable-next-line no-func-assign
+renderCalendar=()=>{renderAiCalendar();renderManualCalendar();};
+function renderManualCalendar(){
+  const host=$('#ai-calendar-list'),view=$('#ai-calendar-view').value,start=$('#ai-calendar-start').value;
+  if(!start)return;
+  const date=new Date(`${start}T12:00:00Z`);
+  if(view==='month')date.setUTCDate(1);
+  if(view!=='list')date.setUTCDate(date.getUTCDate()-((date.getUTCDay()+6)%7));
+  const count=view==='week'?7:view==='month'?42:90;
+  const days=Array.from({length:count},(_,index)=>{const day=new Date(date);day.setUTCDate(day.getUTCDate()+index);return day.toISOString().slice(0,10);});
+  const rows=manualArticles.filter(article=>article.status==='scheduled'&&article.scheduled_at);
+  const controls=article=>`<span class="calendar-manual-actions"><button type="button" class="calendar-entry" data-manual-open="${escapeHtml(article.slug)}">${escapeHtml(article.title)}</button><button type="button" class="text-button" data-manual-action="schedule" data-manual-id="${escapeHtml(article.slug)}">Zmień termin</button><button type="button" class="text-button" data-manual-action="publish-now" data-manual-id="${escapeHtml(article.slug)}">Opublikuj teraz</button></span>`;
+  if(view==='list'){
+    const items=days.flatMap(key=>rows.filter(article=>localParts(article.scheduled_at).slice(0,10)===key).map(article=>`<div class="compact-item"><strong>${key}</strong>${controls(article)}</div>`));
+    host.querySelector('.calendar-list')?.insertAdjacentHTML('beforeend',items.join(''));
+  }else host.querySelectorAll('.calendar-day').forEach((node,index)=>{
+    const key=days[index];
+    node.insertAdjacentHTML('beforeend',rows.filter(article=>localParts(article.scheduled_at).slice(0,10)===key).map(controls).join(''));
+  });
+}
+document.addEventListener('cms:manual-articles',event=>{manualArticles=event.detail||[];renderCalendar();});
+$('#ai-calendar-list').addEventListener('click',event=>{const ai=event.target.closest('[data-ai-open]');if(ai){openDetail(item(ai.dataset.aiOpen));return;}const manual=event.target.closest('[data-manual-open]');if(manual){document.dispatchEvent(new CustomEvent('cms:edit-manual-article',{detail:manual.dataset.manualOpen}));return;}const action=event.target.closest('[data-manual-action]');if(action)document.dispatchEvent(new CustomEvent('cms:publication-request',{detail:{kind:'manual',id:action.dataset.manualId,action:action.dataset.manualAction}}));});
 document.querySelectorAll('[data-ai-tab]').forEach(tab=>tab.addEventListener('click',()=>showTab(tab.dataset.aiTab)));
 enableTabKeyboard($('.detail-tabs'));
 $('#ai-detail-actions').addEventListener('click',async event=>{const action=event.target.closest('[data-ai-action]')?.dataset.aiAction;if(!action)return;if(action==='schedule')return schedule();if(action==='verify-article'){ $('#ai-verify-form').reset(); $('#ai-verify-error').textContent=''; $('#ai-verify-dialog').showModal(); return; }if(action==='retry-publication'){try{await cmsRequest('ai-editor',{},'POST',{action:'retry-publication',id:selected.id});await load();notice('Publikację ponowiono.');}catch(error){notice(error.message);}return;}if(['rejected','archived','pending_review'].includes(action)&&!await confirmAction(action==='archived'?'Wycofać publikację?':action==='rejected'?'Odrzucić materiał?':'Cofnąć zatwierdzenie?',action==='archived'?'Materiał zniknie po aktualizacji strony.':'Decyzja zostanie zapisana w historii.'))return;if(action==='publish-now'){if(selected.kind==='event'){try{await cmsRequest('ai-editor',{},'POST',{action:'publish-event',id:selected.id});await load();notice('Wydarzenie opublikowane.');}catch(error){notice(error.message);}return;}if(parse(selected.verification_json,{}).status!=='verified'){notice('Przed publikacją sprawdź informacje i źródła. Użyj przycisku „Potwierdź weryfikację”.');return;}try{await cmsRequest('ai-editor',{},'POST',{action:'publish-now',id:selected.id});await load();notice('Artykuł opublikowany.');}catch(error){notice(error.message);}return;}await changeStatus(action);});

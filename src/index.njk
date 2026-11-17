@@ -42,6 +42,7 @@ pageKey: home
       <a class="text-link" href="/artykuly/"><span data-i18n="home.allArticles">Wszystkie artykuły</span> <span aria-hidden="true">→</span></a>
     </div>
     <div class="news-grid">
+      <!-- CMS_LATEST_START -->
       {% for card in home.news %}
       <article class="news-card" data-region="{{ card.region or 'all' }}" data-i18n-group="news.{{ loop.index0 }}">
         <img src="{{ card.image }}" alt="" loading="lazy">
@@ -55,6 +56,7 @@ pageKey: home
       {% else %}
       <p class="empty-state" data-i18n="articles.emptyText">Pierwsze artykuły są w przygotowaniu. Zajrzyj tu ponownie wkrótce.</p>
       {% endfor %}
+      <!-- CMS_LATEST_END -->
     </div>
   </div>
 </section>

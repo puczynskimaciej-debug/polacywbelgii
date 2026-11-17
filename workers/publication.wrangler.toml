@@ -1,4 +1,4 @@
-name = "polacywbelgii-publication-preview"
+name = "polacywbelgii-publication-test"
 main = "./publication.mjs"
 compatibility_date = "2026-10-21"
 
@@ -7,6 +7,6 @@ crons = ["*/5 * * * *"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "polacywbelgii-preview"
-database_id = "be9435a1-b3ff-41dc-b70d-6f79f768d887"
+database_name = "polacywbelgii-test"
+database_id = "76deb616-3e1d-4a64-9c68-7275336a91d4"
 preview_database_id = "DB"

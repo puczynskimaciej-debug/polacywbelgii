@@ -18,6 +18,7 @@ test('D1 publication tick requires approval, is idempotent, and withdrawal hides
   DB.sqlite.exec(readFileSync(new URL('../agent/migrations/002_editorial.sql', import.meta.url), 'utf8'));
   DB.sqlite.exec(readFileSync(new URL('../agent/migrations/003_content.sql', import.meta.url), 'utf8'));
   DB.sqlite.exec(readFileSync(new URL('../agent/migrations/006_article_fields.sql', import.meta.url), 'utf8'));
+  DB.sqlite.exec(readFileSync(new URL('../agent/migrations/007_article_publication.sql', import.meta.url), 'utf8'));
   const good = '1'.repeat(20), bad = '2'.repeat(20);
   for (const id of [good,bad]) DB.sqlite.prepare('INSERT INTO ai_candidates(id,kind,status,title,description,body,sources_json,verification_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,'article','pending_review',`Article ${id}`,'Description','Body','[]','{}','2026-01-01','2026-01-01');
   for (const id of [good,bad]) DB.sqlite.prepare("INSERT INTO ai_editorial(candidate_id,status,owner_kind,owner_id,updated_at) VALUES(?,'pending_review','agent','agent','2026-01-01')").run(id);

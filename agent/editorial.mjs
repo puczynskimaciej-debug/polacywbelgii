@@ -5,7 +5,7 @@ const transitions = {
   pending_review: { agent: [], admin: ['changes_requested', 'approved', 'scheduled', 'rejected'] },
   changes_requested: { agent: ['pending_review'], admin: ['rejected', 'draft'] },
   approved: { agent: [], admin: ['scheduled', 'pending_review', 'rejected'] },
-  scheduled: { agent: [], admin: ['approved', 'scheduled', 'pending_review', 'rejected'] },
+  scheduled: { agent: [], admin: ['draft', 'approved', 'scheduled', 'pending_review', 'rejected'] },
   published: { agent: [], admin: ['archived'] },
   rejected: { agent: [], admin: ['draft'] },
   archived: { agent: [], admin: [] }

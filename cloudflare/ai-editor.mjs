@@ -150,7 +150,7 @@ export async function onRequest({ request, env }) {
       return json({ id: input.id, verification });
     }
     if (input.action === 'edit') {
-      if (actor.kind === 'agent' && !['draft','changes_requested'].includes(current.editorial_status) || actor.kind === 'admin' && (current.editorial_status === 'archived' || current.editorial_status === 'published' && current.kind !== 'event')) fail('forbidden', 403);
+      if (actor.kind === 'agent' && !['draft','changes_requested'].includes(current.editorial_status) || actor.kind === 'admin' && current.editorial_status === 'archived') fail('forbidden', 403);
       const manual = current.kind === 'event' && current.owner_kind === 'admin';
       if (manual) normalizeManual(input);
       if (!validContent(input,manual)) fail('validation');
@@ -176,7 +176,7 @@ export async function onRequest({ request, env }) {
       if (occupied.n) fail('scheduleConflict', 409);
     }
     const firstApproval = ['approved','scheduled'].includes(input.status) && !current.approved_by;
-    const clearApproval = ['pending_review','rejected'].includes(input.status);
+    const clearApproval = ['draft','pending_review','rejected'].includes(input.status);
     const approvedBy = firstApproval ? actor.id : clearApproval ? null : current.approved_by;
     const approvedAt = firstApproval ? now : clearApproval ? null : current.approved_at;
     const publicState = input.status === 'archived' ? 'hidden' : null;

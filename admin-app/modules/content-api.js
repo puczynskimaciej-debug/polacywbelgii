@@ -5,6 +5,7 @@ export class ContentApi {
   async writeText(path, text, message, sha, status) { return this.writeBinary(path, new TextEncoder().encode(text), message, sha, status); }
   async writeBinary(path, bytes, _message, sha, status) { return cmsRequest('cms-content', { path }, 'PUT', { content: encodeBytes(bytes), ...(sha ? { sha } : {}), ...(status ? { status } : {}) }); }
   async remove(path, sha, _message) { return cmsRequest('cms-content', { path }, 'DELETE', { sha }); }
+  async publication(path, sha, action, scheduledAt) { return cmsRequest('cms-content', { path }, 'POST', { sha, action, ...(scheduledAt ? { scheduledAt } : {}) }); }
   async commits() { return cmsRequest('cms-content', { action: 'history' }); }
 }
 function decodeBase64(value) {

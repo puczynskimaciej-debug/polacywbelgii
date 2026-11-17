@@ -15,7 +15,7 @@ import { publicEntry } from '../cloudflare/public-pages.mjs';
 globalThis.crypto ??= webcrypto;
 function database() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','agent/migrations/001_agent.sql','agent/migrations/002_editorial.sql','agent/migrations/003_content.sql','agent/migrations/004_discovery.sql','agent/migrations/005_chat.sql','agent/migrations/006_article_fields.sql','deploy/cloudflare-d1-0004-retention.sql']) sqlite.exec(readFileSync(new URL(`../${file}`,import.meta.url),'utf8'));
+  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','agent/migrations/001_agent.sql','agent/migrations/002_editorial.sql','agent/migrations/003_content.sql','agent/migrations/004_discovery.sql','agent/migrations/005_chat.sql','agent/migrations/006_article_fields.sql','agent/migrations/007_article_publication.sql','deploy/cloudflare-d1-0004-retention.sql']) sqlite.exec(readFileSync(new URL(`../${file}`,import.meta.url),'utf8'));
   const prepare = (sql,params=[])=>({bind(...next){return prepare(sql,next);},async first(){return sqlite.prepare(sql).get(...params) || null;},async all(){return {results:sqlite.prepare(sql).all(...params)};},async run(){const result=sqlite.prepare(sql).run(...params);return {meta:{changes:result.changes}};}});
   return {sqlite,prepare,async batch(statements){sqlite.exec('BEGIN');try{const values=[];for(const statement of statements)values.push(await statement.run());sqlite.exec('COMMIT');return values;}catch(error){sqlite.exec('ROLLBACK');throw error;}}};
 }

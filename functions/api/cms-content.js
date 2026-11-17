@@ -1,7 +1,7 @@
 import content from '../../server/cms-content.js';
 import { currentUser } from '../../cloudflare/auth.mjs';
 import { errorResponse, fail, json, readJson } from '../../cloudflare/common.mjs';
-import { listContent, readContent, writeContent, withdrawContent, contentHistory } from '../../cloudflare/content-store.mjs';
+import { listContent, readContent, writeContent, withdrawContent, contentHistory, changeArticlePublication } from '../../cloudflare/content-store.mjs';
 
 async function github(env, endpoint, options = {}) {
   const repository = env.CMS_GITHUB_REPOSITORY || 'puczynskimaciej-debug/polacywbelgii';
@@ -29,13 +29,17 @@ export async function onRequest({ request, env }) {
       if (useD1) return json(await contentHistory(env.DB));
       return json(await github(env, `/commits?${new URLSearchParams({ sha: branch, per_page: '50' })}`));
     }
-    if (!['GET', 'PUT', 'DELETE'].includes(request.method)) fail('method', 405);
+    if (!['GET', 'PUT', 'DELETE', 'POST'].includes(request.method)) fail('method', 405);
     if (request.method !== 'GET' && request.headers.get('origin') !== new URL(request.url).origin) fail('origin', 403);
     const filename = content.allowedPath(query.get('path'), request.method !== 'GET');
     if (useD1) {
       if (request.method === 'GET') return json(filename === 'src/content/articles' || filename === 'src/Images/uploads' ? await listContent(env.DB, filename) : await readContent(env.DB, filename));
       const input = await readJson(request, 5700000);
       if (input.sha !== undefined && !/^[0-9a-f]{40,64}$/.test(input.sha)) fail('validation');
+      if (request.method === 'POST') {
+        if (!filename.startsWith('src/content/articles/') || !input.sha || !['publish-now','schedule','unschedule','withdraw'].includes(input.action)) fail('validation');
+        return json(await changeArticlePublication(env.DB,filename,input.sha,input.action,input.scheduledAt,user));
+      }
       if (request.method === 'DELETE') {
         if (filename.startsWith('src/_data/') || !input.sha) fail('validation');
         return json(await withdrawContent(env.DB, filename, input.sha, user));

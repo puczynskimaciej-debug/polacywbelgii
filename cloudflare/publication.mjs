@@ -10,5 +10,8 @@
       published.push(item.candidate_id);
     }
   }
-  return { published };
+  const manual = onlyIds ? { published:[] } : await publishScheduledContent(db,timestamp);
+  return { published, manualPublished:manual.published };
 }
+
+import { publishScheduledContent } from './content-store.mjs';

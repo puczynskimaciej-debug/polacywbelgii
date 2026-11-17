@@ -28,7 +28,7 @@ const translations = {
     "articles.eyebrow": "Knowledge base", "articles.title": "Articles and guides",
     "articles.description": "Administration, work, health and everyday life in Belgium — explained clearly.",
     "articles.read": "Read article", "articles.emptyTitle": "The first articles are being prepared", "articles.emptyText": "Please come back soon.",
-    "category.Zdrowie": "Health", "category.Praca": "Work", "category.Formalności": "Administration",
+    "category.Inne": "Other", "category.Zdrowie": "Health", "category.Praca": "Work", "category.Formalności": "Administration",
     "category.Podatki": "Taxes", "category.Rodzina": "Family", "category.Życie w Belgii": "Life in Belgium",
     "category.Poradnik": "Guide", "category.Wydarzenie": "Event",
     "contact.eyebrow": "Let's talk", "contact.intro": "Have a question, an article idea or an important notice? Write to us.",
@@ -69,7 +69,7 @@ const translations = {
     "notices.1.description": "Een tweede, onafhankelijke placeholder om een langer bericht op de startpagina te testen.",
     "articles.eyebrow": "Kennisbank", "articles.title": "Artikels en gidsen",
     "articles.description": "Administratie, werk, gezondheid en het dagelijks leven in België — duidelijk uitgelegd.",
-    "articles.read": "Lees het artikel", "category.Zdrowie": "Gezondheid", "category.Praca": "Werk", "category.Formalności": "Administratie", "category.Podatki": "Belastingen", "category.Rodzina": "Gezin", "category.Życie w Belgii": "Leven in België", "category.Poradnik": "Gids",
+    "articles.read": "Lees het artikel", "category.Inne": "Overig", "category.Zdrowie": "Gezondheid", "category.Praca": "Werk", "category.Formalności": "Administratie", "category.Podatki": "Belastingen", "category.Rodzina": "Gezin", "category.Życie w Belgii": "Leven in België", "category.Poradnik": "Gids",
     "article.test.body": "<p>Iedereen kan ziek worden. In België is het belangrijk om uw werkgever snel te informeren en de vereiste formaliteiten te vervullen.</p><h2>Informeer uw werkgever</h2><p>Meld uw afwezigheid zo snel mogelijk volgens de regels op uw werkplek. Controleer het arbeidsreglement: daarin kunnen een specifieke vorm en termijn staan.</p><h2>Bezorg het attest</h2><p>Als uw werkgever een medisch attest vraagt, bezorg het dan binnen de opgegeven termijn. Bewaar een kopie en het verzendbewijs.</p><p>Elke situatie kan anders zijn. Neem bij twijfel contact op met uw ziekenfonds, vakbond of een specialist.</p>",
     "contact.eyebrow": "Laten we praten", "contact.intro": "Hebt u een vraag, een idee voor een artikel of een belangrijk bericht? Schrijf ons.",
     "contact.editorial": "Redactie", "contact.heading": "Dicht bij de Poolse gemeenschap",
@@ -109,7 +109,7 @@ const translations = {
     "notices.1.description": "Un deuxième placeholder indépendant permettant de tester un message plus long sur la page d’accueil.",
     "articles.eyebrow": "Base de connaissances", "articles.title": "Articles et guides",
     "articles.description": "Démarches, travail, santé et vie quotidienne en Belgique — expliqués simplement.",
-    "articles.read": "Lire l’article", "category.Zdrowie": "Santé", "category.Praca": "Travail", "category.Formalności": "Démarches", "category.Podatki": "Fiscalité", "category.Rodzina": "Famille", "category.Życie w Belgii": "Vie en Belgique", "category.Poradnik": "Guide",
+    "articles.read": "Lire l’article", "category.Inne": "Autres", "category.Zdrowie": "Santé", "category.Praca": "Travail", "category.Formalności": "Démarches", "category.Podatki": "Fiscalité", "category.Rodzina": "Famille", "category.Życie w Belgii": "Vie en Belgique", "category.Poradnik": "Guide",
     "article.test.body": "<p>Tout le monde peut tomber malade. En Belgique, il est important d’informer rapidement votre employeur et d’accomplir les formalités requises.</p><h2>Informez votre employeur</h2><p>Signalez votre absence dès que possible, conformément aux règles de votre lieu de travail. Consultez le règlement de travail : il peut imposer une forme et un délai précis.</p><h2>Remettez le certificat</h2><p>Si votre employeur exige un certificat médical, transmettez-le dans le délai fixé. Conservez-en une copie et la preuve d’envoi.</p><p>Chaque situation peut être différente. En cas de doute, contactez votre mutualité, votre syndicat ou un spécialiste.</p>",
     "contact.eyebrow": "Parlons-en", "contact.intro": "Une question, une idée d’article ou une annonce importante ? Écrivez-nous.",
     "contact.editorial": "Rédaction", "contact.heading": "Proches de la communauté polonaise",
@@ -259,7 +259,7 @@ function applyCmsContent(language) {
   const set=(key,value)=>{document.querySelectorAll(`[data-i18n="${key}"]`).forEach(e=>e.textContent=value||'');};
   if(home && document.body.dataset.page==='home'){
     for(const key of ['eyebrow','title','description'])set('home.'+key,home.hero[key]);
-    for(const [group,selector] of [['news','.news-grid'],['notices','.notice-grid']]){
+    for(const [group,selector] of [['notices','.notice-grid']]){
       const container=document.querySelector(selector);if(!container)continue;
       container.replaceChildren(...home[group].map((item,index)=>{
         const card=document.createElement('article');card.className=group==='news'?'news-card':'notice';
