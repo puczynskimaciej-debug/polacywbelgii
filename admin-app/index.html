@@ -76,7 +76,7 @@
         <button id="menu-toggle" class="menu-toggle" aria-label="Otwórz menu" aria-expanded="false">☰</button>
         <div class="topbar-context"><span>Panel administracyjny</span><strong id="topbar-section">Podsumowanie</strong></div>
         <button type="button" class="topbar-alert" id="topbar-alert" aria-label="Przejdź do spraw wymagających uwagi"><span aria-hidden="true">◉</span><span id="topbar-alert-count">0</span></button>
-        <label class="cms-language">Edytowany język<select id="cms-language"><option value="pl">Polski</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option></select></label>
+        <label class="cms-language">Edytowany język<select id="cms-language"><option value="pl">Polski</option><option value="nl">Nederlands</option><option value="fr">Français</option></select></label>
         <details class="account-menu"><summary><span class="account-avatar" aria-hidden="true">A</span><span><strong id="current-user"></strong><small id="repository-name"></small></span></summary><div class="account-dropdown"><button id="change-password-button" type="button">Zmień hasło</button><button id="logout-button" type="button">Wyloguj</button></div></details>
       </header>
       <div id="content-status" class="inline-notice content-status" hidden>Artykuły, strona główna, media i historia GitHub są w tym środowisku niedostępne. AI Redaktor, kalendarz, reklamy i użytkownicy działają lokalnie.</div>
@@ -109,7 +109,7 @@
 
       <section class="view admin-only" data-panel="ai-editor">
         <div class="page-heading"><div><p class="kicker">Praca agenta</p><h1>AI Redaktor</h1></div><button class="secondary" type="button" id="ai-refresh">Odśwież</button></div>
-        <section class="editor-card ai-chat"><div class="card-heading"><div><h2>Rozmowa z agentem</h2><p><strong>Na polecenie:</strong> aktywny po wysłaniu wiadomości. <strong>Automatyczny:</strong> wyłączony.</p></div></div><div id="ai-chat-history" class="ai-chat-history" aria-live="polite"></div><form id="ai-chat-form"><label>Rodzaj wiadomości<select name="mode"><option value="chat">Pytanie do agenta</option><option value="article" selected>Zleć artykuł</option></select></label><label>Polecenie<textarea name="text" rows="3" maxlength="2500" required placeholder="Napisz pytanie lub zlecenie redakcyjne"></textarea></label><p class="muted">Podaj temat; adres oficjalnego źródła HTTPS jest opcjonalny. Agent sprawdzi stronę urzędową przed utworzeniem szkicu.</p><button class="primary" type="submit">Wyślij</button><p id="ai-chat-notice" role="status"></p></form></section>
+        <section class="editor-card ai-chat"><div class="card-heading"><div><h2>Rozmowa z agentem</h2><p><strong>Na polecenie:</strong> aktywny po wysłaniu wiadomości. <strong>Automatyczny:</strong> wyłączony.</p></div><button id="ai-chat-clear" class="secondary" type="button">Wyczyść rozmowę</button></div><div id="ai-chat-history" class="ai-chat-history" aria-live="polite"></div><form id="ai-chat-form"><label>Rodzaj wiadomości<select name="mode"><option value="chat">Pytanie do agenta</option><option value="article" selected>Zleć artykuł</option></select></label><label>Polecenie<textarea name="text" rows="3" maxlength="2500" required placeholder="Napisz pytanie lub zlecenie redakcyjne"></textarea></label><p class="muted">Podaj temat; adres oficjalnego źródła HTTPS jest opcjonalny. Agent sprawdzi stronę urzędową przed utworzeniem szkicu.</p><button class="primary" type="submit">Wyślij</button><p id="ai-chat-notice" role="status"></p></form></section>
         <p id="ai-notice" role="status"></p>
         <p id="ai-publication-status" class="editor-card" role="status"></p>
         <p id="ai-overdue" class="editor-card" role="alert" hidden></p>
@@ -242,8 +242,8 @@
   <dialog id="article-dialog">
     <form id="article-form">
       <div class="dialog-heading"><div><p class="kicker">Markdown</p><h2 id="article-dialog-title">Nowy artykuł</h2></div><button class="icon-button" type="button" data-close>×</button></div>
-      <input name="slug" type="hidden">
-      <div class="language-tabs"><button type="button" class="is-active" data-language-tab="pl">Polski</button><button type="button" data-language-tab="en">English</button><button type="button" data-language-tab="nl">Nederlands</button><button type="button" data-language-tab="fr">Français</button></div>
+        <input name="slug" type="hidden"><p id="article-ai-note" class="muted" hidden>Artykuł AI pozostanie w kolejce do zatwierdzenia. Zapis poprawek ponownie otworzy weryfikację treści i źródeł.</p>
+        <div class="language-tabs"><button type="button" class="is-active" data-language-tab="pl">Polski</button><button type="button" data-language-tab="en" hidden>English</button><button type="button" data-language-tab="nl">Nederlands</button><button type="button" data-language-tab="fr">Français</button></div>
       <div class="language-pane is-active" data-language-pane="pl"><label>Tytuł<input name="title" required></label><label>Krótki opis<textarea name="description" rows="2" required></textarea></label><label>Treść <small>(Markdown)</small><textarea name="body" rows="13" required></textarea></label></div>
       <div class="language-pane" data-language-pane="en"><label>Tytuł<input name="title_en"></label><label>Krótki opis<textarea name="description_en" rows="2"></textarea></label><label>Treść <small>(Markdown)</small><textarea name="body_en" rows="13"></textarea></label></div>
       <div class="language-pane" data-language-pane="nl"><label>Tytuł<input name="title_nl"></label><label>Krótki opis<textarea name="description_nl" rows="2"></textarea></label><label>Treść <small>(Markdown)</small><textarea name="body_nl" rows="13"></textarea></label></div>
@@ -255,7 +255,7 @@
 
   <dialog id="preview-dialog" class="preview-dialog">
     <div class="dialog-heading"><div><p class="kicker">Przed publikacją</p><h2 id="preview-title">Podgląd artykułu</h2></div><button class="icon-button" type="button" data-close>×</button></div>
-    <div class="preview-language"><button class="is-active" data-preview-language="pl">Polski</button><button data-preview-language="en">English</button><button data-preview-language="nl">Nederlands</button><button data-preview-language="fr">Français</button></div>
+      <div class="preview-language"><button class="is-active" data-preview-language="pl">Polski</button><button data-preview-language="en" hidden>English</button><button data-preview-language="nl">Nederlands</button><button data-preview-language="fr">Français</button></div>
     <article id="article-preview" class="article-preview"></article>
   </dialog>
 

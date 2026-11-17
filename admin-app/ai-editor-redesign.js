@@ -35,6 +35,11 @@ function renderQueue() {
 }
 
 function showTab(name) {
+  if (name === 'edit' && selected?.kind === 'article') {
+    $('#ai-detail-dialog').close();
+    document.dispatchEvent(new CustomEvent('cms:edit-ai-article',{detail:selected.id}));
+    return;
+  }
   document.querySelectorAll('[data-ai-tab]').forEach(tab=>{tab.classList.toggle('is-active',tab.dataset.aiTab===name);tab.setAttribute('aria-selected',String(tab.dataset.aiTab===name));});
   document.querySelectorAll('[data-ai-panel]').forEach(panel=>panel.hidden=panel.dataset.aiPanel!==name);
 }

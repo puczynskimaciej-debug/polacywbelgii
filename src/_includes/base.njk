@@ -45,9 +45,9 @@
             <span class="sr-only" data-i18n="lang.choose">Wybierz język</span>
           </button>
           <div class="language-menu" id="language-menu">
-            {% for key, language in languages %}
+            {% for key, language in languages %}{% if key != 'en' %}
             <button type="button" data-lang="{{ key }}"><img src="{{ language.flag }}" alt=""> <span>{{ language.name }}</span></button>
-            {% endfor %}
+            {% endif %}{% endfor %}
           </div>
         </div>
       </nav>

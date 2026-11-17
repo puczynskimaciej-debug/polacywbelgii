@@ -35,6 +35,18 @@ export async function onRequest({ request, env }) {
     }
     if (request.method !== 'POST') fail('method',405);
     const input = await readJson(request,4000);
+    if (input.action === 'clear') {
+      if (!uuid(input.conversationId)) fail('validation');
+      const active = await env.DB.prepare("SELECT count(*) AS n FROM ai_chat_jobs WHERE conversation_id=? AND status IN ('queued','running')").bind(input.conversationId).first();
+      if (active.n) fail('conflict',409);
+      const hold = await env.DB.prepare("SELECT count(*) AS n FROM retention_holds WHERE entity_type='ai_conversation' AND entity_id=? AND released_at IS NULL AND (until_at IS NULL OR until_at>?)").bind(input.conversationId,now()).first();
+      if (hold.n) fail('forbidden',403);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM ai_chat_entries WHERE conversation_id=? AND actor_id=? AND NOT EXISTS (SELECT 1 FROM ai_chat_jobs WHERE conversation_id=? AND status IN ('queued','running'))").bind(input.conversationId,user.id,input.conversationId),
+        env.DB.prepare("DELETE FROM ai_chat_jobs WHERE conversation_id=? AND actor_id=? AND status IN ('done','failed','cancelled')").bind(input.conversationId,user.id)
+      ]);
+      return json({cleared:true});
+    }
     if (input.action === 'retry') {
       if (!uuid(input.jobId)) fail('validation');
       const result = await env.DB.prepare("UPDATE ai_chat_jobs SET status='queued',error_code=NULL,updated_at=? WHERE id=? AND status='failed' AND attempts<3").bind(now(),input.jobId).run();

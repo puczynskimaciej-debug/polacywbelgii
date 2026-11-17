@@ -120,8 +120,8 @@
   Object.assign(copy.nl,{phoneInvalid:'Vul een geldig telefoonnummer met minstens 6 cijfers in.',urlInvalid:'Vul een website met http:// of https:// in, zonder inloggegevens.'});
   Object.assign(copy.fr,{phoneInvalid:'Saisissez un numéro de téléphone valide d’au moins 6 chiffres.',urlInvalid:'Saisissez un site en http:// ou https://, sans identifiants.'});
   const languages = window.siteLanguages;
-  const keys = Object.keys(languages);
-  const visualOrder = ['pl','nl','fr','en'].filter(language => keys.includes(language));
+  const keys = Object.keys(languages).filter(language => language !== 'en');
+  const visualOrder = ['pl','nl','fr'].filter(language => keys.includes(language));
   const visualNames = {pl:{pl:'Polski',nl:'Niderlandzki',fr:'Francuski',en:'Angielski'},en:{pl:'Polish',nl:'Dutch',fr:'French',en:'English'},nl:{pl:'Pools',nl:'Nederlands',fr:'Frans',en:'Engels'},fr:{pl:'Polonais',nl:'Néerlandais',fr:'Français',en:'Anglais'}};
   const dialog = document.createElement('dialog');
   dialog.id = 'order-dialog';

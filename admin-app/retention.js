@@ -8,7 +8,7 @@ const securityHolds = document.querySelector('#security-holds');
 const securityHoldForm = document.querySelector('#security-hold-form');
 const notice = document.querySelector('#retention-notice');
 const labels = { contact:'Wiadomości kontaktowe', ai_history:'Historia rozmów AI', sessions:'Wygasłe sesje', security_logs:'Logi bezpieczeństwa', unpaid_orders:'Nieopłacone zamówienia', paid_orders:'Opłacone zamówienia' };
-const format = value => value ? new Date(value).toLocaleString('pl-PL') : '—';
+const format = value => value ? new Intl.DateTimeFormat('pl-PL',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Brussels'}).format(new Date(value)) : '—';
 
 async function load() {
   notice.textContent='Pobieranie podglądu…';

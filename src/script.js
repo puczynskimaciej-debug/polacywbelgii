@@ -314,4 +314,5 @@ if (languagePicker && languageButton) {
 const previousLanguage = localStorage.getItem('siteLanguage');
 if (previousLanguage) localStorage.removeItem('siteLanguage');
 const legalPathLanguage = document.body.dataset.page === 'legal' ? (languageData[location.pathname.split('/')[1]] ? location.pathname.split('/')[1] : 'pl') : null;
-applyLanguage(legalPathLanguage || sessionStorage.getItem('siteLanguage') || previousLanguage || document.documentElement.lang || 'pl');
+const rememberedLanguage = sessionStorage.getItem('siteLanguage') || previousLanguage;
+applyLanguage(legalPathLanguage || (rememberedLanguage === 'en' ? 'pl' : rememberedLanguage) || document.documentElement.lang || 'pl');

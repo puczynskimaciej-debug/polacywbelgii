@@ -15,7 +15,7 @@ import { publicEntry } from '../cloudflare/public-pages.mjs';
 globalThis.crypto ??= webcrypto;
 function database() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','agent/migrations/001_agent.sql','agent/migrations/002_editorial.sql','agent/migrations/003_content.sql','agent/migrations/004_discovery.sql','agent/migrations/005_chat.sql']) sqlite.exec(readFileSync(new URL(`../${file}`,import.meta.url),'utf8'));
+  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','agent/migrations/001_agent.sql','agent/migrations/002_editorial.sql','agent/migrations/003_content.sql','agent/migrations/004_discovery.sql','agent/migrations/005_chat.sql','agent/migrations/006_article_fields.sql','deploy/cloudflare-d1-0004-retention.sql']) sqlite.exec(readFileSync(new URL(`../${file}`,import.meta.url),'utf8'));
   const prepare = (sql,params=[])=>({bind(...next){return prepare(sql,next);},async first(){return sqlite.prepare(sql).get(...params) || null;},async all(){return {results:sqlite.prepare(sql).all(...params)};},async run(){const result=sqlite.prepare(sql).run(...params);return {meta:{changes:result.changes}};}});
   return {sqlite,prepare,async batch(statements){sqlite.exec('BEGIN');try{const values=[];for(const statement of statements)values.push(await statement.run());sqlite.exec('COMMIT');return values;}catch(error){sqlite.exec('ROLLBACK');throw error;}}};
 }
@@ -159,7 +159,14 @@ test('authenticated CMS chat stores both messages and rejects unauthenticated ac
   try{
     const request=new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'send',mode:'chat',text:'Jakie tematy warto omówić?'})});
     const response=await aiChatRoute({request,env});assert.equal(response.status,200);
+    const conversationId=(await response.json()).conversationId;
     assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_chat_entries').get().n,2);
+    const clearRequest=()=>new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'clear',conversationId})});
+    DB.sqlite.prepare("INSERT INTO retention_holds(entity_type,entity_id,reason_code) VALUES('ai_conversation',?,'legal_other')").run(conversationId);
+    assert.equal((await aiChatRoute({request:clearRequest(),env})).status,403);
+    DB.sqlite.prepare("UPDATE retention_holds SET released_at=? WHERE entity_type='ai_conversation' AND entity_id=?").run(new Date().toISOString(),conversationId);
+    assert.equal((await aiChatRoute({request:clearRequest(),env})).status,200);
+    assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_chat_entries WHERE conversation_id=?').get(conversationId).n,0);
     for(let n=0;n<2;n++)DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(randomUUID(),randomUUID(),userId,'article','2026-11-12','2026-11-12');
     const blocked=await aiChatRoute({request:new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'send',mode:'article',text:'Prepare an article with an official source.'})}),env});
     assert.equal(blocked.status,409);assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_chat_jobs').get().n,2);
