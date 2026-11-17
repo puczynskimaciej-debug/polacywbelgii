@@ -1,14 +1,14 @@
 import domain from '../server/ads-domain.js';
 import { errorResponse, fail, json, readJson } from './common.mjs';
 import { orders, withWrite } from './ads.mjs';
-import { createCheckoutSession, requireStripeTest, verifyStripeWebhook } from './stripe.mjs';
+import { createCheckoutSession, stripeMode, verifyStripeWebhook } from './stripe.mjs';
 
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
 const uuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || '');
 const eventId = value => /^evt_[A-Za-z0-9]+$/.test(value || '');
 
 async function start(request, env, fetcher) {
-  requireStripeTest(env);
+  stripeMode(env);
   const origin = new URL(request.url).origin;
   if (request.headers.get('origin') !== origin || env.CMS_ORIGIN && env.CMS_ORIGIN !== origin) fail('origin', 403);
   const body = await readJson(request, 1000);
@@ -39,12 +39,12 @@ async function status(request, env) {
 }
 
 async function webhook(request, env) {
-  requireStripeTest(env);
+  const { live } = stripeMode(env);
   const raw = await request.text();
   if (!await verifyStripeWebhook(raw, request.headers.get('stripe-signature'), env.STRIPE_WEBHOOK_SECRET)) fail('signature', 400);
   let event;
   try { event = JSON.parse(raw); } catch { fail('validation'); }
-  if (!eventId(event.id) || !/^checkout\.session\.|^charge\.refunded$/.test(event.type || '') || event.livemode !== false) fail('validation');
+  if (!eventId(event.id) || !['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','checkout.session.expired','charge.refunded'].includes(event.type) || event.livemode !== live) fail('validation');
   if (await q(env.DB, 'SELECT id FROM ad_payment_events WHERE id=?', event.id).first()) return { received: true, duplicate: true };
   const object = event.data?.object || {};
   const groupId = object.client_reference_id || object.metadata?.group_id || null;
@@ -52,7 +52,7 @@ async function webhook(request, env) {
   const group = groupId ? all.filter(item => item.groupId === groupId && item.stripeSessionId === object.id) : all.filter(item => item.paymentId && item.paymentId === object.payment_intent);
   const relevant = ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed', 'checkout.session.expired', 'charge.refunded'].includes(event.type);
   if (relevant && !group.length) fail('paymentOrderMissing', 503);
-  if (group.length && event.type.startsWith('checkout.session.') && (object.livemode !== false || object.currency !== 'eur' && !['checkout.session.expired', 'checkout.session.async_payment_failed'].includes(event.type) || object.amount_total !== group.reduce((sum, item) => sum + item.totalPrice, 0) && !['checkout.session.expired', 'checkout.session.async_payment_failed'].includes(event.type))) fail('paymentMismatch', 400);
+  if (group.length && event.type.startsWith('checkout.session.') && (object.livemode !== live || object.currency !== 'eur' && !['checkout.session.expired', 'checkout.session.async_payment_failed'].includes(event.type) || object.amount_total !== group.reduce((sum, item) => sum + item.totalPrice, 0) && !['checkout.session.expired', 'checkout.session.async_payment_failed'].includes(event.type))) fail('paymentMismatch', 400);
   try {
     await withWrite(env.DB, async ({ all: current, current: settings }) => {
       const entries = current.filter(item => group.some(original => original.id === item.id));
@@ -71,8 +71,9 @@ async function webhook(request, env) {
           updated = { ...item, paymentStatus: groupLate ? 'paid_late' : 'paid', paymentId: object.payment_intent || item.paymentId, paidAt: Number.isFinite(event.created) ? new Date(event.created * 1000).toISOString() : null, status: groupLate ? 'rejected' : item.status, refundRequired: groupLate, updatedAt: new Date().toISOString() };
         } else if (['checkout.session.async_payment_failed', 'checkout.session.expired'].includes(event.type) && !['paid', 'refunded'].includes(item.paymentStatus)) {
           updated = { ...item, paymentStatus: 'failed', reservationExpiresAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-        } else if (event.type === 'charge.refunded') {
-          updated = { ...item, paymentStatus: 'refunded', status: 'cancelled', refundedAt: new Date().toISOString(), refundId: object.refunds?.data?.[0]?.id || null, updatedAt: new Date().toISOString() };
+        } else if (event.type === 'charge.refunded' && Number.isSafeInteger(object.amount) && Number.isSafeInteger(object.amount_refunded) && object.amount_refunded > 0 && object.amount_refunded <= object.amount) {
+          const full = object.refunded === true && object.amount_refunded === object.amount;
+          updated = { ...item, paymentStatus: full ? 'refunded' : 'partial_refund', status: full ? 'cancelled' : 'pending', refundedAt: new Date().toISOString(), refundId: object.refunds?.data?.[0]?.id || null, refundReview: !full, updatedAt: new Date().toISOString() };
         }
         if (updated !== item) statements.push(q(env.DB, 'UPDATE ad_orders SET data=? WHERE id=?', JSON.stringify(updated), item.id));
       }

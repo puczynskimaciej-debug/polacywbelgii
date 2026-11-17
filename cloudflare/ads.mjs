@@ -2,6 +2,7 @@ import domain from '../server/ads-domain.js';
 import { currentUser } from './auth.mjs';
 import { errorResponse, fail, json, readJson, sha256 } from './common.mjs';
 import { translateAd } from './ad-translation.mjs';
+import { stripeReady } from './stripe.mjs';
 
 const languages = domain.languages;
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
@@ -238,7 +239,7 @@ export async function handleAds({ request, env }) {
         return action === 'image' ? imageResponse(item, query.get('variant')) : json({ ...item, effectiveStatus: domain.status(item) });
       }
       const current = await settings(env.DB);
-      if (action === 'config' || action === 'admin-settings') return json({ ...current, languages, today: domain.today(), paymentsEnabled: env.STRIPE_TEST_MODE === '1' && env.STRIPE_SECRET_KEY?.startsWith('sk_test_') && env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_'), turnstileSiteKey:env.TURNSTILE_SITE_KEY || '' });
+      if (action === 'config' || action === 'admin-settings') return json({ ...current, languages, today: domain.today(), paymentsEnabled: stripeReady(env), turnstileSiteKey:env.TURNSTILE_SITE_KEY || '' });
       if (action === 'public') return new Response(JSON.stringify({ ads: publicAds(await orders(env.DB), query.get('language')) }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       if (action === 'availability') {
         const input = Object.fromEntries(query);

@@ -104,6 +104,7 @@ function isShowcase(order) { return order.demoSet === 'showcase-2026-09-29' && o
 function status(order, day = today(), now = new Date()) {
   if (order.source === 'public') {
     if (order.paymentStatus === 'refunded') return 'refunded';
+    if (order.paymentStatus === 'partial_refund') return 'refund_review';
     if (['cancelled', 'rejected'].includes(order.status)) return order.status;
     if (['failed', 'paid_late'].includes(order.paymentStatus)) return 'payment_failed';
     if (order.paymentStatus !== 'paid') return 'pending_payment';

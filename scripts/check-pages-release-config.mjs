@@ -11,6 +11,6 @@ for(const [environment,rule] of checks){
   const content=readFileSync(rule.file,'utf8');
   const value=key=>new RegExp(`^${key}\\s*=\\s*"([^"]+)"\\s*$`,'m').exec(content)?.[1];
   const count=token=>content.split(token).length-1;
-  if(value('name')!==rule.name||value('pages_build_output_dir')!=='./_site'||count('[[d1_databases]]')!==1||value('binding')!=='DB'||value('database_name')!==rule.database||value('database_id')!==rule.id||value('CMS_CONTENT_BACKEND')!=='d1'||value('STRIPE_TEST_MODE')!==rule.stripe||value('AI_AUTOMATION_ENABLED')!=='0'||value('GEMINI_FREE_TIER_CONFIRMED')!=='0')throw new Error(`${environment} Pages configuration mismatch`);
+  if(value('name')!==rule.name||value('pages_build_output_dir')!=='./_site'||count('[[d1_databases]]')!==1||value('binding')!=='DB'||value('database_name')!==rule.database||value('database_id')!==rule.id||value('CMS_CONTENT_BACKEND')!=='d1'||value('STRIPE_TEST_MODE')!==rule.stripe||value('STRIPE_LIVE_ENABLED')!=='0'||value('AI_AUTOMATION_ENABLED')!=='0'||value('GEMINI_FREE_TIER_CONFIRMED')!=='0')throw new Error(`${environment} Pages configuration mismatch`);
   console.log(`${environment}: configuration and D1 binding verified`);
 }
