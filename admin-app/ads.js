@@ -1,7 +1,7 @@
 import { cmsRequest } from './modules/client.js';
 import { confirmAction, enableTabKeyboard } from './ui.js';
 const $ = selector => document.querySelector(selector);
-const labels = { pending: 'Oczekuje', approved: 'Zaakceptowane', scheduled: 'Zaplanowane', active: 'Aktywne', ended: 'Zakończone', completed: 'Zakończone', rejected: 'Odrzucone', cancelled: 'Wycofane', pending_payment: 'Czeka na płatność', pending_approval: 'Czeka na akceptację', needs_reschedule: 'Wymaga nowego terminu lub zwrotu', payment_failed: 'Płatność nieudana', refund_review: 'Zwrot częściowy — sprawdź', refunded: 'Zwrócone' };
+const labels = { pending: 'Czeka na akceptację', paused: 'Wstrzymane', approved: 'Zaakceptowane', scheduled: 'Zaplanowane', active: 'Aktywne', ended: 'Zakończone', completed: 'Zakończone', rejected: 'Odrzucone', cancelled: 'Wycofane', pending_payment: 'Czeka na płatność', pending_approval: 'Czeka na akceptację', needs_reschedule: 'Wymaga nowego terminu lub zwrotu', payment_failed: 'Płatność nieudana', refund_review: 'Zwrot częściowy — sprawdź', refunded: 'Zwrócone' };
 const paymentNames = { paid:'Opłacone',pending:'Oczekuje',pending_payment:'Czeka na płatność',payment_failed:'Płatność nieudana',not_required:'Nie wymaga płatności',refunded:'Zwrócono',partial_refund:'Częściowy zwrot',failed:'Nieudana',succeeded:'Opłacone' };
 const eventNames = { 'checkout.session.completed':'Płatność potwierdzona','checkout.session.expired':'Sesja płatności wygasła','payment_intent.payment_failed':'Płatność nieudana','charge.refunded':'Zwrot środków','refund.created':'Zlecono zwrot','refund.updated':'Aktualizacja zwrotu' };
 const errors = { unavailable: 'API reklam jest niedostępne. Sprawdź połączenie z bazą.', unauthorized: 'Brak uprawnień. Zaloguj się ponownie.', dates: 'Niepoprawny zakres dat.', settings: 'Wprowadź poprawne ceny. Włączony rynek wymaga cen większych od zera.', validation: 'Sprawdź dane formularza.', image: 'Wymagany poprawny PNG/JPEG/WebP do 500 KB.', conflict: 'Ktoś zmienił dane. Odśwież listę przed ponowną edycją.', full: 'Brak miejsc:', immutableMarket: 'Nie można zmienić języka ani typu istniejącego zamówienia.', immutableSchedule: 'Zmiana terminu opłaconej grupy wymaga nowej rezerwacji.', useGroupModeration: 'Zmień status całego zamówienia.', paymentRequired: 'Najpierw potwierdź płatność za całe zamówienie.', needsReschedule: 'Planowany start minął. Ustal nowy termin lub zwrot.', market: 'Niepoprawny rynek.' };
@@ -9,10 +9,12 @@ let configuration, orders = [], editing = null;
 let tab = 'orders';
 const isShowcase = order => order?.demoSet === 'showcase-2026-09-29' && order.source === 'manual' && order.paymentStatus === 'not_required';
 const money = value => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(value / 100);
+const paymentLabel = order => order.source === 'manual' && order.paymentStatus === 'not_required' ? 'Dodane bezpłatnie przez administratora' : paymentNames[order.paymentStatus] || 'Brak płatności';
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const errorText = error => (errors[error.code] || error.message || 'Nie udało się zapisać.') + (Array.isArray(error.details) ? ' ' + error.details.map(day => `${day.date || 'Wybrany okres'}: zajęte ${day.used}/${day.capacity}`).join(', ') : '');
-const canModerate = order => order?.source === 'public' && order.status === 'pending' && order.paymentStatus === 'paid' && order.effectiveStatus === 'pending_approval';
+const canModerate = order => order?.status === 'pending' && (order.source === 'public' && order.paymentStatus === 'paid' && order.effectiveStatus === 'pending_approval' || order.source === 'manual' && order.paymentStatus === 'not_required');
 const moderationButtons = order => canModerate(order) ? `<button class="primary" type="button" data-ad-moderate="approved" data-ad-id="${escape(order.id)}">Akceptuj</button><button class="secondary" type="button" data-ad-moderate="rejected" data-ad-id="${escape(order.id)}">Odrzuć</button>` : '';
+const sharedEditButton = order => `<button class="secondary" type="button" data-ad-shared-edit="${escape(order.id)}">Edytuj</button>`;
 async function api(action, method = 'GET', body, params = {}) {
   return cmsRequest('ads', { action, ...params }, method, body);
 }
@@ -43,7 +45,12 @@ function render() {
   const filter = Object.fromEntries(new FormData($('#ads-filters')));
   const query=(filter.query||'').trim().toLocaleLowerCase('pl');
   const filtered = orders.filter(order => (!query || `${order.title} ${order.company} ${order.email}`.toLocaleLowerCase('pl').includes(query)) && (!filter.language || filter.language === order.language) && (!filter.type || filter.type === order.type) && (!filter.status || (filter.status === 'approved' ? order.status === 'approved' : filter.status === order.effectiveStatus)) && (!filter.from || isShowcase(order) || order.endDate >= filter.from) && (!filter.to || order.startDate <= filter.to) && (tab === 'orders' || tab === 'payments' && order.paymentStatus && order.paymentStatus !== 'not_required' || order.effectiveStatus === tab || tab === 'ended' && ['ended','completed'].includes(order.effectiveStatus)));
-  $('#ads-orders').innerHTML = filtered.length ? `<table class="data-table"><thead><tr><th>Ogłoszenie</th><th>Status</th><th>Okres</th><th>Pakiet</th><th>${tab==='payments'?'Płatność':'Kwota'}</th><th>Akcje</th></tr></thead><tbody>${filtered.map(order => `<tr><td data-label="Ogłoszenie"><strong>${escape(order.title)}</strong><span class="table-subtitle">${escape(order.company)} · ${escape(order.language.toUpperCase())}</span></td><td data-label="Status"><span class="status-badge status-${escape(order.effectiveStatus)}">${labels[order.effectiveStatus]||escape(order.effectiveStatus)}</span></td><td data-label="Okres">${order.periods?.length ? escape(order.periods.map(period => period.date).join(', ')) : `${escape(order.startDate)} – ${isShowcase(order)?'bezterminowo':escape(order.endDate)}`}</td><td data-label="Pakiet">${escape(order.type)}</td><td data-label="${tab==='payments'?'Płatność':'Kwota'}">${tab==='payments'?escape(paymentNames[order.paymentStatus]||'Brak płatności'):money(order.totalPrice)}</td><td data-label="Akcje"><div class="row-actions"><button class="secondary" type="button" data-ad-edit="${escape(order.id)}">Szczegóły</button>${moderationButtons(order)}</div></td></tr>`).join('')}</tbody></table>` : '<p class="empty-state">Brak ogłoszeń spełniających kryteria.</p>';
+  $('#ads-orders').innerHTML = filtered.length ? `<table class="data-table"><thead><tr><th>Ogłoszenie</th><th>Status</th><th>Okres</th><th>Pakiet</th><th>${tab==='payments'?'Płatność':'Kwota'}</th><th>Akcje</th></tr></thead><tbody>${filtered.map(order => `<tr><td data-label="Ogłoszenie"><strong>${escape(order.title)}</strong><span class="table-subtitle">${escape(order.company)} · ${escape(order.language.toUpperCase())}</span></td><td data-label="Status"><span class="status-badge status-${escape(order.effectiveStatus)}">${labels[order.effectiveStatus]||escape(order.effectiveStatus)}</span></td><td data-label="Okres">${order.periods?.length ? escape(order.periods.map(period => period.date).join(', ')) : `${escape(order.startDate)} – ${isShowcase(order)?'bezterminowo':escape(order.endDate)}`}</td><td data-label="Pakiet">${escape(order.type)}</td><td data-label="${tab==='payments'?'Płatność':'Kwota'}">${tab==='payments'?escape(paymentNames[order.paymentStatus]||'Brak płatności'):money(order.totalPrice)}</td><td data-label="Akcje"><div class="row-actions"><button class="secondary" type="button" data-ad-edit="${escape(order.id)}">Szczegóły</button>${sharedEditButton(order)}${moderationButtons(order)}</div></td></tr>`).join('')}</tbody></table>` : '<p class="empty-state">Brak ogłoszeń spełniających kryteria.</p>';
+  $('#ads-orders').querySelectorAll('tbody tr').forEach((row, index) => {
+    if (filtered[index].source !== 'manual' || filtered[index].paymentStatus !== 'not_required') return;
+    const label = document.createElement('small'); label.className = 'table-subtitle'; label.textContent = paymentLabel(filtered[index]);
+    row.querySelector(tab === 'payments' ? '[data-label="Płatność"]' : '[data-label="Kwota"]')?.append(label);
+  });
 }
 function editPrice() {
   if (isShowcase(editing)) { $('#ads-edit-price').textContent = 'Bezterminowo (pokazowe). Aby ukryć, wybierz status Anulowane.'; return; }
@@ -60,7 +67,11 @@ async function open(order) {
     catch (error) { $('#ads-notice').textContent = errorText(error); return; }
   }
   editing = order || null; const form = $('#ads-edit'); form.reset();
-  const actions = $('#ads-moderation-actions'); actions.innerHTML = order ? moderationButtons(order) : ''; actions.hidden = !canModerate(order);
+  form.querySelector('.form-grid').hidden = Boolean(order);
+  $('#ads-save').hidden = Boolean(order);
+  $('#ads-edit-price').hidden = Boolean(order);
+  $('#ads-edit-note').hidden = !order;
+  const actions = $('#ads-moderation-actions'); actions.innerHTML = order ? sharedEditButton(order) + moderationButtons(order) : ''; actions.hidden = !order;
   $('#ads-delete').hidden = !order;
   $('#ads-delete').textContent = order?.source === 'public' ? 'Wycofaj ogłoszenie' : 'Usuń ogłoszenie';
   const input = order || { language: Object.keys(configuration.languages)[0], type: 'STANDARD', status: 'approved', startDate: configuration.today, endDate: configuration.today };
@@ -119,7 +130,16 @@ function updateCreativeFields() {
   for (const key of ['company','contact','publicPhone','publicEmail','url','customerName']) form.elements[key].required = false;
 }
 $('#ads-edit').addEventListener('change', event => { if (event.target.name === 'type') updateCreativeFields(); editPrice(); });
-$('#ads-new').onclick = () => open();
+function openSharedOrder(id = '') { $('#ads-order-frame').src = '/zamow-ogloszenie/?cms=1' + (id ? `&edit=${encodeURIComponent(id)}` : ''); $('#ads-order-dialog').showModal(); }
+$('#ads-new').onclick = () => openSharedOrder();
+$('#ads-order-close').onclick = () => $('#ads-order-dialog').close();
+$('#ads-order-dialog').addEventListener('close', () => { $('#ads-order-frame').src = 'about:blank'; });
+window.addEventListener('message', async event => {
+  if (event.origin !== location.origin || event.source !== $('#ads-order-frame').contentWindow || event.data?.type !== 'pbe:admin-ad-saved') return;
+  $('#ads-order-dialog').close();
+  await load();
+  $('#ads-notice').textContent = event.data.edited ? 'Zmiany ogłoszenia zapisane.' : event.data.published ? 'Bezpłatne ogłoszenie zapisane i zatwierdzone.' : 'Bezpłatne ogłoszenie zapisane do późniejszego zatwierdzenia.';
+});
 $('#ads-close').onclick = () => $('#ads-dialog').close();
 $('#ads-delete').onclick = async () => {
   if (!editing || !await confirmAction(editing.source === 'public' ? 'Wycofać ogłoszenie?' : 'Usunąć ogłoszenie?',editing.source === 'public' ? 'Zniknie ze strony i zwolni miejsce. Historia zamówienia pozostanie w CMS.' : 'Zniknie ze strony i zwolni miejsca. Tej operacji nie można cofnąć.',editing.source === 'public' ? 'Wycofaj' : 'Usuń ogłoszenie')) return;
@@ -147,6 +167,7 @@ for (const selector of ['#ads-orders', '#ads-moderation-actions']) $(selector).a
   const action = event.target.closest('[data-ad-moderate]');
   if (action) { moderate(orders.find(order => order.id === action.dataset.adId), action.dataset.adModerate, action); return; }
   const detail = event.target.closest('[data-ad-edit]'); if (detail) open(orders.find(order => order.id === detail.dataset.adEdit));
+  const shared = event.target.closest('[data-ad-shared-edit]'); if (shared) { if ($('#ads-dialog').open) $('#ads-dialog').close(); openSharedOrder(shared.dataset.adSharedEdit); }
 });
 $('#ads-filters').onchange = render;
 $('#ads-filters').addEventListener('input',render);

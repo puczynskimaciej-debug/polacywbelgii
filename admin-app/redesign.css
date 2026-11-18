@@ -32,3 +32,8 @@ dialog{width:min(900px,calc(100vw - 30px));padding:22px;border-radius:12px}.deta
 .visual-surface blockquote { border-left:4px solid #d94c49; padding-left:1em; }
 #ads-moderation-actions[hidden] { display:none; }
 .ads-moderation-actions { margin-bottom:14px; }
+#ads-order-dialog { width:min(1120px,calc(100vw - 24px)); height:min(95dvh,950px); max-width:none; max-height:none; padding:0; border:0; border-radius:12px; overflow:hidden; }
+#ads-order-dialog::backdrop { background:#091d38bd; }
+#ads-order-frame { display:block; width:100%; height:100%; border:0; }
+.ads-order-close { position:absolute; z-index:3; top:12px; right:24px; }
+#ads-edit .form-grid[hidden],#ads-save[hidden],#ads-edit-price[hidden],#ads-edit-note[hidden] { display:none!important; }

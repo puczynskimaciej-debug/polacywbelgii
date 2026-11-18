@@ -124,7 +124,7 @@
       <section class="view admin-only" data-panel="ai-calendar"><div class="page-heading"><div><p class="kicker">Plan redakcyjny</p><h1>Kalendarz publikacji</h1><p class="section-description">Terminy w strefie Europe/Brussels.</p></div></div><div class="editor-card"><div class="toolbar"><label>Widok<select id="ai-calendar-view"><option value="month">Miesiąc</option><option value="week">Tydzień</option><option value="list">Lista</option></select></label><label>Od dnia<input id="ai-calendar-start" type="date"></label><button id="ai-calendar-today" class="secondary" type="button">Dziś</button></div><div id="ai-calendar-list"></div></div></section>
 
       <section class="view" data-panel="ads">
-        <div class="page-heading"><div><p class="kicker">Reklamy portalu</p><h1>Ogłoszenia i zamówienia</h1><p class="section-description">Obsługuj zamówienia, emisję i płatności.</p></div><button type="button" class="primary" id="ads-new">Dodaj ręcznie</button></div>
+        <div class="page-heading"><div><p class="kicker">Reklamy portalu</p><h1>Ogłoszenia i zamówienia</h1><p class="section-description">Obsługuj zamówienia, emisję i płatności.</p></div><button type="button" class="primary" id="ads-new">Dodaj ogłoszenie</button></div>
         <p id="ads-notice" role="status" aria-live="polite"></p>
         <div class="editor-card"><div class="ads-tabs" role="tablist" aria-label="Widok ogłoszeń"><button type="button" role="tab" aria-selected="true" class="is-active" data-ads-tab="orders">Zamówienia</button><button type="button" role="tab" aria-selected="false" data-ads-tab="active">Aktywne</button><button type="button" role="tab" aria-selected="false" data-ads-tab="scheduled">Zaplanowane</button><button type="button" role="tab" aria-selected="false" data-ads-tab="ended">Zakończone</button><button type="button" role="tab" aria-selected="false" data-ads-tab="payments">Płatności</button></div>
           <form id="ads-filters" class="form-grid">
@@ -187,6 +187,7 @@
   <dialog id="ai-verify-dialog" class="small-dialog" aria-labelledby="ai-verify-title"><form id="ai-verify-form"><div class="dialog-heading"><h2 id="ai-verify-title">Potwierdź weryfikację artykułu</h2><button type="button" class="icon-button" data-close aria-label="Zamknij">×</button></div><p>Sprawdź każde twierdzenie, datę i liczbę w oficjalnych źródłach. Potwierdzenie zostanie zapisane w historii.</p><label>Notatka z weryfikacji<textarea name="note" required minlength="20" maxlength="1000" rows="4"></textarea></label><label><input type="checkbox" name="confirmed" required> Potwierdzam sprawdzenie treści i źródeł</label><p id="ai-verify-error" role="alert"></p><div class="dialog-actions"><button type="button" class="ghost" data-close>Anuluj</button><button class="primary" type="submit">Zapisz weryfikację</button></div></form></dialog>
   <dialog id="cms-confirm-dialog" class="small-dialog" aria-labelledby="cms-confirm-title"><div class="dialog-heading"><h2 id="cms-confirm-title">Potwierdź działanie</h2><button type="button" class="icon-button" data-confirm-cancel aria-label="Zamknij">×</button></div><p id="cms-confirm-message"></p><div class="dialog-actions"><button type="button" class="secondary" data-confirm-cancel>Anuluj</button><button type="button" class="primary" id="cms-confirm-accept">Potwierdź</button></div></dialog>
 
+  <dialog id="ads-order-dialog" aria-label="Dodaj ogłoszenie"><button type="button" class="ads-order-close secondary" id="ads-order-close" aria-label="Zamknij formularz">Zamknij ×</button><iframe id="ads-order-frame" title="Formularz zamówienia ogłoszenia"></iframe></dialog>
   <dialog id="ads-dialog">
     <form id="ads-edit" class="ads-dialog-form">
       <div class="dialog-heading"><h2>Reklama</h2><button type="button" class="icon-button" id="ads-close" aria-label="Zamknij">×</button></div>
@@ -205,7 +206,7 @@
         <label>Status<select name="status"><option value="pending">Oczekuje</option><option value="approved">Zaakceptowane</option><option value="rejected">Odrzucone</option><option value="cancelled">Anulowane</option></select></label>
         <label id="ads-free-label">Bezpłatna / barter<select name="complimentary"><option value="false">Nie — aktualny cennik</option><option value="true">Tak — 0 EUR</option></select></label>
       </div>
-      <p id="ads-edit-price"></p><p>Przy zapisie sprawdzamy cały okres emisji. Język i pakiet istniejącego zamówienia są stałe. Termin opłaconej grupy wymaga osobnej rezerwacji.</p>
+      <p id="ads-edit-price"></p><p id="ads-edit-note">Edycję ogłoszenia otworzysz przyciskiem „Edytuj” powyżej.</p>
       <button class="primary" id="ads-save">Zapisz ogłoszenie</button>
       <button class="secondary" type="button" id="ads-delete" hidden>Usuń ogłoszenie</button>
     </form>

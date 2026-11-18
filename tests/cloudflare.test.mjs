@@ -196,6 +196,100 @@ test('multilingual reservation charges half of the primary price and holds all l
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) AS n FROM ad_orders WHERE json_extract(data,'$.status')='approved'").get().n, 0);
 });
 
+test('only an administrator can create a complimentary PREMIUM banner without Stripe', async () => {
+  const DB = localDb(), settings = domain.defaults();
+  DB.sqlite.exec(readFileSync(new URL('../deploy/cloudflare-d1-0003-stripe.sql', import.meta.url), 'utf8'));
+  settings.markets.pl.enabled = true;
+  settings.markets.pl.prices.PREMIUM = 1000;
+  DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
+  const adminId = randomUUID(), editorId = randomUUID(), adminToken = 'A'.repeat(43), editorToken = 'E'.repeat(43);
+  for (const [id, role, token] of [[adminId, 'admin', adminToken], [editorId, 'editor', editorToken]]) {
+    DB.sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(id, `${role}-free@example.invalid`, role, 'unused', role);
+    DB.sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(await sha256(token), id, '2099-01-01');
+  }
+  const png = (width, height) => { const bytes = Buffer.alloc(24); Buffer.from('89504e470d0a1a0a', 'hex').copy(bytes); bytes.writeUInt32BE(width, 16); bytes.writeUInt32BE(height, 20); return `data:image/png;base64,${bytes.toString('base64')}`; };
+  const day = domain.today();
+  const body = { requestId: randomUUID(), type: 'PREMIUM', kind: 'image', primaryLanguage: 'pl', dates: [day], variants: [{ language: 'pl', title: 'Banner administratora', description: 'Bezpłatne ogłoszenie testowe' }], image: png(1200, 200), imageMobile: png(660, 300), email: 'admin@example.invalid', customerName: 'Administrator', consent: true, termsAccepted: true, termsVersion: 'draft-2026-11-11', earlyServiceRequest: false, expectedTotalPrice: 1000, adminComplimentary: true, adminStatus: 'approved' };
+  const path = '/api/ads?action=admin-order-batch';
+  assert.equal((await adsRoute({ request: request(path, 'POST', body), env: { DB } })).status, 401);
+  assert.equal((await adsRoute({ request: request(path, 'POST', body, `__Host-pbe_session=${editorToken}`), env: { DB } })).status, 403);
+  assert.equal((await adsRoute({ request: request('/api/ads?action=order-batch', 'POST', body), env: { DB } })).status, 403);
+  const created = await adsRoute({ request: request(path, 'POST', body, `__Host-pbe_session=${adminToken}`), env: { DB } });
+  assert.equal(created.status, 201, await created.text());
+  const item = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders').get().data);
+  assert.equal(item.source, 'manual'); assert.equal(item.paymentStatus, 'not_required'); assert.equal(item.totalPrice, 0);
+  assert.equal(item.complimentary, true); assert.equal(item.adminAddedBy, adminId); assert.equal(item.status, 'approved');
+  assert.equal(item.stripeSessionId, undefined);
+  assert.equal((await (await adsRoute({ request: request('/api/ads?action=public&language=pl'), env: { DB } })).json()).ads.length, 1);
+  const nextDay = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10);
+  const revision = { ...body, id: item.id, version: item.version, type: 'TOP', region: 'all', image: png(1200, 720), imageMobile: '', dates: [nextDay], variants: [{ language: 'pl', title: 'Nowy baner', description: 'Zmieniony opis' }], adminStatus: 'approved' };
+  assert.equal((await adsRoute({ request: request('/api/ads?action=admin-revise-group', 'PUT', revision, `__Host-pbe_session=${editorToken}`), env: { DB } })).status, 403);
+  const changed = await adsRoute({ request: request('/api/ads?action=admin-revise-group', 'PUT', revision, `__Host-pbe_session=${adminToken}`), env: { DB } });
+  assert.equal(changed.status, 200, await changed.text());
+  const revised = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders').get().data);
+  assert.equal(revised.type, 'TOP'); assert.equal(revised.startDate, nextDay); assert.equal(revised.title, 'Nowy baner');
+  assert.equal(revised.paymentStatus, 'not_required'); assert.equal(revised.totalPrice, 0);
+  assert.equal((await (await adsRoute({ request: request('/api/ads?action=public&language=pl'), env: { DB } })).json()).ads.length, 0);
+  const paused = await adsRoute({ request: request('/api/ads?action=admin-revise-group', 'PUT', { ...revision, version: revised.version, adminStatus: 'paused' }, `__Host-pbe_session=${adminToken}`), env: { DB } });
+  assert.equal(paused.status, 200, await paused.text());
+  assert.equal(JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders').get().data).status, 'paused');
+  const draftBody = { ...body, requestId: randomUUID(), dates: [nextDay], adminStatus: 'pending' };
+  const draftResponse = await adsRoute({ request: request(path, 'POST', draftBody, `__Host-pbe_session=${adminToken}`), env: { DB } });
+  assert.equal(draftResponse.status, 201, await draftResponse.clone().text());
+  const draftGroup = (await draftResponse.json()).id;
+  const draft = JSON.parse(DB.sqlite.prepare("SELECT data FROM ad_orders WHERE json_extract(data,'$.groupId')=?").get(draftGroup).data);
+  assert.equal(draft.status, 'pending'); assert.equal(draft.paymentStatus, 'not_required');
+  const approved = await adsRoute({ request: request('/api/ads?action=admin-moderate-group', 'PUT', { id: draft.id, version: draft.version, status: 'approved' }, `__Host-pbe_session=${adminToken}`), env: { DB } });
+  assert.equal(approved.status, 200, await approved.text());
+  assert.equal(JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders WHERE id=?').get(draft.id).data).status, 'approved');
+});
+
+test('administrator can revise a paid multilingual order without changing Stripe payment records', async () => {
+  const DB = localDb(), settings = domain.defaults();
+  DB.sqlite.exec(readFileSync(new URL('../deploy/cloudflare-d1-0003-stripe.sql', import.meta.url), 'utf8'));
+  for (const language of ['pl', 'nl']) { settings.markets[language].enabled = true; settings.markets[language].prices.STANDARD = 200; settings.markets[language].prices.TOP = 500; }
+  DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
+  const adminId = randomUUID(), token = 'R'.repeat(43), groupId = randomUUID();
+  DB.sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(adminId, 'revise-admin@example.invalid', 'Admin', 'unused', 'admin');
+  DB.sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(await sha256(token), adminId, '2099-01-01');
+  const day = new Date(Date.parse(domain.today()) + 86400000).toISOString().slice(0, 10);
+  const next = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10);
+  const ids = [randomUUID(), randomUUID()];
+  for (const [index, language] of ['pl', 'nl'].entries()) {
+    const item = { id: ids[index], groupId, source: 'public', paymentStatus: 'paid', paymentId: 'pi_live_existing', stripeSessionId: 'cs_live_existing', status: 'approved', kind: 'text', type: 'STANDARD', language, primaryLanguage: 'pl', languages: ['pl', 'nl'], title: 'Old title', description: 'Old description', email: 'buyer@example.invalid', startDate: day, endDate: day, days: 1, periods: [domain.periodForDate(day)], totalPrice: index ? 100 : 200, groupTotalPrice: 300, dailyPrice: 200, currency: 'EUR', version: 1, createdAt: new Date().toISOString() };
+    DB.sqlite.prepare('INSERT INTO ad_orders(id,data,created_at) VALUES(?,?,?)').run(item.id, JSON.stringify(item), item.createdAt);
+  }
+  const body = { id: ids[0], version: 1, type: 'TOP', kind: 'text', region: 'all', dates: [next], variants: [{ language: 'pl', title: 'Nowy tytuł PL', description: 'Nowy opis PL' }, { language: 'nl', title: 'Nieuwe titel NL', description: 'Nieuwe omschrijving NL' }], email: 'buyer@example.invalid', adminStatus: 'approved' };
+  const changed = await adsRoute({ request: request('/api/ads?action=admin-revise-group', 'PUT', body, `__Host-pbe_session=${token}`), env: { DB } });
+  assert.equal(changed.status, 200, await changed.text());
+  const rows = DB.sqlite.prepare('SELECT data FROM ad_orders').all().map(row => JSON.parse(row.data));
+  assert.deepEqual(rows.map(row => row.totalPrice).sort((a, b) => a - b), [100, 200]);
+  assert.ok(rows.every(row => row.type === 'TOP' && row.startDate === next && row.paymentStatus === 'paid' && row.paymentId === 'pi_live_existing' && row.stripeSessionId === 'cs_live_existing'));
+  assert.equal(DB.sqlite.prepare('SELECT COUNT(*) AS n FROM ad_payment_events').get().n, 0);
+});
+
+test('editing an active ad preserves elapsed days and the original payment', async () => {
+  const DB = localDb(), settings = domain.defaults();
+  DB.sqlite.exec(readFileSync(new URL('../deploy/cloudflare-d1-0003-stripe.sql', import.meta.url), 'utf8'));
+  settings.markets.pl.enabled = true; settings.markets.pl.prices.STANDARD = 200;
+  DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
+  const id = randomUUID(), adminId = randomUUID(), token = 'H'.repeat(43);
+  const yesterday = new Date(Date.parse(domain.today()) - 86400000).toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.parse(domain.today()) + 86400000).toISOString().slice(0, 10);
+  const elapsed = { date: yesterday, plannedStartAt: domain.belgianMidnight(yesterday), plannedEndAt: domain.belgianMidnight(domain.today()), actualStartAt: domain.belgianMidnight(yesterday), actualEndAt: domain.belgianMidnight(domain.today()) };
+  const upcoming = domain.periodForDate(tomorrow);
+  const item = { id, groupId: id, source: 'public', paymentStatus: 'paid', paymentId: 'pi_existing', status: 'approved', kind: 'text', type: 'STANDARD', language: 'pl', title: 'Original', description: 'Original copy', company: 'Example', email: 'buyer@example.invalid', startDate: yesterday, endDate: tomorrow, days: 2, periods: [elapsed, upcoming], totalPrice: 400, version: 1 };
+  DB.sqlite.prepare('INSERT INTO ad_orders(id,data) VALUES(?,?)').run(id, JSON.stringify(item));
+  DB.sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(adminId, 'historical-admin@example.invalid', 'Admin', 'unused', 'admin');
+  DB.sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(await sha256(token), adminId, '2099-01-01');
+  const revise = dates => adsRoute({ request: request('/api/ads?action=admin-revise-group', 'PUT', { id, version: 1, type: 'STANDARD', kind: 'text', region: 'all', dates, variants: [{ language: 'pl', title: 'Edited', description: 'Edited copy' }], email: item.email, company: item.company, adminStatus: 'approved' }, `__Host-pbe_session=${token}`), env: { DB } });
+  assert.equal((await revise([yesterday, tomorrow])).status, 200);
+  const saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
+  assert.deepEqual(saved.periods[0], elapsed);
+  assert.equal(saved.paymentId, 'pi_existing');
+  assert.equal(saved.totalPrice, 400);
+});
+
 test('simultaneous last-place requests and multilingual failure never oversell', async () => {
   const DB = localDb();
   const settings = domain.defaults();

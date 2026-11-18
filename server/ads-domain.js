@@ -103,6 +103,7 @@ function marketFor(settings, language, type) {
 function isShowcase(order) { return order.demoSet === 'showcase-2026-09-29' && order.source === 'manual' && order.paymentStatus === 'not_required'; }
 function status(order, day = today(), now = new Date()) {
   if (order.source === 'public') {
+    if (order.status === 'paused') return 'paused';
     if (order.paymentStatus === 'refunded') return 'refunded';
     if (order.paymentStatus === 'partial_refund') return 'refund_review';
     if (['cancelled', 'rejected'].includes(order.status)) return order.status;

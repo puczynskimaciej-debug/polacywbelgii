@@ -135,6 +135,7 @@
   const limits = { PREMIUM:{title:70,description:200}, TOP:{title:60,description:160}, STANDARD:{title:70,description:500} };
   const length = value => Array.from(value || '').length;
   let requestId = crypto.randomUUID(), version = 0, availabilityReady = false, pending = false, restoreFocus, locale = 'pl';
+  let adminMode = false, adminComplimentary = true, adminStatus = 'approved', editId = '', editVersion = 0, editPaymentAmount = 0, editOriginalDates = [], editDatesTouched = false;
   let demoMode = false, demoRequest, liveApi = false;
   const $ = selector => dialog.querySelector(selector);
   const t = key => (copy[locale] || copy.pl)[key] || copy.pl[key];
@@ -182,8 +183,10 @@
         if (action === 'order-batch') return { demo: true };
       }
     }
-    const response = await fetch('/api/ads?' + new URLSearchParams({ action, ...params }), body
-      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    const requestAction = action === 'availability' && adminMode && editId ? 'admin-availability' : action;
+    const requestParams = requestAction === 'admin-availability' ? { ...params, id: editId } : params;
+    const response = await fetch('/api/ads?' + new URLSearchParams({ action: requestAction, ...requestParams }), body
+      ? { method: action === 'admin-revise-group' ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       : { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
@@ -228,11 +231,11 @@
     if (!$('#chosen-days')) return;
     $('#chosen-days').textContent = `${t('selectedCount')}: ${chosenDates.length} ${t('days')} — ${chosenDates.length * 24} ${t('hours')}`;
     $('#chosen-date-tags').replaceChildren(...chosenDates.map(date => { const button = node('button', `${date} ×`, 'chosen-day'); button.type = 'button'; button.setAttribute('aria-label', `${t('removeDate')} ${date}`); button.onclick = () => chooseDate(date); return button; }));
-    $('#order-total').textContent = money(total());
+    $('#order-total').textContent = money(editId ? editPaymentAmount : adminMode && adminComplimentary ? 0 : total());
     if ($('#order-click-behavior')) $('#order-click-behavior').textContent = clickBehavior();
     if ($('#order-breakdown')) { const base = chosenDates.length * (config?.data.markets[primaryLanguage]?.prices[type] || 0); $('#order-breakdown').textContent = `${t('baseLanguage')}: ${languages[primaryLanguage]?.name} — ${money(base)}. ${t('extraLanguages')}: ${selectedLanguages.filter(language => language !== primaryLanguage).map(language => `${languages[language].name} ${money(Math.round(base / 2))}`).join(', ') || '—'}. ${chosenDates.length} ${t('days')} = ${chosenDates.length * 24} h. ${timing()}`; }
     const invalid = [...dialog.querySelectorAll('[data-title],[data-description]')].some(field => length(field.value) > limits[type][field.dataset.title ? 'title' : 'description']);
-    $('#order-review').disabled = !availabilityReady || !chosenDates.length || Object.keys(conflicts).some(date => chosenDates.includes(date)) || !selectedLanguages.length || !type || !config || invalid;
+    $('#order-review').disabled = !availabilityReady || (!chosenDates.length && !(editId && !editDatesTouched && editOriginalDates.length)) || Object.keys(conflicts).some(date => chosenDates.includes(date)) || !selectedLanguages.length || !type || !config || invalid;
     dialog.querySelectorAll('#order-calendar button[data-date]').forEach(button => {
       const date = button.dataset.date;
       button.setAttribute('aria-pressed', String(chosenDates.includes(date)));
@@ -292,6 +295,7 @@
   }
 
   async function chooseDate(date) {
+    if (editId) editDatesTouched = true;
     if (chosenDates.includes(date)) chosenDates = chosenDates.filter(value => value !== date);
     else if (chosenDates.length >= 90) { setMessage('limit'); return; }
     else chosenDates = [...chosenDates, date].sort();
@@ -312,7 +316,7 @@
     const spaces = (new Date(year, monthNumber - 1, 1).getDay() + 6) % 7;
     for (let index = 0; index < spaces; index++) grid.append(node('span'));
     for (let day = 1; day <= Number(last.slice(-2)); day++) { const date = `${month}-${String(day).padStart(2,'0')}`; const button = node('button', String(day)); button.type = 'button'; button.disabled = true; button.classList.toggle('is-holiday',!!(window.PbeCalendar?.holidays(date).some(item => item.scope === 'federal') || window.PbeCalendar?.sunday(date))); button.classList.toggle('is-today',date === window.PbeCalendar?.today()); grid.append(button); }
-    if (last < config.today || first > lastAllowed) return;
+    if (last < config.today || first > lastAllowed) { availabilityReady = true; summary(); return; }
     $('#calendar-status').textContent = t('loading');
     try {
       const availability = await Promise.all(selectedLanguages.map(async language => ({ language, ...await api('availability', { language, type, startDate: first < config.today ? config.today : first, endDate: last > lastAllowed ? lastAllowed : last, durationDays: 1 }) })));
@@ -364,13 +368,17 @@
       <fieldset id="order-banner-fields" hidden><legend>${t('bannerContent')}</legend><div id="order-banner-copy"></div><p id="order-image-hint"></p><p>${t('fallback')}</p><p>${t('graphicWarning')}</p><label>${t('image')}<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></label><p id="order-image-name"></p><div id="order-mobile-image"><label>${t('mobileImage')}<input name="imageMobileFile" type="file" accept="image/png,image/jpeg,image/webp"></label><p id="order-mobile-image-name"></p></div><p class="order-note">${t('imageWarning')}</p></fieldset>
       <fieldset id="order-public-fields"><legend>${t('publicData')}</legend><p>${t('publicHint')}</p><label>${t('company')}<input name="company" maxlength="120"></label><label>${t('publicPhone')}<input name="publicPhone" type="tel" maxlength="40"></label><label>${t('publicEmail')}<input name="publicEmail" type="email" maxlength="254"></label><label>${t('url')}<input name="url" type="url" maxlength="2048" placeholder="https://"></label><label>${t('otherContact')}<input name="contact" maxlength="160"></label><p id="order-click-behavior" class="order-note"></p></fieldset>
       <fieldset id="order-buyer-fields"><legend>${t('buyerData')}</legend><label>${t('customer')}<input name="customerName" maxlength="120" required></label><label>${t('email')}<input name="email" type="email" maxlength="254" autocomplete="email" required><small>${t('privacy')}</small></label></fieldset>
-      <p class="order-note">${t('privacyNotice')} <a href="${privacyHref}" target="_blank" rel="noopener">${t('privacyPolicy')}</a>.</p><label class="order-choice"><input name="consent" type="checkbox" required>${t('consent')}</label><label class="order-choice"><input name="termsAccepted" type="checkbox" required>${t('terms')} <a href="${termsHref}" target="_blank" rel="noopener">↗</a></label><label class="order-choice"><input name="earlyServiceRequest" type="checkbox">${t('earlyService')}</label><p id="order-breakdown" class="order-note"></p><div class="order-total"><span>${t('total')}</span><strong id="order-total"></strong></div><p class="order-note">${demoMode ? t('unpaid') : config.paymentsEnabled ? t('payNote') : t('paymentDisabled')}</p><button class="button" id="order-review">${t('review')}</button></form><section id="order-confirm" hidden></section>`;
+      <p class="order-note">${t('privacyNotice')} <a href="${privacyHref}" target="_blank" rel="noopener">${t('privacyPolicy')}</a>.</p><label class="order-choice"><input name="consent" type="checkbox" required>${t('consent')}</label><label class="order-choice"><input name="termsAccepted" type="checkbox" required>${t('terms')} <a href="${termsHref}" target="_blank" rel="noopener">↗</a></label><label class="order-choice"><input name="earlyServiceRequest" type="checkbox">${t('earlyService')}</label>${adminMode ? `<fieldset class="order-panel"><legend>${editId ? 'Edycja emisji' : 'Publikacja administratora'}</legend>${editId ? '' : `<label class="order-choice"><input name="adminComplimentary" type="checkbox" ${adminComplimentary ? 'checked' : ''}>Dodaj bezpłatnie (administrator)</label>`}<label>Po zapisaniu<select name="adminStatus"><option value="approved" ${adminStatus === 'approved' ? 'selected' : ''}>Zatwierdź i opublikuj w wybranym terminie</option><option value="pending" ${adminStatus === 'pending' ? 'selected' : ''}>Pozostaw do późniejszego zatwierdzenia</option>${editId ? `<option value="paused" ${adminStatus === 'paused' ? 'selected' : ''}>Wstrzymaj emisję</option><option value="rejected" ${adminStatus === 'rejected' ? 'selected' : ''}>Odrzuć</option><option value="cancelled" ${adminStatus === 'cancelled' ? 'selected' : ''}>Wycofaj</option>` : ''}</select></label><p class="order-note">${editId ? 'Edycja nie zmienia historii płatności Stripe. Zmiana pakietu lub terminu wymaga wolnego miejsca.' : 'Bezpłatne ogłoszenie nie przechodzi przez Stripe i nie będzie oznaczone jako opłacone.'}</p></fieldset>` : ''}<p id="order-breakdown" class="order-note"></p><div class="order-total"><span>${editId ? 'Płatność za pierwotne zamówienie' : t('total')}</span><strong id="order-total"></strong></div><p class="order-note">${editId ? 'Zmiany administratora nie pobierają kolejnej płatności.' : adminMode && adminComplimentary ? 'Do zapłaty: 0 €. Obowiązuje limit miejsc wybranego pakietu.' : demoMode ? t('unpaid') : config.paymentsEnabled ? t('payNote') : t('paymentDisabled')}</p><button class="button" id="order-review">${t('review')}</button></form><section id="order-confirm" hidden></section>`;
     $('[name=contact]').value = contact; $('[name=publicPhone]').value = publicPhone; $('[name=publicEmail]').value = publicEmail; $('[name=email]').value = email; $('[name=company]').value = company; $('[name=url]').value = url; $('[name=customerName]').value = customerName;
     for (const sampleType of ['PREMIUM','TOP']) { const price = config?.data.markets[primaryLanguage]?.prices[sampleType]; $('#order-example-' + sampleType.toLowerCase() + '-price').textContent = price ? `${money(price)} ${t('perDay')}` : ''; }
     $('[name=imageFile]').required = false;
     $('#order-image-name').textContent = imageName;
     $('#order-mobile-image-name').textContent = mobileImageName;
     $('#order-close').onclick = () => dialog.close();
+    if (adminMode) {
+      if (!editId) $('[name=adminComplimentary]').onchange = event => { adminComplimentary = event.target.checked; summary(); };
+      $('[name=adminStatus]').onchange = event => { adminStatus = event.target.value; };
+    }
     if (config.turnstileSiteKey) {
       const mountTurnstile = () => { if (!dialog.open || !$('#order-turnstile') || !window.turnstile) return; window.turnstile.render($('#order-turnstile'),{sitekey:config.turnstileSiteKey}); };
       if (window.turnstile) mountTurnstile(); else { const script = document.createElement('script'); script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; script.async = true; script.onload = mountTurnstile; document.head.append(script); }
@@ -439,7 +447,7 @@
   }
 
   function review() {
-    capture(); if (!chosenDates.length || chosenDates.some(date => conflicts[date])) { setMessage('empty'); return; }
+    capture(); if ((!chosenDates.length && !(editId && !editDatesTouched && editOriginalDates.length)) || chosenDates.some(date => conflicts[date])) { setMessage('empty'); return; }
     if (selectedLanguages.some(language => !titles[language]?.trim() || !descriptions[language]?.trim() || length(titles[language]) > limits[type].title || length(descriptions[language]) > limits[type].description)) { setMessage('tooLong'); return; }
     const box = $('#order-confirm'); box.replaceChildren(node('h3', t('preview')));
     const controls = node('div', '', 'order-preview-controls');
@@ -459,21 +467,27 @@
     for (const language of selectedLanguages) { const button = node('button',languages[language].name,'chosen-day'); button.type = 'button'; button.onclick = () => { previewLanguage = language; drawPreview(); }; controls.append(button); }
     for (const view of ['desktop','mobile']) { const button = node('button',t(view),'chosen-day'); button.type = 'button'; button.onclick = () => { device = view; drawPreview(); }; controls.append(button); }
     box.append(controls,preview); drawPreview();
-    box.append(node('h4',t('publicPreview')),node('p',[company,publicPhone,publicEmail,url,contact].filter(Boolean).join(' · ') || '—'),node('p',clickBehavior()),node('h4',t('privatePreview')),node('p',[customerName,email].filter(Boolean).join(' · ')),node('p', `${type} · ${t(kind === 'text' ? 'text' : 'banner')} · ${chosenDates.join(', ')} · ${chosenDates.length * 24} h`), node('p', $('#order-breakdown').textContent), node('strong', money(total())), node('p', demoMode ? t('unpaid') : config.paymentsEnabled ? t('payNote') : t('paymentDisabled')));
-    const back = node('button', t('back'), 'order-back'), send = node('button', demoMode ? t('send') : t('pay'), 'button');
+    box.append(node('h4',t('publicPreview')),node('p',[company,publicPhone,publicEmail,url,contact].filter(Boolean).join(' · ') || '—'),node('p',clickBehavior()),node('h4',t('privatePreview')),node('p',[customerName,email].filter(Boolean).join(' · ')),node('p', `${type} · ${t(kind === 'text' ? 'text' : 'banner')} · ${chosenDates.join(', ')} · ${chosenDates.length * 24} h`), node('p', $('#order-breakdown').textContent), node('strong', money(editId ? editPaymentAmount : adminMode && adminComplimentary ? 0 : total())), node('p', editId ? 'Zmiany administratora nie pobierają kolejnej płatności.' : adminMode && adminComplimentary ? 'Bezpłatne ogłoszenie administratora — bez Stripe.' : demoMode ? t('unpaid') : config.paymentsEnabled ? t('payNote') : t('paymentDisabled')));
+    const back = node('button', t('back'), 'order-back'), send = node('button', editId ? 'Zapisz zmiany' : adminMode && adminComplimentary ? 'Dodaj bezpłatnie' : demoMode ? t('send') : t('pay'), 'button');
     back.type = send.type = 'button'; back.onclick = () => { $('#order-form').hidden = false; box.hidden = true; };
     send.onclick = async () => {
       if (pending) return;
-      if (!demoMode && !config.paymentsEnabled) { setMessage('paymentDisabled'); return; }
+      if (!editId && !(adminMode && adminComplimentary) && !demoMode && !config.paymentsEnabled) { setMessage('paymentDisabled'); return; }
       pending = true; send.disabled = back.disabled = true;
-      const body = { requestId, type, kind, region, primaryLanguage, dates: chosenDates, variants: [primaryLanguage, ...selectedLanguages.filter(language => language !== primaryLanguage)].map(language => ({ language, title: titles[language], description: descriptions[language], ...(kind === 'image' ? languageImages[language] || {} : {}) })), contact, publicPhone, publicEmail, email, company, url, customerName, image: imageData, imageMobile: type === 'PREMIUM' ? mobileImageData : '', consent: true, termsAccepted:$('#order-form').elements.termsAccepted.checked,termsVersion:'draft-2026-11-11',earlyServiceRequest:$('#order-form').elements.earlyServiceRequest.checked, expectedTotalPrice: total() };
+      const body = { requestId, type, kind, region, primaryLanguage, dates: editId && !editDatesTouched ? editOriginalDates : chosenDates, variants: [primaryLanguage, ...selectedLanguages.filter(language => language !== primaryLanguage)].map(language => ({ language, title: titles[language], description: descriptions[language], ...(kind === 'image' ? languageImages[language] || {} : {}) })), contact, publicPhone, publicEmail, email, company, url, customerName, image: imageData, imageMobile: type === 'PREMIUM' ? mobileImageData : '', consent: true, termsAccepted:$('#order-form').elements.termsAccepted.checked,termsVersion:'draft-2026-11-11',earlyServiceRequest:$('#order-form').elements.earlyServiceRequest.checked, expectedTotalPrice: total() };
       try {
-        const result = await api('order-batch', {}, body);
+        const result = await api(editId ? 'admin-revise-group' : adminMode && adminComplimentary ? 'admin-order-batch' : 'order-batch', {}, editId ? { ...body, id: editId, version: editVersion, adminStatus } : adminMode && adminComplimentary ? { ...body, adminComplimentary: true, adminStatus } : body);
+        if (editId || adminMode && adminComplimentary) {
+          window.parent.postMessage({ type: 'pbe:admin-ad-saved', id: result.id || editId, published: adminStatus === 'approved', edited: Boolean(editId) }, location.origin);
+          box.replaceChildren(node('h3', editId ? 'Zmiany ogłoszenia zapisane.' : adminStatus === 'approved' ? 'Ogłoszenie zatwierdzone.' : 'Ogłoszenie zapisane do zatwierdzenia.'));
+          chosenDates = []; requestId = crypto.randomUUID();
+          return;
+        }
         if (!result.demo) {
           sessionStorage.setItem(`pbe-order-${result.id}`, requestId);
           const checkout = await paymentApi('start', {}, { groupId: result.id, requestId });
           if (!/^https:\/\/checkout\.stripe\.com\//.test(checkout.url || '')) throw new Error('paymentUnavailable');
-          location.assign(checkout.url);
+          (adminMode && window.top !== window ? window.top : window).location.assign(checkout.url);
           return;
         }
         box.replaceChildren(node('h3', t('demoSuccess')));
@@ -492,10 +506,41 @@
   async function open(trigger) {
     if (dialog.open) return;
     restoreFocus = trigger; locale = copy[document.documentElement.lang] ? document.documentElement.lang : 'pl'; selectedLanguages = [locale]; primaryLanguage = locale; sampleLanguage = locale;
-    chosenDates = []; conflicts = {}; availabilityReady = false; region = 'all'; imageData = imageName = mobileImageData = mobileImageName = ''; languageImages = {}; titles = {}; descriptions = {};
+    chosenDates = []; editOriginalDates = []; editDatesTouched = false; conflicts = {}; availabilityReady = false; region = 'all'; imageData = imageName = mobileImageData = mobileImageName = ''; languageImages = {}; titles = {}; descriptions = {};
     dialog.innerHTML = `<div class="order-heading"><h2 id="order-title">${t('title')}</h2></div><p>${t('loading')}</p>`;
     dialog.showModal(); document.body.classList.add('order-open');
-    try { config = await api('config'); month = month || config.today.slice(0, 7); render(); await showPaymentResult(); }
+    try {
+      config = await api('config');
+      if (new URLSearchParams(location.search).get('cms') === '1') {
+        const check = await fetch('/api/ads?action=admin-settings', { credentials: 'same-origin', cache: 'no-store' });
+        if (!check.ok) throw new Error('Administrator authentication required');
+        adminMode = true;
+        editId = new URLSearchParams(location.search).get('edit') || '';
+        if (editId) {
+          const target = await api('admin-detail', { id: editId });
+          const all = (await api('admin-orders')).orders;
+          const siblings = target.groupId ? all.filter(item => item.groupId === target.groupId) : [target];
+          const full = await Promise.all(siblings.map(item => item.id === target.id ? target : api('admin-detail', { id: item.id })));
+          primaryLanguage = target.primaryLanguage || target.language;
+          selectedLanguages = full.map(item => item.language);
+          const primary = full.find(item => item.language === primaryLanguage) || target;
+          type = target.type; kind = target.kind; region = target.region || 'all';
+          titles = Object.fromEntries(full.map(item => [item.language, item.title]));
+          descriptions = Object.fromEntries(full.map(item => [item.language, item.description]));
+          languageImages = Object.fromEntries(full.filter(item => item.language !== primaryLanguage).map(item => [item.language, { image: item.image || '', imageMobile: item.imageMobile || '' }]));
+          imageData = primary.image || ''; mobileImageData = primary.imageMobile || '';
+          imageName = imageData ? 'Obecna grafika' : ''; mobileImageName = mobileImageData ? 'Obecna grafika mobilna' : '';
+          company = primary.company || ''; contact = primary.contact || ''; publicPhone = primary.publicPhone || ''; publicEmail = primary.publicEmail || ''; url = primary.url || '';
+          customerName = primary.customerName || ''; email = primary.email || '';
+          editOriginalDates = target.periods?.length ? target.periods.map(period => period.date) : [target.startDate];
+          chosenDates = editOriginalDates.filter(date => date >= config.today);
+          adminStatus = target.status; adminComplimentary = target.source === 'manual' && target.paymentStatus === 'not_required';
+          editVersion = target.version; editPaymentAmount = target.groupTotalPrice ?? target.totalPrice ?? 0;
+          month = chosenDates[0]?.slice(0, 7) || config.today.slice(0, 7);
+        }
+      }
+      month = month || config.today.slice(0, 7); render(); await showPaymentResult();
+    }
     catch { dialog.replaceChildren(node('p', t('error'))); const close = node('button', t('close'), 'button'); close.type = 'button'; close.onclick = () => dialog.close(); dialog.append(close); close.focus(); }
   }
   async function showPaymentResult() {
