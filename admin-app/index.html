@@ -189,27 +189,13 @@
 
   <dialog id="ads-order-dialog" aria-label="Dodaj ogłoszenie"><button type="button" class="ads-order-close secondary" id="ads-order-close" aria-label="Zamknij formularz">Zamknij ×</button><iframe id="ads-order-frame" title="Formularz zamówienia ogłoszenia"></iframe></dialog>
   <dialog id="ads-dialog">
-    <form id="ads-edit" class="ads-dialog-form">
+    <div id="ads-edit" class="ads-dialog-form">
       <div class="dialog-heading"><h2>Reklama</h2><button type="button" class="icon-button" id="ads-close" aria-label="Zamknij">×</button></div>
       <p id="ads-edit-error" role="alert"></p><div id="ads-moderation-actions" class="row-actions ads-moderation-actions" hidden></div><div id="ads-order-meta" class="ads-metadata"></div><div id="ads-payment-history" class="muted"></div>
-      <div class="form-grid">
-        <label>Język<select name="language"></select></label><label>Typ<select name="type"><option>STANDARD</option><option>TOP</option><option>PREMIUM</option></select></label>
-        <label>Region<select name="region"><option value="all">Cała Belgia</option><option value="flanders">Flandria</option><option value="wallonia">Walonia</option><option value="brussels">Region Stołeczny Brukseli</option></select></label>
-        <label>Pierwszy dzień<input name="startDate" type="date" required></label><label>Ostatni dzień (włącznie)<input name="endDate" type="date" required></label>
-        <label>Firma / reklamodawca (publicznie)<input name="company" maxlength="120"></label><label>Tytuł<input name="title" maxlength="100" required></label>
-        <label class="wide">Opis<textarea name="description" maxlength="1000" required></textarea></label>
-        <label class="wide" id="ads-contact-label">Inny kontakt publiczny<input name="contact" maxlength="160"></label>
-        <label>Telefon publiczny<input name="publicPhone" type="tel" maxlength="40"></label><label>E-mail publiczny<input name="publicEmail" type="email" maxlength="254"></label>
-        <label>Grafika PNG/JPEG/WebP do 500 KB<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></label><img id="ads-image-preview" alt="Podgląd reklamy" width="180" hidden>
-        <label>Strona internetowa reklamy<input name="url" type="url" maxlength="2048"></label><label>Zamawiający (prywatnie)<input name="customerName" maxlength="120"></label>
-        <label>E-mail zamawiającego (prywatnie)<input name="email" type="email" maxlength="254" required></label><label>Telefon zamawiającego (prywatnie)<input name="phone" maxlength="40"></label>
-        <label>Status<select name="status"><option value="pending">Oczekuje</option><option value="approved">Zaakceptowane</option><option value="rejected">Odrzucone</option><option value="cancelled">Anulowane</option></select></label>
-        <label id="ads-free-label">Bezpłatna / barter<select name="complimentary"><option value="false">Nie — aktualny cennik</option><option value="true">Tak — 0 EUR</option></select></label>
-      </div>
-      <p id="ads-edit-price"></p><p id="ads-edit-note">Edycję ogłoszenia otworzysz przyciskiem „Edytuj” powyżej.</p>
-      <button class="primary" id="ads-save">Zapisz ogłoszenie</button>
-      <button class="secondary" type="button" id="ads-delete" hidden>Usuń ogłoszenie</button>
-    </form>
+      <img id="ads-image-preview" alt="Podgląd reklamy" width="180" hidden>
+      <p>Wszystkie dane ogłoszenia zmienisz przez „Edytuj” w formularzu zamówienia.</p>
+      <button class="secondary" type="button" id="ads-delete">Usuń ogłoszenie</button>
+    </div>
   </dialog>
 
   <dialog id="event-editor-dialog">

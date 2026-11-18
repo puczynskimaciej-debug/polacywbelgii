@@ -32,11 +32,10 @@ async function load() {
       const note = document.createElement('p'); note.className = 'muted'; note.textContent = `Zajętość miejsc w najbliższych 24 godzinach: ${occupancy.join(' · ')}`;
       $('#ads-prices').querySelectorAll('fieldset')[index].append(note);
     }));
-    for (const form of [$('#ads-filters'), $('#ads-edit')]) {
-      const select = form.elements.namedItem('language'); const previous = select.value;
-      select.innerHTML = (form.id === 'ads-filters' ? '<option value="">Wszystkie</option>' : '') + Object.entries(settings.languages).map(([key, language]) => `<option value="${escape(key)}">${escape(language.name)}</option>`).join('');
-      if ([...select.options].some(option => option.value === previous)) select.value = previous;
-    }
+    const select = $('#ads-filters').elements.namedItem('language');
+    const previous = select.value;
+    select.innerHTML = '<option value="">Wszystkie</option>' + Object.entries(settings.languages).map(([key, language]) => `<option value="${escape(key)}">${escape(language.name)}</option>`).join('');
+    if ([...select.options].some(option => option.value === previous)) select.value = previous;
     applyLanguage(); render(); $('#ads-notice').textContent = '';
     document.dispatchEvent(new CustomEvent('cms:ads-data',{detail:{orders,configuration}}));
   } catch (error) { $('#ads-notice').textContent = errorText(error); }
@@ -52,43 +51,19 @@ function render() {
     row.querySelector(tab === 'payments' ? '[data-label="Płatność"]' : '[data-label="Kwota"]')?.append(label);
   });
 }
-function editPrice() {
-  if (isShowcase(editing)) { $('#ads-edit-price').textContent = 'Bezterminowo (pokazowe). Aby ukryć, wybierz status Anulowane.'; return; }
-  if (editing?.source === 'public') { $('#ads-edit-price').textContent = `Cena tej wersji: ${money(editing.totalPrice)}. Całe zamówienie: ${money(editing.groupTotalPrice || editing.totalPrice)}. Cena i termin pozostają zgodne z opłaconą rezerwacją.`; return; }
-  const form = $('#ads-edit'); const input = Object.fromEntries(new FormData(form));
-  const days = (Date.parse(input.endDate) - Date.parse(input.startDate)) / 86400000 + 1;
-  const price = editing ? editing.dailyPrice : input.complimentary === 'true' ? 0 : configuration.data.markets[input.language]?.prices[input.type];
-  $('#ads-edit-price').textContent = days > 0 && days <= 366 ? `${days} dni × ${money(price)} = ${money(days * price)}` : 'Wybierz poprawny zakres dat.';
-}
 async function open(order) {
   if (!configuration) { $('#ads-notice').textContent = 'Najpierw wczytaj ustawienia reklam.'; return; }
   if (order) {
     try { order = await api('admin-detail', 'GET', null, { id: order.id }); }
     catch (error) { $('#ads-notice').textContent = errorText(error); return; }
   }
-  editing = order || null; const form = $('#ads-edit'); form.reset();
-  form.querySelector('.form-grid').hidden = Boolean(order);
-  $('#ads-save').hidden = Boolean(order);
-  $('#ads-edit-price').hidden = Boolean(order);
-  $('#ads-edit-note').hidden = !order;
-  const actions = $('#ads-moderation-actions'); actions.innerHTML = order ? sharedEditButton(order) + moderationButtons(order) : ''; actions.hidden = !order;
-  $('#ads-delete').hidden = !order;
-  $('#ads-delete').textContent = order?.source === 'public' ? 'Wycofaj ogłoszenie' : 'Usuń ogłoszenie';
-  const input = order || { language: Object.keys(configuration.languages)[0], type: 'STANDARD', status: 'approved', startDate: configuration.today, endDate: configuration.today };
-  for (const [key, value] of Object.entries(input)) { const control = form.elements.namedItem(key); if (control) control.value = value; }
-  form.elements.language.disabled = form.elements.type.disabled = Boolean(order);
-  for (const key of ['startDate', 'endDate']) { form.elements[key].readOnly = isShowcase(order) || order?.source === 'public' && (key === 'endDate' || order.effectiveStatus !== 'needs_reschedule' || Boolean(order.periods)); form.elements[key].closest('label').hidden = isShowcase(order) || Boolean(order?.periods); }
-  form.querySelector('[data-period-reschedule]')?.remove();
-  if (order?.periods && order.effectiveStatus === 'needs_reschedule') {
-    const label = document.createElement('label'); label.dataset.periodReschedule = '';
-    label.textContent = `Nowe dni emisji (${order.periods.length}, rozdziel przecinkiem)`;
-    const textarea = document.createElement('textarea'); textarea.name = 'periodDates'; textarea.value = order.periods.map(period => period.date).join(', '); textarea.required = true;
-    label.append(textarea); form.append(label);
-  }
-  updateCreativeFields();
-  $('#ads-free-label').hidden = Boolean(order);
+  editing = order;
+  const actions = $('#ads-moderation-actions');
+  actions.innerHTML = sharedEditButton(order) + moderationButtons(order);
+  actions.hidden = false;
+  $('#ads-delete').textContent = order.source === 'public' ? 'Wycofaj ogłoszenie' : 'Usuń ogłoszenie';
   const remaining = order?.periods?.length ? Math.ceil(order.periods.reduce((sum, period) => sum + Math.max(0, Date.parse(period.actualEndAt || period.plannedEndAt || 0) - Math.max(Date.now(), Date.parse(period.actualStartAt || period.plannedStartAt || 0))),0) / 3600000) : order?.actualEndAt ? Math.max(0, Math.ceil((Date.parse(order.actualEndAt) - Date.now()) / 3600000)) : null;
-  $('#ads-order-meta').innerHTML = order ? `<span><strong>Status:</strong> ${escape(labels[order.effectiveStatus]||order.effectiveStatus)}</span><span><strong>Źródło:</strong> ${order.source==='manual'?'Dodane ręcznie':'Zamówienie klienta'}</span><span><strong>Pakiet:</strong> ${escape(order.type)}</span><span><strong>Język podstawowy:</strong> ${escape(order.primaryLanguage||order.language)}</span><span><strong>Języki:</strong> ${escape((order.languages||[order.language]).join(', '))}</span><span><strong>Kwota zamówienia:</strong> ${money(order.groupTotalPrice||order.totalPrice)}</span><span><strong>Płatność:</strong> ${escape(paymentNames[order.paymentStatus]||'Brak płatności')}</span><span><strong>Planowany start:</strong> ${escape(order.plannedStartAt||'Po płatności i akceptacji')}</span><span><strong>Faktyczny start:</strong> ${escape(order.actualStartAt||'—')}</span><span><strong>Koniec:</strong> ${escape(order.actualEndAt||order.plannedEndAt||'—')}</span>${remaining === null ? '' : `<span><strong>Pozostało:</strong> ${remaining} h</span>`}${order.refundRequired?'<span class="danger">Wymaga ręcznej obsługi zwrotu</span>':''}` : '';
+  $('#ads-order-meta').innerHTML = order ? `<span><strong>Status:</strong> ${escape(labels[order.effectiveStatus]||order.effectiveStatus)}</span><span><strong>Źródło:</strong> ${order.source==='manual'?'Dodane ręcznie':'Zamówienie klienta'}</span><span><strong>Pakiet:</strong> ${escape(order.type)}</span><span><strong>Język podstawowy:</strong> ${escape(order.primaryLanguage||order.language)}</span><span><strong>Języki:</strong> ${escape((order.languages||[order.language]).join(', '))}</span><span><strong>Kwota zamówienia:</strong> ${money(order.groupTotalPrice||order.totalPrice)}</span><span><strong>Płatność:</strong> ${escape(paymentLabel(order))}</span><span><strong>Planowany start:</strong> ${escape(order.plannedStartAt||'Po płatności i akceptacji')}</span><span><strong>Faktyczny start:</strong> ${escape(order.actualStartAt||'—')}</span><span><strong>Koniec:</strong> ${escape(order.actualEndAt||order.plannedEndAt||'—')}</span>${remaining === null ? '' : `<span><strong>Pozostało:</strong> ${remaining} h</span>`}${order.refundRequired?'<span class="danger">Wymaga ręcznej obsługi zwrotu</span>':''}` : '';
   if (order?.periods) {
     const format = value => value ? new Intl.DateTimeFormat('pl-BE',{timeZone:'Europe/Brussels',dateStyle:'medium',timeStyle:'short'}).format(new Date(value)) : null;
     const periods = document.createElement('p'); periods.textContent = 'Okresy emisji (Europe/Brussels): ' + order.periods.map(period => `${period.date}: ${format(period.actualStartAt || period.plannedStartAt) || 'po opłaceniu i akceptacji'} – ${format(period.actualEndAt || period.plannedEndAt) || '24 godziny od startu'}`).join('; ');
@@ -112,24 +87,11 @@ async function open(order) {
     try { const result = await api('admin-order-history', 'GET', null, { id: order.id }); $('#ads-payment-history').textContent += ' · Historia moderacji: ' + (result.changes.map(change => `${change.created_at}: ${labels[change.previous_status]||'Nowe'} → ${labels[change.new_status]||'Zmieniono'}`).join(' · ') || 'brak'); }
     catch { $('#ads-payment-history').textContent += ' · Historia moderacji niedostępna.'; }
   }
-  $('#ads-edit-error').textContent = ''; $('#ads-image-preview').hidden = !order || order.kind === 'text';
-  if (order) $('#ads-image-preview').src = order.image;
-  editPrice(); $('#ads-dialog').showModal();
+  $('#ads-edit-error').textContent = '';
+  $('#ads-image-preview').hidden = order.kind === 'text' || !order.image;
+  if (order.image) $('#ads-image-preview').src = order.image;
+  $('#ads-dialog').showModal();
 }
-function updateCreativeFields() {
-  const form = $('#ads-edit');
-  const limits = { PREMIUM:{title:70,description:200}, TOP:{title:60,description:160}, STANDARD:{title:70,description:500} }[form.elements.type.value];
-  if (limits) {
-    form.elements.title.maxLength = limits.title;
-    form.elements.description.maxLength = limits.description;
-  }
-  const textOnly = editing ? editing.kind === 'text' : form.elements.type.value !== 'PREMIUM';
-  form.elements.title.required = !textOnly;
-  form.elements.imageFile.required = !textOnly && !editing;
-  form.elements.imageFile.closest('label').hidden = textOnly;
-  for (const key of ['company','contact','publicPhone','publicEmail','url','customerName']) form.elements[key].required = false;
-}
-$('#ads-edit').addEventListener('change', event => { if (event.target.name === 'type') updateCreativeFields(); editPrice(); });
 function openSharedOrder(id = '') { $('#ads-order-frame').src = '/zamow-ogloszenie/?cms=1' + (id ? `&edit=${encodeURIComponent(id)}` : ''); $('#ads-order-dialog').showModal(); }
 $('#ads-new').onclick = () => openSharedOrder();
 $('#ads-order-close').onclick = () => $('#ads-order-dialog').close();
@@ -189,28 +151,5 @@ $('#ads-settings').onsubmit = async event => {
     $('#ads-notice').textContent = 'Cennik zapisany. Obowiązuje od razu. Istniejące zamówienia zachowują ceny.';
   } catch (error) { $('#ads-notice').textContent = errorText(error); } finally { button.disabled = false; }
 };
-$('#ads-edit').onsubmit = async event => {
-  event.preventDefault(); const button = event.submitter; button.disabled = true;
-  try {
-    const form = event.target; const values = Object.fromEntries(new FormData(form)); const file = form.elements.imageFile.files[0];
-    const periodDatesChanged = editing?.periods && typeof values.periodDates === 'string' && values.periodDates !== editing.periods.map(period => period.date).join(', ');
-    if (editing?.source === 'public' && (periodDatesChanged || !editing.periods && values.startDate !== editing.startDate)) {
-      const dates = periodDatesChanged ? values.periodDates.split(/[\s,;]+/).filter(Boolean).sort() : undefined;
-      await api('admin-reschedule-group', 'PUT', { id: editing.id, version: editing.version, startDate: values.startDate, dates });
-      $('#ads-dialog').close(); await load(); $('#ads-notice').textContent = 'Nowy termin zapisany dla wszystkich języków. Otwórz zamówienie ponownie, aby je zatwierdzić.'; return;
-    }
-    let image = editing?.image;
-    if (file) {
-      if (file.size > 512000 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw { code: 'image' };
-      image = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
-    }
-    const changingGroup = editing?.source === 'public' && values.status !== editing.status;
-    if (changingGroup && !['approved', 'rejected', 'cancelled'].includes(values.status)) throw { code: 'useGroupModeration' };
-    await api('admin-order', editing ? 'PUT' : 'POST', { ...values, status: changingGroup ? editing.status : values.status, kind: editing ? editing.kind : values.type === 'PREMIUM' ? 'image' : 'text', imageFile: undefined, image, language: editing?.language || values.language, type: editing?.type || values.type, id: editing?.id, version: editing?.version, complimentary: values.complimentary === 'true' });
-    if (changingGroup) await api('admin-moderate-group', 'PUT', { id: editing.id, version: editing.version + 1, status: values.status });
-    $('#ads-dialog').close(); await load(); $('#ads-notice').textContent = 'Reklama zapisana.';
-  } catch (error) { $('#ads-edit-error').textContent = errorText(error); } finally { button.disabled = false; }
-};
-
 function applyLanguage() {const language=document.querySelector('#cms-language').value;document.querySelectorAll('#ads-prices fieldset').forEach((f,i)=>f.hidden=Object.keys(configuration.languages)[i]!==language);}
 document.addEventListener('cmslanguagechange',()=>{if(configuration){applyLanguage();render();}});
