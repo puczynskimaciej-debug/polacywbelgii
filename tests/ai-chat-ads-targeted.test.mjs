@@ -11,7 +11,7 @@ import { processChatJobs } from '../cloudflare/ai-chat-worker.mjs';
 import { onRequest as aiChatRoute } from '../cloudflare/ai-chat.mjs';
 import { onRequest as aiEditorRoute } from '../cloudflare/ai-editor.mjs';
 import { sha256 } from '../cloudflare/common.mjs';
-import { publicEntry } from '../cloudflare/public-pages.mjs';
+import { publicEntry, publicEntries } from '../cloudflare/public-pages.mjs';
 
 globalThis.crypto ??= webcrypto;
 function database() {
@@ -180,8 +180,9 @@ test('administrator permanently deletes one manual or AI event without touching 
   DB.sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(await sha256(token),userId,'2099-01-01');
   const ids=['1'.repeat(20),'2'.repeat(20),'3'.repeat(20)];
   for(const [index,id] of ids.entries()){
-    const event={start:'2090-01-01T10:00:00.000Z',timezone:'Europe/Brussels',city:'Bruksela',venue:'Sala',organizer:'Organizator',category:'Kultura',region:'brussels',sourceUrl:'https://www.belgium.be/en',status:'scheduled'};
-    DB.sqlite.prepare('INSERT INTO ai_candidates(id,kind,status,title,description,body,category,region,sources_json,verification_json,event_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'event','published',`Event ${index}`,'Description','Body','Kultura','brussels','[]',JSON.stringify({status:'verified'}),JSON.stringify(event),'2026-01-01','2026-01-01');
+    const category=index===2?'History':'Kultura';
+    const event={start:'2090-01-01T10:00:00.000Z',timezone:'Europe/Brussels',city:'Bruksela',venue:'Sala',organizer:'Organizator',category,region:'brussels',sourceUrl:'https://www.belgium.be/en',status:'scheduled'};
+    DB.sqlite.prepare('INSERT INTO ai_candidates(id,kind,status,title,description,body,category,region,sources_json,verification_json,event_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'event','published',`Event ${index}`,'Description','Body',category,'brussels','[]',JSON.stringify({status:'verified'}),JSON.stringify(event),'2026-01-01','2026-01-01');
     DB.sqlite.prepare("INSERT INTO ai_editorial(candidate_id,status,owner_kind,owner_id,approved_by,approved_at,published_at,public_state,updated_at) VALUES(?,'published',?,?,'admin','2026-01-01','2026-01-01','visible','2026-01-01')").run(id,index===1?'agent':'admin',index===1?'agent':userId);
     DB.sqlite.prepare('INSERT INTO ai_candidate_history(candidate_id,new_status,at) VALUES(?,?,?)').run(id,'published','2026-01-01');
   }
@@ -195,5 +196,6 @@ test('administrator permanently deletes one manual or AI event without touching 
     assert.equal(await publicEntry(DB,`ai-${id}`),null);
   }
   assert.equal((await publicEntry(DB,`ai-${ids[2]}`)).title,'Event 2');
+  assert.equal((await publicEntries(DB,'event'))[0].category,'Inne');
   assert.equal((await aiEditorRoute({request:new Request('https://polacywbelgii.pages.dev/api/ai-editor',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json'},body:JSON.stringify({action:'delete-event',id:ids[2]})}),env})).status,401);
 });
