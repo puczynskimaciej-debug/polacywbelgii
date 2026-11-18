@@ -15,7 +15,7 @@
       unavailable: 'Zamawianie w wybranym języku jest obecnie wyłączone.', error: 'Nie udało się pobrać danych. Spróbuj ponownie.',
       full: 'Wybrany termin obejmuje zajęte dni. Wybierz inny zakres.', changed: 'Cena zmieniła się. Sprawdź nową cenę.',
       imageError: 'Wybierz plik PNG, JPEG lub WebP do 500 KB.', success: 'Zamówienie zapisane i czeka na akceptację redakcji.',
-      unpaid: 'Płatności online nie są jeszcze dostępne. Teraz nic nie płacisz.', payNote: 'Po zatwierdzeniu zamówienia przejdziesz do bezpiecznej płatności Stripe w trybie testowym. Reklama pojawi się dopiero po potwierdzeniu płatności i akceptacji redakcji.', pay: 'Przejdź do płatności testowej', paymentDisabled: 'Płatności testowe nie są skonfigurowane. Zamówienie nie zostanie wysłane.', empty: 'Wybierz dostępny zakres dat.',
+      unpaid: 'Płatności online nie są jeszcze dostępne. Teraz nic nie płacisz.', payNote: 'Po złożeniu zamówienia przejdziesz do bezpiecznej płatności Stripe. Reklama pojawi się po potwierdzeniu płatności i akceptacji redakcji.', pay: 'Przejdź do płatności', paymentDisabled: 'Płatności online są chwilowo niedostępne. Zamówienie nie zostanie wysłane.', paymentReturnUntracked: 'Dziękujemy za powrót ze Stripe. Status płatności potwierdza webhook. Numer zamówienia:', empty: 'Wybierz dostępny zakres dat.',
       previous: 'Poprzedni miesiąc', next: 'Następny miesiąc', limit: 'Możesz wybrać maksymalnie 90 kolejnych dni.',
       demoNotice: 'Tryb demonstracyjny — ceny i dostępność są przykładowe. Nic nie zostanie zapisane.', demoSuccess: 'To był podgląd zamówienia. Nic nie zostało wysłane.'
     },
@@ -34,7 +34,7 @@
       unavailable: 'Orders are currently disabled for the chosen language.', error: 'Could not load the data. Please try again.',
       full: 'The chosen range contains fully booked days. Choose another range.', changed: 'The price changed. Review the new total.',
       imageError: 'Choose a PNG, JPEG or WebP file up to 500 KB.', success: 'Your order was saved and is awaiting editorial approval.',
-      unpaid: 'Online payments are not available yet. You do not pay anything now.', empty: 'Choose an available date range.',
+      unpaid: 'Online payments are not available yet. You do not pay anything now.', payNote: 'After submitting your order, you will proceed to secure Stripe payment. The listing will appear after payment confirmation and editorial approval.', pay: 'Proceed to payment', paymentDisabled: 'Online payments are temporarily unavailable. Your order will not be submitted.', paymentReturnUntracked: 'Thank you for returning from Stripe. The webhook confirms payment status. Order number:', empty: 'Choose an available date range.',
       previous: 'Previous month', next: 'Next month', limit: 'You can select up to 90 consecutive days.',
       demoNotice: 'Demo mode — prices and availability are examples. Nothing will be saved.', demoSuccess: 'This was an order preview. Nothing was submitted.'
     },
@@ -53,7 +53,7 @@
       unavailable: 'Bestellen is momenteel uitgeschakeld voor de gekozen taal.', error: 'Gegevens laden mislukt. Probeer opnieuw.',
       full: 'De gekozen periode bevat volzette dagen. Kies een andere periode.', changed: 'De prijs is gewijzigd. Controleer het nieuwe bedrag.',
       imageError: 'Kies een PNG-, JPEG- of WebP-bestand van maximaal 500 KB.', success: 'De bestelling is opgeslagen en wacht op goedkeuring.',
-      unpaid: 'Online betalen is nog niet beschikbaar. Je betaalt nu niets.', empty: 'Kies een beschikbare periode.',
+      unpaid: 'Online betalen is nog niet beschikbaar. Je betaalt nu niets.', payNote: 'Na het plaatsen van je bestelling ga je naar de beveiligde betaling via Stripe. De advertentie verschijnt na bevestiging van de betaling en goedkeuring door de redactie.', pay: 'Ga naar de betaling', paymentDisabled: 'Online betalen is tijdelijk niet beschikbaar. Je bestelling wordt niet verzonden.', paymentReturnUntracked: 'Bedankt voor je terugkeer van Stripe. De webhook bevestigt de betaalstatus. Bestelnummer:', empty: 'Kies een beschikbare periode.',
       previous: 'Vorige maand', next: 'Volgende maand', limit: 'Je kunt maximaal 90 opeenvolgende dagen kiezen.',
       demoNotice: 'Demomodus — prijzen en beschikbaarheid zijn voorbeelden. Er wordt niets opgeslagen.', demoSuccess: 'Dit was een voorbeeld. Er is niets verzonden.'
     },
@@ -72,7 +72,7 @@
       unavailable: 'Les commandes sont actuellement désactivées pour la langue choisie.', error: 'Impossible de charger les données. Réessayez.',
       full: 'La période choisie contient des jours complets. Choisissez une autre période.', changed: 'Le prix a changé. Vérifiez le nouveau montant.',
       imageError: 'Choisissez un fichier PNG, JPEG ou WebP de 500 Ko maximum.', success: 'La commande a été enregistrée et attend la validation de la rédaction.',
-      unpaid: 'Le paiement en ligne n’est pas encore disponible. Vous ne payez rien maintenant.', empty: 'Choisissez une période disponible.',
+      unpaid: 'Le paiement en ligne n’est pas encore disponible. Vous ne payez rien maintenant.', payNote: 'Après l’envoi de votre commande, vous passerez au paiement sécurisé Stripe. L’annonce paraîtra après confirmation du paiement et validation par la rédaction.', pay: 'Passer au paiement', paymentDisabled: 'Le paiement en ligne est temporairement indisponible. Votre commande ne sera pas envoyée.', paymentReturnUntracked: 'Merci de votre retour de Stripe. Le webhook confirme le statut du paiement. Numéro de commande :', empty: 'Choisissez une période disponible.',
       previous: 'Mois précédent', next: 'Mois suivant', limit: 'Vous pouvez choisir 90 jours consécutifs au maximum.',
       demoNotice: 'Mode démonstration — prix et disponibilités fictifs. Rien ne sera enregistré.', demoSuccess: 'Ceci était un aperçu. Rien n’a été envoyé.'
     }
@@ -503,7 +503,7 @@
     const orderId = query.get('order');
     if (!['return', 'cancel'].includes(query.get('payment')) || !orderId) return;
     const token = sessionStorage.getItem(`pbe-order-${orderId}`);
-    if (!token) { $('#order-message').textContent = 'Brak lokalnego identyfikatora zamówienia. Skontaktuj się z redakcją, podając numer zamówienia.'; return; }
+    if (!token) { $('#order-message').textContent = `${t('paymentReturnUntracked')} ${orderId}`; return; }
     try {
       const result = await paymentApi('status', { id: orderId, token });
       $('#order-message').textContent = `Zamówienie ${orderId}: płatność ${result.paymentStatus}, moderacja ${result.moderationStatus}. Powrót ze Stripe nie potwierdza płatności; status aktualizuje webhook.`;
