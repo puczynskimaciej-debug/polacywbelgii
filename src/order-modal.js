@@ -183,7 +183,7 @@
         if (action === 'order-batch') return { demo: true };
       }
     }
-    const requestAction = action === 'availability' && adminMode && editId ? 'admin-availability' : action;
+    const requestAction = action === 'availability' && adminMode && (editId || adminComplimentary) ? 'admin-availability' : action;
     const requestParams = requestAction === 'admin-availability' ? { ...params, id: editId } : params;
     const response = await fetch('/api/ads?' + new URLSearchParams({ action: requestAction, ...requestParams }), body
       ? { method: action === 'admin-revise-group' ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
@@ -376,7 +376,7 @@
     $('#order-mobile-image-name').textContent = mobileImageName;
     $('#order-close').onclick = () => dialog.close();
     if (adminMode) {
-      if (!editId) $('[name=adminComplimentary]').onchange = event => { adminComplimentary = event.target.checked; summary(); };
+      if (!editId) $('[name=adminComplimentary]').onchange = event => { adminComplimentary = event.target.checked; calendar(); };
       $('[name=adminStatus]').onchange = event => { adminStatus = event.target.value; };
     }
     if (config.turnstileSiteKey) {

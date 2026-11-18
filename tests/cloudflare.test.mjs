@@ -230,6 +230,10 @@ test('only an administrator can create a complimentary PREMIUM banner without St
   assert.equal(revised.type, 'TOP'); assert.equal(revised.startDate, nextDay); assert.equal(revised.title, 'Nowy baner');
   assert.equal(revised.paymentStatus, 'not_required'); assert.equal(revised.totalPrice, 0);
   assert.equal((await (await adsRoute({ request: request('/api/ads?action=public&language=pl'), env: { DB } })).json()).ads.length, 0);
+  settings.markets.pl.enabled = false;
+  DB.sqlite.prepare('UPDATE ads_settings SET data=? WHERE id=1').run(JSON.stringify(settings));
+  const available = await adsRoute({ request: request(`/api/ads?action=admin-availability&language=pl&type=PREMIUM&startDate=${nextDay}&endDate=${nextDay}`, 'GET', undefined, `__Host-pbe_session=${adminToken}`), env: { DB } });
+  assert.equal((await available.json()).enabled, true);
   const paused = await adsRoute({ request: request('/api/ads?action=admin-revise-group', 'PUT', { ...revision, version: revised.version, adminStatus: 'paused' }, `__Host-pbe_session=${adminToken}`), env: { DB } });
   assert.equal(paused.status, 200, await paused.text());
   assert.equal(JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders').get().data).status, 'paused');

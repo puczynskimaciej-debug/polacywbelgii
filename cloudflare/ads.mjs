@@ -83,7 +83,8 @@ async function reserveBatch(db, body, ip, adminUser = null) {
     const groupId = crypto.randomUUID();
     const planned = [];
     const periods = chosen.map(date => domain.periodForDate(date));
-    const baseQuote = domain.quoteSelected(current.data, { language: body.primaryLanguage, type: body.type, dates: chosen });
+    const baseQuote = complimentary ? { totalPrice: current.data.markets[body.primaryLanguage]?.prices[body.type] * chosen.length } : domain.quoteSelected(current.data, { language: body.primaryLanguage, type: body.type, dates: chosen });
+    if (!Number.isSafeInteger(baseQuote.totalPrice)) domain.fail('market');
     for (const variant of body.variants) {
       if (!Object.hasOwn(languages, variant.language)) domain.fail('market');
       const creative = body.kind === 'text'
@@ -94,7 +95,7 @@ async function reserveBatch(db, body, ip, adminUser = null) {
         if (body.type === 'PREMIUM' && creative.imageMobile) domain.validateImageDimensions(creative.imageMobile, 660, 300);
       }
       const input = { language: variant.language, type: body.type, startDate: chosen[0], endDate: chosen.at(-1) };
-      const price = domain.quoteSelected(current.data, { language: variant.language, type: body.type, dates: chosen });
+      const price = domain.quoteSelected(current.data, { language: variant.language, type: body.type, dates: chosen }, new Date(), complimentary);
       for (const period of periods) {
         const window = domain.periodWindow(period);
         const availability = domain.availabilityWindow(all, current.data, input.language, input.type, window.startAt, window.endAt);
@@ -321,7 +322,7 @@ export async function handleAds({ request, env }) {
           const window = domain.windowFor(date, durationDays);
           return { date, ...domain.availabilityWindow(all, current.data, input.language, input.type, window.startAt, window.endAt, excludedIds) };
         });
-        return json({ ...price, enabled: current.data.markets[input.language].enabled && (input.type !== 'PREMIUM' || current.data.markets[input.language].prices.PREMIUM > 0), daysAvailable });
+        return json({ ...price, enabled: action === 'admin-availability' || current.data.markets[input.language].enabled && (input.type !== 'PREMIUM' || current.data.markets[input.language].prices.PREMIUM > 0), daysAvailable });
       }
       if (action === 'admin-orders') return json({ orders: (await orders(env.DB)).map(item => ({ ...item, effectiveStatus: domain.status(item) })) });
       if (action === 'admin-payment-events') {
