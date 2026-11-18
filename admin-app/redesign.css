@@ -30,3 +30,5 @@ dialog{width:min(900px,calc(100vw - 30px));padding:22px;border-radius:12px}.deta
 .visual-surface h2,.visual-surface h3 { margin:1.1em 0 .5em; color:#142d4c; }
 .visual-surface p,.visual-surface ul,.visual-surface ol,.visual-surface blockquote { margin:0 0 1em; }
 .visual-surface blockquote { border-left:4px solid #d94c49; padding-left:1em; }
+#ads-moderation-actions[hidden] { display:none; }
+.ads-moderation-actions { margin-bottom:14px; }

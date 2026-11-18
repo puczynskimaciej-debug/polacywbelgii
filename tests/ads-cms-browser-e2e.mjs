@@ -26,7 +26,7 @@ try {
     db.prepare('DELETE FROM cms_users WHERE id=?').run(stale.id);
   }
   db.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(userId, email, 'Ads E2E', await hashPassword(password), 'admin');
-  const item = { id, groupId, source: 'public', kind: 'text', type: 'STANDARD', language: 'pl', primaryLanguage: 'pl', languages: ['pl'], region: 'all', title, description: title, contact: 'Test', email, company: '', startDate: domain.today(now), endDate: domain.today(now), days: 1, dailyPrice: 200, totalPrice: 200, groupTotalPrice: 200, currency: 'EUR', status: 'pending', paymentStatus: 'paid', paidAt: now.toISOString(), reservationStartAt: now.toISOString(), reservationEndAt: new Date(now.getTime() + 86400000).toISOString(), version: 1, createdAt: now.toISOString(), updatedAt: now.toISOString() };
+  const item = { id, groupId, source: 'public', kind: 'text', type: 'STANDARD', language: 'pl', primaryLanguage: 'pl', languages: ['pl'], region: 'all', title, description: title, contact: 'Test', email, company: '', startDate: domain.today(now), endDate: domain.today(now), days: 1, dailyPrice: 200, totalPrice: 200, groupTotalPrice: 200, currency: 'EUR', status: 'pending', paymentStatus: 'paid', paidAt: now.toISOString(), periods: [domain.periodForDate(domain.today(now), now)], reservationStartAt: now.toISOString(), reservationEndAt: new Date(now.getTime() + 86400000).toISOString(), version: 1, createdAt: now.toISOString(), updatedAt: now.toISOString() };
   db.prepare('INSERT INTO ad_orders(id,data,created_at) VALUES(?,?,?)').run(id, JSON.stringify(item), item.createdAt);
   browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true });
   const page = await browser.newPage();
@@ -38,11 +38,18 @@ try {
   await page.locator('[data-view="ads"]').click();
   await page.locator('[data-panel="ads"]').waitFor({ state: 'visible', timeout: 15000 });
   await page.locator(`#ads-orders [data-ad-edit="${id}"]`).waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator(`#ads-orders [data-ad-moderate="approved"][data-ad-id="${id}"]`).waitFor({ state: 'visible' });
+  await page.locator(`#ads-orders [data-ad-moderate="rejected"][data-ad-id="${id}"]`).waitFor({ state: 'visible' });
   await page.locator(`#ads-orders [data-ad-edit="${id}"]`).click();
-  await page.locator('#ads-edit [name="status"]').selectOption('approved');
+  await page.locator('#ads-moderation-actions [data-ad-moderate="approved"]').waitFor({ state: 'visible' });
   await page.locator('#ads-save').click();
   await page.waitForFunction(() => !document.querySelector('#ads-dialog').open);
   let saved = JSON.parse(db.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
+  assert.equal(saved.status, 'pending');
+  await page.locator(`#ads-orders [data-ad-moderate="approved"][data-ad-id="${id}"]`).click();
+  await page.locator('#cms-confirm-accept').click();
+  await page.locator(`#ads-orders [data-ad-moderate="approved"][data-ad-id="${id}"]`).waitFor({ state: 'detached' });
+  saved = JSON.parse(db.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
   assert.equal(saved.status, 'approved');
   assert.equal(saved.paymentStatus, 'paid');
   assert.equal(Date.parse(saved.actualEndAt) - Date.parse(saved.actualStartAt), 86400000);

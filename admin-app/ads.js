@@ -11,6 +11,8 @@ const isShowcase = order => order?.demoSet === 'showcase-2026-09-29' && order.so
 const money = value => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(value / 100);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const errorText = error => (errors[error.code] || error.message || 'Nie udało się zapisać.') + (Array.isArray(error.details) ? ' ' + error.details.map(day => `${day.date || 'Wybrany okres'}: zajęte ${day.used}/${day.capacity}`).join(', ') : '');
+const canModerate = order => order?.source === 'public' && order.status === 'pending' && order.paymentStatus === 'paid' && order.effectiveStatus === 'pending_approval';
+const moderationButtons = order => canModerate(order) ? `<button class="primary" type="button" data-ad-moderate="approved" data-ad-id="${escape(order.id)}">Akceptuj</button><button class="secondary" type="button" data-ad-moderate="rejected" data-ad-id="${escape(order.id)}">Odrzuć</button>` : '';
 async function api(action, method = 'GET', body, params = {}) {
   return cmsRequest('ads', { action, ...params }, method, body);
 }
@@ -41,7 +43,7 @@ function render() {
   const filter = Object.fromEntries(new FormData($('#ads-filters')));
   const query=(filter.query||'').trim().toLocaleLowerCase('pl');
   const filtered = orders.filter(order => (!query || `${order.title} ${order.company} ${order.email}`.toLocaleLowerCase('pl').includes(query)) && (!filter.language || filter.language === order.language) && (!filter.type || filter.type === order.type) && (!filter.status || (filter.status === 'approved' ? order.status === 'approved' : filter.status === order.effectiveStatus)) && (!filter.from || isShowcase(order) || order.endDate >= filter.from) && (!filter.to || order.startDate <= filter.to) && (tab === 'orders' || tab === 'payments' && order.paymentStatus && order.paymentStatus !== 'not_required' || order.effectiveStatus === tab || tab === 'ended' && ['ended','completed'].includes(order.effectiveStatus)));
-  $('#ads-orders').innerHTML = filtered.length ? `<table class="data-table"><thead><tr><th>Ogłoszenie</th><th>Status</th><th>Okres</th><th>Pakiet</th><th>${tab==='payments'?'Płatność':'Kwota'}</th><th>Akcje</th></tr></thead><tbody>${filtered.map(order => `<tr><td data-label="Ogłoszenie"><strong>${escape(order.title)}</strong><span class="table-subtitle">${escape(order.company)} · ${escape(order.language.toUpperCase())}</span></td><td data-label="Status"><span class="status-badge status-${escape(order.effectiveStatus)}">${labels[order.effectiveStatus]||escape(order.effectiveStatus)}</span></td><td data-label="Okres">${order.periods?.length ? escape(order.periods.map(period => period.date).join(', ')) : `${escape(order.startDate)} – ${isShowcase(order)?'bezterminowo':escape(order.endDate)}`}</td><td data-label="Pakiet">${escape(order.type)}</td><td data-label="${tab==='payments'?'Płatność':'Kwota'}">${tab==='payments'?escape(paymentNames[order.paymentStatus]||'Brak płatności'):money(order.totalPrice)}</td><td data-label="Akcje"><button class="secondary" type="button" data-ad-edit="${escape(order.id)}">Szczegóły</button></td></tr>`).join('')}</tbody></table>` : '<p class="empty-state">Brak ogłoszeń spełniających kryteria.</p>';
+  $('#ads-orders').innerHTML = filtered.length ? `<table class="data-table"><thead><tr><th>Ogłoszenie</th><th>Status</th><th>Okres</th><th>Pakiet</th><th>${tab==='payments'?'Płatność':'Kwota'}</th><th>Akcje</th></tr></thead><tbody>${filtered.map(order => `<tr><td data-label="Ogłoszenie"><strong>${escape(order.title)}</strong><span class="table-subtitle">${escape(order.company)} · ${escape(order.language.toUpperCase())}</span></td><td data-label="Status"><span class="status-badge status-${escape(order.effectiveStatus)}">${labels[order.effectiveStatus]||escape(order.effectiveStatus)}</span></td><td data-label="Okres">${order.periods?.length ? escape(order.periods.map(period => period.date).join(', ')) : `${escape(order.startDate)} – ${isShowcase(order)?'bezterminowo':escape(order.endDate)}`}</td><td data-label="Pakiet">${escape(order.type)}</td><td data-label="${tab==='payments'?'Płatność':'Kwota'}">${tab==='payments'?escape(paymentNames[order.paymentStatus]||'Brak płatności'):money(order.totalPrice)}</td><td data-label="Akcje"><div class="row-actions"><button class="secondary" type="button" data-ad-edit="${escape(order.id)}">Szczegóły</button>${moderationButtons(order)}</div></td></tr>`).join('')}</tbody></table>` : '<p class="empty-state">Brak ogłoszeń spełniających kryteria.</p>';
 }
 function editPrice() {
   if (isShowcase(editing)) { $('#ads-edit-price').textContent = 'Bezterminowo (pokazowe). Aby ukryć, wybierz status Anulowane.'; return; }
@@ -58,6 +60,7 @@ async function open(order) {
     catch (error) { $('#ads-notice').textContent = errorText(error); return; }
   }
   editing = order || null; const form = $('#ads-edit'); form.reset();
+  const actions = $('#ads-moderation-actions'); actions.innerHTML = order ? moderationButtons(order) : ''; actions.hidden = !canModerate(order);
   $('#ads-delete').hidden = !order;
   $('#ads-delete').textContent = order?.source === 'public' ? 'Wycofaj ogłoszenie' : 'Usuń ogłoszenie';
   const input = order || { language: Object.keys(configuration.languages)[0], type: 'STANDARD', status: 'approved', startDate: configuration.today, endDate: configuration.today };
@@ -125,7 +128,26 @@ $('#ads-delete').onclick = async () => {
   catch (error) { $('#ads-edit-error').textContent = errorText(error); }
   finally { button.disabled = false; }
 };
-$('#ads-orders').onclick = event => { const button = event.target.closest('[data-ad-edit]'); if (button) open(orders.find(order => order.id === button.dataset.adEdit)); };
+async function moderate(order, status, button) {
+  if (!canModerate(order) || !['approved', 'rejected'].includes(status)) return;
+  const warning = status === 'rejected' ? 'Opłacone zamówienie zostanie odrzucone. Zwrot płatności wymaga osobnej obsługi w Stripe.' : 'Opłacone ogłoszenie zostanie zaakceptowane i rozpocznie emisję w wybranym terminie.';
+  if (!await confirmAction(status === 'approved' ? 'Zaakceptować ogłoszenie?' : 'Odrzucić ogłoszenie?', warning, status === 'approved' ? 'Akceptuj' : 'Odrzuć')) return;
+  button.disabled = true;
+  try {
+    await api('admin-moderate-group', 'PUT', { id: order.id, version: order.version, status });
+    if ($('#ads-dialog').open) $('#ads-dialog').close();
+    await load();
+    $('#ads-notice').textContent = status === 'approved' ? 'Ogłoszenie zaakceptowane.' : 'Ogłoszenie odrzucone. Sprawdź potrzebę zwrotu w Stripe.';
+  } catch (error) {
+    const target = $('#ads-dialog').open ? $('#ads-edit-error') : $('#ads-notice');
+    target.textContent = errorText(error);
+  } finally { button.disabled = false; }
+}
+for (const selector of ['#ads-orders', '#ads-moderation-actions']) $(selector).addEventListener('click', event => {
+  const action = event.target.closest('[data-ad-moderate]');
+  if (action) { moderate(orders.find(order => order.id === action.dataset.adId), action.dataset.adModerate, action); return; }
+  const detail = event.target.closest('[data-ad-edit]'); if (detail) open(orders.find(order => order.id === detail.dataset.adEdit));
+});
 $('#ads-filters').onchange = render;
 $('#ads-filters').addEventListener('input',render);
 document.querySelectorAll('[data-ads-tab]').forEach(button=>button.addEventListener('click',()=>{tab=button.dataset.adsTab;document.querySelectorAll('[data-ads-tab]').forEach(other=>{other.classList.toggle('is-active',other===button);other.setAttribute('aria-selected',String(other===button));});render();}));
@@ -150,8 +172,9 @@ $('#ads-edit').onsubmit = async event => {
   event.preventDefault(); const button = event.submitter; button.disabled = true;
   try {
     const form = event.target; const values = Object.fromEntries(new FormData(form)); const file = form.elements.imageFile.files[0];
-    if (editing?.source === 'public' && (editing.periods && values.periodDates !== editing.periods.map(period => period.date).join(', ') || !editing.periods && values.startDate !== editing.startDate)) {
-      const dates = editing.periods ? values.periodDates.split(/[\s,;]+/).filter(Boolean).sort() : undefined;
+    const periodDatesChanged = editing?.periods && typeof values.periodDates === 'string' && values.periodDates !== editing.periods.map(period => period.date).join(', ');
+    if (editing?.source === 'public' && (periodDatesChanged || !editing.periods && values.startDate !== editing.startDate)) {
+      const dates = periodDatesChanged ? values.periodDates.split(/[\s,;]+/).filter(Boolean).sort() : undefined;
       await api('admin-reschedule-group', 'PUT', { id: editing.id, version: editing.version, startDate: values.startDate, dates });
       $('#ads-dialog').close(); await load(); $('#ads-notice').textContent = 'Nowy termin zapisany dla wszystkich języków. Otwórz zamówienie ponownie, aby je zatwierdzić.'; return;
     }
