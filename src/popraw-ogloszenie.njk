@@ -1,0 +1,7 @@
+---
+layout: base.njk
+title: Popraw ogłoszenie
+pageKey: ads
+---
+<section class="section"><div class="container"><h1>Popraw ogłoszenie</h1><p>Możesz poprawić treść i grafikę swojego ogłoszenia. Pakiet, cena i opłacone terminy pozostają bez zmian.</p><p id="ad-correction-status" role="status">Sprawdzanie linku…</p><form id="ad-correction-form" hidden><div id="ad-correction-fields"></div><fieldset class="order-panel"><legend>Dane publiczne</legend><label>Firma / reklamodawca<input name="company" maxlength="120"></label><label>Telefon publiczny<input name="publicPhone" type="tel" maxlength="40"></label><label>E-mail publiczny<input name="publicEmail" type="email" maxlength="254"></label><label>Inny kontakt publiczny<input name="contact" maxlength="160"></label><label>Strona internetowa<input name="url" type="url" maxlength="2048"></label></fieldset><button class="button" type="submit">Wyślij poprawione ogłoszenie</button></form></div></section>
+<script src="/ad-correction.js?v={{ buildVersion }}" defer></script>

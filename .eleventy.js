@@ -30,6 +30,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/ad-creative.js");
   eleventyConfig.addPassthroughCopy({ "src/ads.js": "listings.js" });
   eleventyConfig.addPassthroughCopy("src/order-modal.js");
+  eleventyConfig.addPassthroughCopy("src/ad-correction.js");
   eleventyConfig.addPassthroughCopy({ "src/ads-i18n.js": "listings-i18n.js" });
   eleventyConfig.addPassthroughCopy({ "src/ads.css": "listings.css" });
   eleventyConfig.addFilter("json", value => JSON.stringify(value));

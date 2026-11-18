@@ -137,6 +137,7 @@
           <div id="ads-orders" class="table-scroll"></div>
         </div>
         <details class="editor-card ads-settings-panel"><summary>Cennik i ustawienia rynku</summary><p>Ceny w EUR. Wyłączenie zamówień nie wyłącza wcześniej zaakceptowanych reklam.</p><form id="ads-settings"><div id="ads-prices"></div><button class="primary">Zapisz ceny</button></form></details>
+        <details class="editor-card ads-settings-panel"><summary>Dodatkowe miejsca reklamowe</summary><p>Rezerwa nie jest dostępna klientom, dopóki nie udostępnisz wybranych miejsc. Podstawowe limity pozostają bez zmian.</p><form id="ads-capacity" class="form-grid"><label>Język<select name="language" required></select></label><label>Pakiet<select name="type"><option>STANDARD</option><option>TOP</option><option>PREMIUM</option></select></label><label>Od dnia<input name="startDate" type="date" required></label><label>Do dnia<input name="endDate" type="date" required></label><label>Dodatkowa rezerwa<input name="reserve" type="number" min="0" max="100" value="0" required></label><label>Udostępnij do sprzedaży<input name="released" type="number" min="0" max="100" value="0" required></label><div class="row-actions"><button type="button" class="secondary" id="ads-capacity-check">Sprawdź miejsca</button><button class="primary" type="submit">Zapisz miejsca</button></div></form><div id="ads-capacity-results" role="status"></div></details>
       </section>
 
       <section class="view" data-panel="contact">
@@ -188,6 +189,7 @@
   <dialog id="cms-confirm-dialog" class="small-dialog" aria-labelledby="cms-confirm-title"><div class="dialog-heading"><h2 id="cms-confirm-title">Potwierdź działanie</h2><button type="button" class="icon-button" data-confirm-cancel aria-label="Zamknij">×</button></div><p id="cms-confirm-message"></p><div class="dialog-actions"><button type="button" class="secondary" data-confirm-cancel>Anuluj</button><button type="button" class="primary" id="cms-confirm-accept">Potwierdź</button></div></dialog>
 
   <dialog id="ads-order-dialog" aria-label="Dodaj ogłoszenie"><button type="button" class="ads-order-close secondary" id="ads-order-close" aria-label="Zamknij formularz">Zamknij ×</button><iframe id="ads-order-frame" title="Formularz zamówienia ogłoszenia"></iframe></dialog>
+  <dialog id="ads-decision-dialog" class="small-dialog" aria-labelledby="ads-decision-title"><form id="ads-decision-form"><div class="dialog-heading"><h2 id="ads-decision-title">Decyzja o ogłoszeniu</h2><button type="button" class="icon-button" id="ads-decision-close" aria-label="Zamknij">×</button></div><p id="ads-decision-hint"></p><label>Powód i wymagane zmiany<textarea name="reason" required minlength="10" maxlength="1000" rows="5"></textarea></label><p id="ads-decision-error" role="alert"></p><div class="dialog-actions"><button class="primary" type="submit">Zapisz decyzję</button></div></form></dialog>
   <dialog id="ads-dialog">
     <div id="ads-edit" class="ads-dialog-form">
       <div class="dialog-heading"><h2>Reklama</h2><button type="button" class="icon-button" id="ads-close" aria-label="Zamknij">×</button></div>

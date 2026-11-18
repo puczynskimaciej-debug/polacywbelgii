@@ -159,6 +159,7 @@
       throw new Error('imageError');
     } finally { bitmap.close(); }
   }
+  window.PbeFitAdImage = fitImage;
 
   async function api(action, params = {}, body) {
     if (action === 'config' && ['localhost', '127.0.0.1'].includes(location.hostname)) {
@@ -325,6 +326,13 @@
       conflicts = {};
       grid.querySelectorAll('button').forEach((button, index) => {
         const date = `${month}-${String(index + 1).padStart(2, '0')}`;
+        if (date < config.today) {
+          button.dataset.date = date;
+          button.disabled = true;
+          button.classList.add('is-past');
+          button.setAttribute('aria-label', new Intl.DateTimeFormat(languages[locale]?.locale || 'pl-PL', { dateStyle: 'full' }).format(new Date(`${date}T12:00:00`)));
+          return;
+        }
         const blocked = availability.filter(result => !result.enabled || (result.daysAvailable.find(day => day.date === date)?.remaining ?? 0) < 1).map(result => languages[result.language].name);
         const free = date >= config.today && date <= lastAllowed && !blocked.length;
         button.dataset.date = date; button.disabled = date < config.today || date > lastAllowed || !free && !chosenDates.includes(date);

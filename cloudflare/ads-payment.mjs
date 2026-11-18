@@ -2,6 +2,7 @@ import domain from '../server/ads-domain.js';
 import { errorResponse, fail, json, readJson } from './common.mjs';
 import { orders, withWrite } from './ads.mjs';
 import { createCheckoutSession, stripeMode, verifyStripeWebhook } from './stripe.mjs';
+import { adMailReady, adMessage, sendAdEmail } from './ad-mail.mjs';
 
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
 const uuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || '');
@@ -38,7 +39,7 @@ async function status(request, env) {
   return { id: query.get('id'), type: group[0].type, startDate: group[0].startDate, endDate: group[0].endDate, totalPrice: group.reduce((sum, item) => sum + item.totalPrice, 0), currency: 'EUR', paymentStatus: group[0].paymentStatus, moderationStatus: group[0].status, effectiveStatus: domain.status(group[0]) };
 }
 
-async function webhook(request, env) {
+async function webhook(request, env, mailer) {
   const { live } = stripeMode(env);
   const raw = await request.text();
   if (!await verifyStripeWebhook(raw, request.headers.get('stripe-signature'), env.STRIPE_WEBHOOK_SECRET)) fail('signature', 400);
@@ -73,7 +74,7 @@ async function webhook(request, env) {
           updated = { ...item, paymentStatus: 'failed', reservationExpiresAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
         } else if (event.type === 'charge.refunded' && Number.isSafeInteger(object.amount) && Number.isSafeInteger(object.amount_refunded) && object.amount_refunded > 0 && object.amount_refunded <= object.amount) {
           const full = object.refunded === true && object.amount_refunded === object.amount;
-          updated = { ...item, paymentStatus: full ? 'refunded' : 'partial_refund', status: full ? 'cancelled' : 'pending', refundedAt: new Date().toISOString(), refundId: object.refunds?.data?.[0]?.id || null, refundReview: !full, updatedAt: new Date().toISOString() };
+          updated = { ...item, paymentStatus: full ? 'refunded' : 'partial_refund', status: full ? item.moderationDecision === 'rejected' ? 'rejected' : 'cancelled' : 'pending', refundedAt: new Date().toISOString(), refundId: object.refunds?.data?.[0]?.id || item.refundId || null, refundReview: !full, refundRequired: !full, updatedAt: new Date().toISOString() };
         }
         if (updated !== item) statements.push(q(env.DB, 'UPDATE ad_orders SET data=? WHERE id=?', JSON.stringify(updated), item.id));
       }
@@ -83,16 +84,25 @@ async function webhook(request, env) {
     if (String(error).includes('UNIQUE constraint failed: ad_payment_events.id')) return { received: true, duplicate: true };
     throw error;
   }
-  return { received: true };
+  let emailSent = false;
+  if (['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type) && object.payment_status === 'paid' && adMailReady(env)) {
+    const updated = (await orders(env.DB)).filter(item => item.groupId === groupId);
+    const contactOrder = updated.find(item => item.language === item.primaryLanguage) || updated[0];
+    if (contactOrder?.paymentStatus === 'paid') {
+      try { await mailer(env, adMessage('paid', contactOrder)); emailSent = true; }
+      catch { /* Payment confirmation remains authoritative even if mail fails. */ }
+    }
+  }
+  return { received: true, emailSent };
 }
 
-export async function handleAdsPayment({ request, env }, { fetcher = fetch } = {}) {
+export async function handleAdsPayment({ request, env }, { fetcher = fetch, mailer = sendAdEmail } = {}) {
   try {
     if (!env.DB) fail('configuration', 503);
     const action = new URL(request.url).searchParams.get('action');
     if (action === 'start' && request.method === 'POST') return json(await start(request, env, fetcher), 201);
     if (action === 'status' && request.method === 'GET') return json(await status(request, env));
-    if (action === 'webhook' && request.method === 'POST') return json(await webhook(request, env));
+    if (action === 'webhook' && request.method === 'POST') return json(await webhook(request, env, mailer));
     fail('notFound', 404);
   } catch (error) { return errorResponse(error); }
 }

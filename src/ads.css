@@ -227,6 +227,7 @@ body.order-open { overflow:hidden; }
 #order-dialog #order-calendar button:not(:disabled):hover { border-color:var(--red); }
 #order-dialog #order-calendar button[aria-pressed=true] { background:var(--navy); color:#fff; border-color:var(--navy); }
 #order-dialog #order-calendar button.is-today { border:2px solid #111; }
+#order-dialog #order-calendar button.is-past { background:#edf0f2; color:#929aa3; cursor:not-allowed; }
 #order-dialog .order-banner-language { margin-top:18px; padding-top:18px; }
 #order-dialog .order-language-heading { color:var(--navy); font-size:1.02rem; }
 #order-dialog #order-translate-box { display:flex; flex-wrap:wrap; align-items:center; gap:12px; background:var(--cream); }

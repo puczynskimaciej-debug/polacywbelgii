@@ -35,6 +35,20 @@ export async function createCheckoutSession(env, { groupId, amount, email, type,
   return session;
 }
 
+export async function createFullRefund(env, { groupId, paymentId, amount }, fetcher = fetch) {
+  const { test } = stripeMode(env);
+  if (!/^pi_[A-Za-z0-9]+$/.test(paymentId || '') || !/^[0-9a-f-]{36}$/i.test(groupId || '')) fail('paymentUnavailable', 409);
+  const form = new URLSearchParams({ payment_intent: paymentId, 'metadata[group_id]': groupId });
+  let response;
+  try {
+    response = await fetcher('https://api.stripe.com/v1/refunds', { method: 'POST', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Idempotency-Key': `pbe-full-refund-${groupId}` }, body: form, signal: AbortSignal.timeout(15000), redirect: 'manual' });
+  } catch { fail('refundUnavailable', 503); }
+  if (!response.ok) fail('refundUnavailable', 503);
+  const refund = await response.json();
+  if (!/^re_[A-Za-z0-9]+$/.test(refund.id || '') || refund.payment_intent !== paymentId || refund.currency !== 'eur' || refund.livemode !== !test || refund.amount !== amount || !['pending', 'succeeded'].includes(refund.status)) fail('refundResponse', 502);
+  return { id: refund.id, status: refund.status, amount: refund.amount };
+}
+
 export async function verifyStripeWebhook(raw, signature, secret, now = Date.now()) {
   if (typeof raw !== 'string' || raw.length > 1000000 || typeof signature !== 'string' || !secret?.startsWith('whsec_')) return false;
   const parts = signature.split(',').map(part => part.trim().split('='));

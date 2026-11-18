@@ -201,6 +201,8 @@ test('only an administrator can create a complimentary PREMIUM banner without St
   DB.sqlite.exec(readFileSync(new URL('../deploy/cloudflare-d1-0003-stripe.sql', import.meta.url), 'utf8'));
   settings.markets.pl.enabled = true;
   settings.markets.pl.prices.PREMIUM = 1000;
+  settings.markets.pl.prices.TOP = 500;
+  settings.markets.pl.prices.STANDARD = 200;
   DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
   const adminId = randomUUID(), editorId = randomUUID(), adminToken = 'A'.repeat(43), editorToken = 'E'.repeat(43);
   for (const [id, role, token] of [[adminId, 'admin', adminToken], [editorId, 'editor', editorToken]]) {
@@ -292,6 +294,90 @@ test('editing an active ad preserves elapsed days and the original payment', asy
   assert.deepEqual(saved.periods[0], elapsed);
   assert.equal(saved.paymentId, 'pi_existing');
   assert.equal(saved.totalPrice, 400);
+});
+
+test('extra ad inventory stays private until an administrator releases it', async () => {
+  const DB = localDb(), settings = domain.defaults();
+  settings.markets.pl.enabled = true;
+  settings.markets.pl.prices.PREMIUM = 1000;
+  settings.markets.pl.prices.TOP = 500;
+  settings.markets.pl.prices.STANDARD = 200;
+  DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
+  const adminId = randomUUID(), token = 'S'.repeat(43);
+  DB.sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(adminId, 'capacity-admin@example.invalid', 'Admin', 'unused', 'admin');
+  DB.sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(await sha256(token), adminId, '2099-01-01');
+  const date = new Date(Date.parse(domain.today()) + 86400000).toISOString().slice(0, 10);
+  const window = domain.windowFor(date, 1);
+  for (let index = 0; index < 2; index++) {
+    const item = { id: randomUUID(), groupId: randomUUID(), source: 'public', paymentStatus: 'paid', status: 'pending', language: 'pl', type: 'PREMIUM', startDate: date, endDate: date, periods: [domain.periodForDate(date)] };
+    DB.sqlite.prepare('INSERT INTO ad_orders(id,data) VALUES(?,?)').run(item.id, JSON.stringify(item));
+  }
+  const availability = () => domain.availabilityWindow(DB.sqlite.prepare('SELECT data FROM ad_orders').all().map(row => JSON.parse(row.data)), settings, 'pl', 'PREMIUM', window.startAt, window.endAt);
+  assert.equal(availability().remaining, 0);
+  const admin = body => adsRoute({ request: request('/api/ads?action=admin-capacity', 'PUT', body, `__Host-pbe_session=${token}`), env: { DB } });
+  assert.equal((await admin({ version: 1, language: 'pl', type: 'PREMIUM', dates: [date], reserve: 1, released: 0 })).status, 200);
+  let saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ads_settings WHERE id=1').get().data);
+  assert.equal(domain.availabilityWindow(DB.sqlite.prepare('SELECT data FROM ad_orders').all().map(row => JSON.parse(row.data)), saved, 'pl', 'PREMIUM', window.startAt, window.endAt).remaining, 0);
+  assert.equal((await admin({ version: 2, language: 'pl', type: 'PREMIUM', dates: [date], reserve: 1, released: 1 })).status, 200);
+  saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ads_settings WHERE id=1').get().data);
+  assert.equal(domain.availabilityWindow(DB.sqlite.prepare('SELECT data FROM ad_orders').all().map(row => JSON.parse(row.data)), saved, 'pl', 'PREMIUM', window.startAt, window.endAt).remaining, 1);
+  assert.equal((await admin({ version: 3, language: 'pl', type: 'PREMIUM', dates: [date], reserve: 1, released: 0 })).status, 200);
+  const unauthorized = await adsRoute({ request: request('/api/ads?action=admin-capacity', 'PUT', { version: 4, language: 'pl', type: 'PREMIUM', dates: [date], reserve: 2, released: 2 }), env: { DB } });
+  assert.equal(unauthorized.status, 401);
+});
+
+test('paid ad correction token is scoped, one-use, and refund releases the slot only after webhook', async () => {
+  const DB = localDb(), settings = domain.defaults();
+  DB.sqlite.exec(readFileSync(new URL('../deploy/cloudflare-d1-0003-stripe.sql', import.meta.url), 'utf8'));
+  Object.assign(settings.markets.pl, { enabled: true, prices: { STANDARD: 200, TOP: 500, PREMIUM: 1000 } });
+  DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
+  const adminId = randomUUID(), session = 'T'.repeat(43), id = randomUUID(), groupId = randomUUID();
+  DB.sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(adminId, 'moderation-admin@example.invalid', 'Admin', 'unused', 'admin');
+  DB.sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(await sha256(session), adminId, '2099-01-01');
+  const date = new Date(Date.parse(domain.today()) + 86400000).toISOString().slice(0, 10);
+  const item = { id, groupId, source: 'public', paymentStatus: 'paid', paymentId: 'pi_testpaid', status: 'pending', language: 'pl', primaryLanguage: 'pl', languages: ['pl'], type: 'STANDARD', kind: 'text', title: 'Original', description: 'Original description', email: 'customer@example.invalid', company: 'Customer', startDate: date, endDate: date, periods: [domain.periodForDate(date)], totalPrice: 200, version: 1 };
+  DB.sqlite.prepare('INSERT INTO ad_orders(id,data) VALUES(?,?)').run(id, JSON.stringify(item));
+  const env = { DB, AD_SMTP_HOST: 'smtp.example.invalid', AD_SMTP_USER: 'kontakt@example.invalid', AD_SMTP_PASSWORD: 'local-test', STRIPE_TEST_MODE: '1', STRIPE_SECRET_KEY: 'sk_test_local', STRIPE_WEBHOOK_SECRET: 'whsec_local' };
+  const messages = [], mailer = async (_env, message) => { messages.push(message); };
+  const admin = (action, body, options = {}) => adsRoute({ request: request(`/api/ads?action=${action}`, 'PUT', body, `__Host-pbe_session=${session}`), env }, { mailer, ...options });
+  const availability = () => domain.availabilityWindow(DB.sqlite.prepare('SELECT data FROM ad_orders').all().map(row => JSON.parse(row.data)), settings, 'pl', 'STANDARD', ...Object.values(domain.windowFor(date, 1)).slice(0, 2));
+  assert.equal(availability().used, 1);
+  const reason = 'Prosimy poprawić opis, aby wskazywał rzeczywistą usługę.';
+  const requested = await admin('admin-request-changes', { id, version: 1, reason });
+  assert.equal(requested.status, 200, await requested.text());
+  assert.equal(messages.length, 1);
+  const token = messages[0].body.match(/#token=([A-Za-z0-9_-]+)/)?.[1];
+  assert.ok(token);
+  assert.equal(availability().used, 1);
+  const preview = body => adsRoute({ request: request('/api/ads?action=customer-preview', 'POST', body), env }, { mailer });
+  assert.equal((await preview({ groupId, token: 'x'.repeat(43) })).status, 404);
+  assert.equal((await preview({ groupId: randomUUID(), token })).status, 404);
+  assert.equal((await preview({ groupId, token })).status, 200);
+  const corrected = await adsRoute({ request: request('/api/ads?action=customer-correct', 'POST', { groupId, token, type: 'PREMIUM', dates: [domain.today()], variants: [{ language: 'pl', title: 'Corrected', description: 'Corrected description' }], company: 'Corrected customer' }), env }, { mailer });
+  assert.equal(corrected.status, 200, await corrected.text());
+  assert.equal((await preview({ groupId, token })).status, 404);
+  let saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
+  assert.equal(saved.status, 'pending'); assert.equal(saved.type, 'STANDARD'); assert.equal(saved.startDate, date); assert.equal(saved.totalPrice, 200); assert.equal(saved.title, 'Corrected');
+  let refundCalls = 0;
+  const fetcher = async (url, options) => {
+    assert.equal(url, 'https://api.stripe.com/v1/refunds');
+    assert.equal(options.headers['Idempotency-Key'], `pbe-full-refund-${groupId}`);
+    refundCalls++;
+    return Response.json({ id: 're_testrefund', payment_intent: 'pi_testpaid', currency: 'eur', livemode: false, status: 'succeeded', amount: 200 });
+  };
+  const refund = await admin('admin-reject-refund', { id, version: saved.version, reason: 'Naruszenie regulaminu: niedozwolona treść ogłoszenia.' }, { fetcher });
+  assert.equal(refund.status, 200, await refund.text());
+  assert.equal(refundCalls, 1);
+  saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
+  assert.equal(saved.status, 'refund_pending'); assert.equal(availability().used, 1);
+  const event = { id: 'evt_testrefund', type: 'charge.refunded', livemode: false, created: Math.floor(Date.now() / 1000), data: { object: { id: 'ch_testrefund', payment_intent: 'pi_testpaid', amount: 200, amount_refunded: 200, refunded: true, refunds: { data: [{ id: 're_testrefund' }] } } } };
+  const raw = JSON.stringify(event), timestamp = Math.floor(Date.now() / 1000);
+  const key = await webcrypto.subtle.importKey('raw', new TextEncoder().encode('whsec_local'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = Buffer.from(await webcrypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${raw}`))).toString('hex');
+  const webhookRequest = new Request('https://polacywbelgii.pages.dev/api/ads-payment?action=webhook', { method: 'POST', headers: { 'stripe-signature': `t=${timestamp},v1=${signature}` }, body: raw });
+  assert.equal((await handleAdsPayment({ request: webhookRequest, env })).status, 200);
+  saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
+  assert.equal(saved.paymentStatus, 'refunded'); assert.equal(saved.status, 'rejected'); assert.equal(availability().used, 0);
 });
 
 test('simultaneous last-place requests and multilingual failure never oversell', async () => {

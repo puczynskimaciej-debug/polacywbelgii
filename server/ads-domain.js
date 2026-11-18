@@ -12,10 +12,16 @@ function dates(start, end) {
   if (count < 1 || count > 366) fail('dates');
   return Array.from({ length: count }, (_, i) => new Date(Date.parse(start) + i * DAY).toISOString().slice(0, 10));
 }
-function defaults() { return { types: { TOP: { capacity: 5 }, STANDARD: { capacity: 30 }, PREMIUM: { capacity: 2 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0, PREMIUM: 0 } }])) }; }
+function defaults() { return { types: { TOP: { capacity: 5 }, STANDARD: { capacity: 30 }, PREMIUM: { capacity: 2 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0, PREMIUM: 0 } }])) , capacityOverrides: {} }; }
 function normalizeSettings(value) {
   const base = defaults();
-  return { types: base.types, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { ...base.markets[language], ...value?.markets?.[language], prices: { ...base.markets[language].prices, ...value?.markets?.[language]?.prices } }])) };
+  return { types: base.types, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { ...base.markets[language], ...value?.markets?.[language], prices: { ...base.markets[language].prices, ...value?.markets?.[language]?.prices } }])), capacityOverrides: value?.capacityOverrides && typeof value.capacityOverrides === 'object' ? value.capacityOverrides : {} };
+}
+const capacityKey = (language, type, date) => `${language}:${type}:${date}`;
+function capacityForDate(settings, language, type, date) {
+  const base = settings.types[type].capacity;
+  const extra = settings.capacityOverrides?.[capacityKey(language, type, date)];
+  return { base, reserve: extra?.reserve || 0, released: extra?.released || 0, capacity: base + (extra?.released || 0) };
 }
 function belgianMidnight(date) {
   dates(date, date);
@@ -70,11 +76,13 @@ function mergedWindows(windows) {
 }
 function availabilityWindow(orders, settings, language, type, startAt, endAt, excludeIds = [], now = new Date()) {
   marketFor(settings, language, type);
-  const capacity = settings.types[type].capacity;
+  const localDate = value => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Brussels' }).format(new Date(value));
+  const datesTouched = dates(localDate(startAt), localDate(new Date(Date.parse(endAt) - 1)));
+  const capacity = Math.min(...datesTouched.map(date => capacityForDate(settings, language, type, date).capacity));
   const excluded = new Set(Array.isArray(excludeIds) ? excludeIds : [excludeIds]);
   const events = [];
   for (const o of orders) {
-    if (excluded.has(o.id) || o.language !== language || o.type !== type || !['pending', 'approved'].includes(o.status) || o.source === 'public' && o.paymentStatus !== 'paid' && o.reservationExpiresAt && o.reservationExpiresAt <= now.toISOString()) continue;
+    if (excluded.has(o.id) || o.language !== language || o.type !== type || !['pending', 'approved', 'changes_requested', 'refund_pending'].includes(o.status) || o.source === 'public' && !['paid', 'refund_pending'].includes(o.paymentStatus) && o.reservationExpiresAt && o.reservationExpiresAt <= now.toISOString()) continue;
     for (const w of mergedWindows(orderWindows(o))) {
       if (w.startAt >= endAt || startAt >= w.endAt) continue;
       events.push([w.startAt < startAt ? startAt : w.startAt, 1], [w.endAt > endAt ? endAt : w.endAt, -1]);
@@ -94,6 +102,13 @@ function validateSettings(value) {
     if (market.enabled && ['TOP', 'STANDARD'].some(type => market.prices[type] <= 0)) fail('settings');
     result.markets[language] = { enabled: market.enabled, currency: 'EUR', prices: { TOP: market.prices.TOP, STANDARD: market.prices.STANDARD, PREMIUM: market.prices.PREMIUM } };
   }
+  if (value?.capacityOverrides && (typeof value.capacityOverrides !== 'object' || Array.isArray(value.capacityOverrides) || Object.keys(value.capacityOverrides).length > 10000)) fail('settings');
+  for (const [key, entry] of Object.entries(value?.capacityOverrides || {})) {
+    const [language, type, date] = key.split(':');
+    if (!Object.hasOwn(languages, language) || !Object.hasOwn(result.types, type) || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || typeof entry !== 'object' || !Number.isSafeInteger(entry.reserve) || entry.reserve < 0 || entry.reserve > 100 || !Number.isSafeInteger(entry.released) || entry.released < 0 || entry.released > entry.reserve) fail('settings');
+    dates(date, date);
+    result.capacityOverrides[key] = { reserve: entry.reserve, released: entry.released };
+  }
   return result;
 }
 function marketFor(settings, language, type) {
@@ -104,6 +119,8 @@ function isShowcase(order) { return order.demoSet === 'showcase-2026-09-29' && o
 function status(order, day = today(), now = new Date()) {
   if (order.source === 'public') {
     if (order.status === 'paused') return 'paused';
+    if (order.status === 'changes_requested') return 'changes_requested';
+    if (order.paymentStatus === 'refund_pending') return 'refund_pending';
     if (order.paymentStatus === 'refunded') return 'refunded';
     if (order.paymentStatus === 'partial_refund') return 'refund_review';
     if (['cancelled', 'rejected'].includes(order.status)) return order.status;
@@ -124,9 +141,9 @@ function status(order, day = today(), now = new Date()) {
 }
 function availability(orders, settings, language, type, start, end, excludeId) {
   marketFor(settings, language, type);
-  const capacity = settings.types[type].capacity;
   return dates(start, end).map(date => {
-    const used = orders.filter(o => o.id !== excludeId && o.language === language && o.type === type && ['pending', 'approved'].includes(o.status) && !(o.source === 'public' && o.paymentStatus !== 'paid' && o.reservationExpiresAt && o.reservationExpiresAt <= new Date().toISOString()) && o.startDate <= date && (isShowcase(o) || o.endDate >= date)).length;
+    const capacity = capacityForDate(settings, language, type, date).capacity;
+    const used = orders.filter(o => o.id !== excludeId && o.language === language && o.type === type && ['pending', 'approved', 'changes_requested', 'refund_pending'].includes(o.status) && !(o.source === 'public' && !['paid', 'refund_pending'].includes(o.paymentStatus) && o.reservationExpiresAt && o.reservationExpiresAt <= new Date().toISOString()) && o.startDate <= date && (isShowcase(o) || o.endDate >= date)).length;
     return { date, used, capacity, remaining: Math.max(0, capacity - used) };
   });
 }
@@ -220,4 +237,4 @@ function validateImageDimensions(data, width, height) {
   if (!dimensions || dimensions[0] !== width || dimensions[1] !== height) fail('image');
 }
 function publicAd(order) { return { ...Object.fromEntries(['id', 'kind', 'contact', 'company', 'publicPhone', 'publicEmail', 'title', 'description', 'image', 'url', 'type', 'language', 'region', 'actualStartAt', 'actualEndAt'].map(key => [key, order[key]])), ...(Array.isArray(order.periods) ? { periods: order.periods.filter(period => period.actualStartAt && period.actualEndAt).map(period => ({ date: period.date, startAt: period.actualStartAt, endAt: period.actualEndAt })) } : {}) }; }
-module.exports = { AdError, fail, today, dates, selectedDates, periodForDate, periodWindow, orderWindows, mergedWindows, defaults, normalizeSettings, validateSettings, marketFor, isShowcase, status, availability, availabilityWindow, belgianMidnight, windowFor, orderWindow, quote, quoteSelected, creative, creativeLimits, validateImageDimensions, publicAd, languages };
+module.exports = { AdError, fail, today, dates, selectedDates, periodForDate, periodWindow, orderWindows, mergedWindows, capacityForDate, capacityKey, defaults, normalizeSettings, validateSettings, marketFor, isShowcase, status, availability, availabilityWindow, belgianMidnight, windowFor, orderWindow, quote, quoteSelected, creative, creativeLimits, validateImageDimensions, publicAd, languages };

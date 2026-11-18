@@ -1,10 +1,10 @@
 import { cmsRequest } from './modules/client.js';
 import { confirmAction, enableTabKeyboard } from './ui.js';
 const $ = selector => document.querySelector(selector);
-const labels = { pending: 'Czeka na akceptację', paused: 'Wstrzymane', approved: 'Zaakceptowane', scheduled: 'Zaplanowane', active: 'Aktywne', ended: 'Zakończone', completed: 'Zakończone', rejected: 'Odrzucone', cancelled: 'Wycofane', pending_payment: 'Czeka na płatność', pending_approval: 'Czeka na akceptację', needs_reschedule: 'Wymaga nowego terminu lub zwrotu', payment_failed: 'Płatność nieudana', refund_review: 'Zwrot częściowy — sprawdź', refunded: 'Zwrócone' };
+const labels = { pending: 'Czeka na akceptację', changes_requested: 'Czeka na poprawki', refund_pending: 'Zwrot w toku', paused: 'Wstrzymane', approved: 'Zaakceptowane', scheduled: 'Zaplanowane', active: 'Aktywne', ended: 'Zakończone', completed: 'Zakończone', rejected: 'Odrzucone', cancelled: 'Wycofane', pending_payment: 'Czeka na płatność', pending_approval: 'Czeka na akceptację', needs_reschedule: 'Wymaga nowego terminu lub zwrotu', payment_failed: 'Płatność nieudana', refund_review: 'Zwrot częściowy — sprawdź', refunded: 'Zwrócone' };
 const paymentNames = { paid:'Opłacone',pending:'Oczekuje',pending_payment:'Czeka na płatność',payment_failed:'Płatność nieudana',not_required:'Nie wymaga płatności',refunded:'Zwrócono',partial_refund:'Częściowy zwrot',failed:'Nieudana',succeeded:'Opłacone' };
 const eventNames = { 'checkout.session.completed':'Płatność potwierdzona','checkout.session.expired':'Sesja płatności wygasła','payment_intent.payment_failed':'Płatność nieudana','charge.refunded':'Zwrot środków','refund.created':'Zlecono zwrot','refund.updated':'Aktualizacja zwrotu' };
-const errors = { unavailable: 'API reklam jest niedostępne. Sprawdź połączenie z bazą.', unauthorized: 'Brak uprawnień. Zaloguj się ponownie.', dates: 'Niepoprawny zakres dat.', settings: 'Wprowadź poprawne ceny. Włączony rynek wymaga cen większych od zera.', validation: 'Sprawdź dane formularza.', image: 'Wymagany poprawny PNG/JPEG/WebP do 500 KB.', conflict: 'Ktoś zmienił dane. Odśwież listę przed ponowną edycją.', full: 'Brak miejsc:', immutableMarket: 'Nie można zmienić języka ani typu istniejącego zamówienia.', immutableSchedule: 'Zmiana terminu opłaconej grupy wymaga nowej rezerwacji.', useGroupModeration: 'Zmień status całego zamówienia.', paymentRequired: 'Najpierw potwierdź płatność za całe zamówienie.', needsReschedule: 'Planowany start minął. Ustal nowy termin lub zwrot.', market: 'Niepoprawny rynek.' };
+const errors = { unavailable: 'API reklam jest niedostępne. Sprawdź połączenie z bazą.', unauthorized: 'Brak uprawnień. Zaloguj się ponownie.', dates: 'Niepoprawny zakres dat.', settings: 'Wprowadź poprawne ceny. Włączony rynek wymaga cen większych od zera.', validation: 'Sprawdź dane formularza.', image: 'Wymagany poprawny PNG/JPEG/WebP do 500 KB.', conflict: 'Ktoś zmienił dane. Odśwież listę przed ponowną edycją.', full: 'Brak miejsc:', immutableMarket: 'Nie można zmienić języka ani typu istniejącego zamówienia.', immutableSchedule: 'Zmiana terminu opłaconej grupy wymaga nowej rezerwacji.', useGroupModeration: 'Zmień status całego zamówienia.', useRefundAction: 'Opłacone zamówienie odrzuć przez przycisk zwrotu.', refundUnavailable: 'Stripe nie przyjął zlecenia zwrotu. Sprawdź uprawnienie Refunds: Write i spróbuj ponownie.', mailConfiguration: 'Wysyłka e-mail nie jest skonfigurowana.', paymentRequired: 'Najpierw potwierdź płatność za całe zamówienie.', needsReschedule: 'Planowany start minął. Ustal nowy termin lub zwrot.', market: 'Niepoprawny rynek.', capacityBelowBooked: 'Nie można zmniejszyć limitu poniżej już zajętych miejsc.' };
 let configuration, orders = [], editing = null;
 let tab = 'orders';
 const isShowcase = order => order?.demoSet === 'showcase-2026-09-29' && order.source === 'manual' && order.paymentStatus === 'not_required';
@@ -13,7 +13,14 @@ const paymentLabel = order => order.source === 'manual' && order.paymentStatus =
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const errorText = error => (errors[error.code] || error.message || 'Nie udało się zapisać.') + (Array.isArray(error.details) ? ' ' + error.details.map(day => `${day.date || 'Wybrany okres'}: zajęte ${day.used}/${day.capacity}`).join(', ') : '');
 const canModerate = order => order?.status === 'pending' && (order.source === 'public' && order.paymentStatus === 'paid' && order.effectiveStatus === 'pending_approval' || order.source === 'manual' && order.paymentStatus === 'not_required');
-const moderationButtons = order => canModerate(order) ? `<button class="primary" type="button" data-ad-moderate="approved" data-ad-id="${escape(order.id)}">Akceptuj</button><button class="secondary" type="button" data-ad-moderate="rejected" data-ad-id="${escape(order.id)}">Odrzuć</button>` : '';
+const moderationButtons = order => {
+  const eligible = order && (order.source === 'public' && order.paymentStatus === 'paid' || order.source === 'manual' && order.paymentStatus === 'not_required');
+  if (!eligible) return '';
+  const id = escape(order.id);
+  if (order.status === 'refund_pending') return `<button class="secondary" type="button" data-ad-decision="reject" data-ad-id="${id}">Ponów zwrot</button>`;
+  if (!['pending', 'changes_requested'].includes(order.status)) return '';
+  return `${canModerate(order) ? `<button class="primary" type="button" data-ad-moderate="approved" data-ad-id="${id}">Akceptuj</button>` : ''}<button class="secondary" type="button" data-ad-decision="changes" data-ad-id="${id}">Poproś o poprawienie</button><button class="secondary" type="button" data-ad-decision="reject" data-ad-id="${id}">${order.source === 'public' ? 'Odrzuć i zwróć pieniądze' : 'Odrzuć'}</button>`;
+};
 const sharedEditButton = order => `<button class="secondary" type="button" data-ad-shared-edit="${escape(order.id)}">Edytuj</button>`;
 async function api(action, method = 'GET', body, params = {}) {
   return cmsRequest('ads', { action, ...params }, method, body);
@@ -36,6 +43,12 @@ async function load() {
     const previous = select.value;
     select.innerHTML = '<option value="">Wszystkie</option>' + Object.entries(settings.languages).map(([key, language]) => `<option value="${escape(key)}">${escape(language.name)}</option>`).join('');
     if ([...select.options].some(option => option.value === previous)) select.value = previous;
+    const capacityForm = $('#ads-capacity');
+    const capacityLanguage = capacityForm.elements.language;
+    const previousCapacityLanguage = capacityLanguage.value;
+    capacityLanguage.innerHTML = Object.entries(settings.languages).map(([key, language]) => `<option value="${escape(key)}">${escape(language.name)}</option>`).join('');
+    if (previousCapacityLanguage) capacityLanguage.value = previousCapacityLanguage;
+    for (const key of ['startDate', 'endDate']) if (!capacityForm.elements[key].value) capacityForm.elements[key].value = settings.today;
     applyLanguage(); render(); $('#ads-notice').textContent = '';
     document.dispatchEvent(new CustomEvent('cms:ads-data',{detail:{orders,configuration}}));
   } catch (error) { $('#ads-notice').textContent = errorText(error); }
@@ -63,7 +76,7 @@ async function open(order) {
   actions.hidden = false;
   $('#ads-delete').textContent = order.source === 'public' ? 'Wycofaj ogłoszenie' : 'Usuń ogłoszenie';
   const remaining = order?.periods?.length ? Math.ceil(order.periods.reduce((sum, period) => sum + Math.max(0, Date.parse(period.actualEndAt || period.plannedEndAt || 0) - Math.max(Date.now(), Date.parse(period.actualStartAt || period.plannedStartAt || 0))),0) / 3600000) : order?.actualEndAt ? Math.max(0, Math.ceil((Date.parse(order.actualEndAt) - Date.now()) / 3600000)) : null;
-  $('#ads-order-meta').innerHTML = order ? `<span><strong>Status:</strong> ${escape(labels[order.effectiveStatus]||order.effectiveStatus)}</span><span><strong>Źródło:</strong> ${order.source==='manual'?'Dodane ręcznie':'Zamówienie klienta'}</span><span><strong>Pakiet:</strong> ${escape(order.type)}</span><span><strong>Język podstawowy:</strong> ${escape(order.primaryLanguage||order.language)}</span><span><strong>Języki:</strong> ${escape((order.languages||[order.language]).join(', '))}</span><span><strong>Kwota zamówienia:</strong> ${money(order.groupTotalPrice||order.totalPrice)}</span><span><strong>Płatność:</strong> ${escape(paymentLabel(order))}</span><span><strong>Planowany start:</strong> ${escape(order.plannedStartAt||'Po płatności i akceptacji')}</span><span><strong>Faktyczny start:</strong> ${escape(order.actualStartAt||'—')}</span><span><strong>Koniec:</strong> ${escape(order.actualEndAt||order.plannedEndAt||'—')}</span>${remaining === null ? '' : `<span><strong>Pozostało:</strong> ${remaining} h</span>`}${order.refundRequired?'<span class="danger">Wymaga ręcznej obsługi zwrotu</span>':''}` : '';
+  $('#ads-order-meta').innerHTML = order ? `<span><strong>Status:</strong> ${escape(labels[order.effectiveStatus]||order.effectiveStatus)}</span><span><strong>Źródło:</strong> ${order.source==='manual'?'Dodane ręcznie':'Zamówienie klienta'}</span><span><strong>Pakiet:</strong> ${escape(order.type)}</span><span><strong>Reklamodawca:</strong> ${escape(order.company||order.customerName||'—')}</span><span><strong>E-mail zamawiającego:</strong> ${escape(order.email||'—')}</span><span><strong>Język podstawowy:</strong> ${escape(order.primaryLanguage||order.language)}</span><span><strong>Języki:</strong> ${escape((order.languages||[order.language]).join(', '))}</span><span><strong>Kwota zamówienia:</strong> ${money(order.groupTotalPrice||order.totalPrice)}</span><span><strong>Płatność:</strong> ${escape(paymentLabel(order))}</span><span><strong>Planowany start:</strong> ${escape(order.plannedStartAt||'Po płatności i akceptacji')}</span><span><strong>Faktyczny start:</strong> ${escape(order.actualStartAt||'—')}</span><span><strong>Koniec:</strong> ${escape(order.actualEndAt||order.plannedEndAt||'—')}</span>${order.moderationReason?`<span><strong>Powód decyzji:</strong> ${escape(order.moderationReason)}</span>`:''}${order.refundId?`<span><strong>Zwrot Stripe:</strong> ${escape(order.refundId)}</span>`:''}${remaining === null ? '' : `<span><strong>Pozostało:</strong> ${remaining} h</span>`}${order.refundRequired?'<span class="danger">Wymaga sprawdzenia zwrotu</span>':''}` : '';
   if (order?.periods) {
     const format = value => value ? new Intl.DateTimeFormat('pl-BE',{timeZone:'Europe/Brussels',dateStyle:'medium',timeStyle:'short'}).format(new Date(value)) : null;
     const periods = document.createElement('p'); periods.textContent = 'Okresy emisji (Europe/Brussels): ' + order.periods.map(period => `${period.date}: ${format(period.actualStartAt || period.plannedStartAt) || 'po opłaceniu i akceptacji'} – ${format(period.actualEndAt || period.plannedEndAt) || '24 godziny od startu'}`).join('; ');
@@ -111,23 +124,51 @@ $('#ads-delete').onclick = async () => {
   finally { button.disabled = false; }
 };
 async function moderate(order, status, button) {
-  if (!canModerate(order) || !['approved', 'rejected'].includes(status)) return;
-  const warning = status === 'rejected' ? 'Opłacone zamówienie zostanie odrzucone. Zwrot płatności wymaga osobnej obsługi w Stripe.' : 'Opłacone ogłoszenie zostanie zaakceptowane i rozpocznie emisję w wybranym terminie.';
-  if (!await confirmAction(status === 'approved' ? 'Zaakceptować ogłoszenie?' : 'Odrzucić ogłoszenie?', warning, status === 'approved' ? 'Akceptuj' : 'Odrzuć')) return;
+  if (!canModerate(order) || status !== 'approved') return;
+  if (!await confirmAction('Zaakceptować ogłoszenie?', 'Ogłoszenie rozpocznie emisję w wybranym terminie.', 'Akceptuj')) return;
   button.disabled = true;
   try {
-    await api('admin-moderate-group', 'PUT', { id: order.id, version: order.version, status });
+    const result = await api('admin-moderate-group', 'PUT', { id: order.id, version: order.version, status });
     if ($('#ads-dialog').open) $('#ads-dialog').close();
     await load();
-    $('#ads-notice').textContent = status === 'approved' ? 'Ogłoszenie zaakceptowane.' : 'Ogłoszenie odrzucone. Sprawdź potrzebę zwrotu w Stripe.';
+    $('#ads-notice').textContent = 'Ogłoszenie zaakceptowane.' + (result.emailSent ? ' E-mail wysłany.' : ' E-mail nie został wysłany; sprawdź konfigurację poczty.');
   } catch (error) {
     const target = $('#ads-dialog').open ? $('#ads-edit-error') : $('#ads-notice');
     target.textContent = errorText(error);
   } finally { button.disabled = false; }
 }
+let decisionOrder = null, decisionKind = '';
+$('#ads-decision-close').onclick = () => $('#ads-decision-dialog').close();
+function openDecision(order, kind) {
+  decisionOrder = order; decisionKind = kind;
+  const refund = kind === 'reject' && order.source === 'public';
+  $('#ads-decision-title').textContent = kind === 'changes' ? 'Poproś o poprawienie' : refund ? 'Odrzuć i zwróć pieniądze' : 'Odrzuć ogłoszenie';
+  $('#ads-decision-hint').textContent = kind === 'changes' ? 'Podaj konkretne poprawki. Reklamodawca otrzyma bezpieczny link e-mail.' : refund ? 'Po potwierdzeniu system zleci pełny zwrot przez Stripe. Nie wykonuj tej operacji bez sprawdzenia powodu.' : 'Bezpłatne ogłoszenie zostanie odrzucone bez operacji Stripe.';
+  $('#ads-decision-form').reset();
+  if (order.status === 'refund_pending') $('#ads-decision-form').elements.reason.value = order.moderationReason || '';
+  $('#ads-decision-error').textContent = '';
+  if ($('#ads-dialog').open) $('#ads-dialog').close();
+  $('#ads-decision-dialog').showModal();
+}
+$('#ads-decision-form').onsubmit = async event => {
+  event.preventDefault();
+  const button = event.submitter, reason = event.target.elements.reason.value.trim();
+  if (!decisionOrder || reason.length < 10) return;
+  if (decisionKind === 'reject' && decisionOrder.source === 'public' && !await confirmAction('Zlecić pełny zwrot przez Stripe?', `Ogłoszenie ${decisionOrder.id} zostanie odrzucone. Powód: ${reason}`, 'Zleć zwrot')) return;
+  button.disabled = true;
+  try {
+    const body = { id: decisionOrder.id, version: decisionOrder.version, reason };
+    const result = decisionKind === 'changes' ? await api('admin-request-changes', 'PUT', body) : decisionOrder.source === 'public' ? await api('admin-reject-refund', 'PUT', body) : await api('admin-moderate-group', 'PUT', { ...body, status: 'rejected' });
+    $('#ads-decision-dialog').close();
+    await load();
+    $('#ads-notice').textContent = (decisionKind === 'changes' ? 'Prośba o poprawki zapisana.' : decisionOrder.source === 'public' ? 'Zwrot zlecony w Stripe. Oczekujemy na potwierdzenie webhooka.' : 'Bezpłatne ogłoszenie odrzucone.') + (result.emailSent ? ' E-mail wysłany.' : ' E-mail nie został wysłany; sprawdź konfigurację poczty.');
+  } catch (error) { $('#ads-decision-error').textContent = errorText(error); }
+  finally { button.disabled = false; }
+};
 for (const selector of ['#ads-orders', '#ads-moderation-actions']) $(selector).addEventListener('click', event => {
   const action = event.target.closest('[data-ad-moderate]');
   if (action) { moderate(orders.find(order => order.id === action.dataset.adId), action.dataset.adModerate, action); return; }
+  const decision = event.target.closest('[data-ad-decision]'); if (decision) { openDecision(orders.find(order => order.id === decision.dataset.adId), decision.dataset.adDecision); return; }
   const detail = event.target.closest('[data-ad-edit]'); if (detail) open(orders.find(order => order.id === detail.dataset.adEdit));
   const shared = event.target.closest('[data-ad-shared-edit]'); if (shared) { if ($('#ads-dialog').open) $('#ads-dialog').close(); openSharedOrder(shared.dataset.adSharedEdit); }
 });
@@ -150,6 +191,31 @@ $('#ads-settings').onsubmit = async event => {
     const saved = await api('admin-settings', 'PUT', { data, version: configuration.version }); configuration = { ...configuration, ...saved };
     $('#ads-notice').textContent = 'Cennik zapisany. Obowiązuje od razu. Istniejące zamówienia zachowują ceny.';
   } catch (error) { $('#ads-notice').textContent = errorText(error); } finally { button.disabled = false; }
+};
+async function showCapacity() {
+  const values = Object.fromEntries(new FormData($('#ads-capacity')));
+  const target = $('#ads-capacity-results');
+  try {
+    const result = await api('admin-capacity', 'GET', null, values);
+    target.innerHTML = `<p>Limit podstawowy · zajęte · rezerwa · udostępnione · dostępne</p><div class="table-scroll"><table class="data-table"><tbody>${result.days.map(day => `<tr><th>${escape(day.date)}</th><td>${day.base}</td><td>${day.used}</td><td>${day.reserve}</td><td>${day.released}</td><td>${day.remaining}</td></tr>`).join('')}</tbody></table></div>`;
+  } catch (error) { target.textContent = errorText(error); }
+}
+$('#ads-capacity-check').onclick = showCapacity;
+$('#ads-capacity').onsubmit = async event => {
+  event.preventDefault();
+  const button = event.submitter; button.disabled = true;
+  try {
+    const values = Object.fromEntries(new FormData(event.target));
+    const start = Date.parse(values.startDate), end = Date.parse(values.endDate);
+    const days = Math.round((end - start) / 86400000) + 1;
+    if (!Number.isSafeInteger(days) || days < 1 || days > 90 || values.startDate < configuration.today) throw { code: 'dates' };
+    const dates = Array.from({ length: days }, (_, index) => new Date(start + index * 86400000).toISOString().slice(0, 10));
+    const saved = await api('admin-capacity', 'PUT', { version: configuration.version, language: values.language, type: values.type, dates, reserve: Number(values.reserve), released: Number(values.released) });
+    configuration.version = saved.version;
+    $('#ads-notice').textContent = 'Dodatkowe miejsca zapisane.';
+    await showCapacity();
+  } catch (error) { $('#ads-capacity-results').textContent = errorText(error); }
+  finally { button.disabled = false; }
 };
 function applyLanguage() {const language=document.querySelector('#cms-language').value;document.querySelectorAll('#ads-prices fieldset').forEach((f,i)=>f.hidden=Object.keys(configuration.languages)[i]!==language);}
 document.addEventListener('cmslanguagechange',()=>{if(configuration){applyLanguage();render();}});
