@@ -8,6 +8,9 @@ const order={groupId,amount:500,email:'sandbox@example.invalid',type:'TOP',days:
 test('production payments stay disabled without explicit live switch',async()=>{
   const env={STRIPE_TEST_MODE:'0',STRIPE_LIVE_ENABLED:'0',STRIPE_SECRET_KEY:'sk_live_placeholder',STRIPE_WEBHOOK_SECRET:'whsec_placeholder'};
   assert.equal(stripeReady(env),false);
+  assert.equal(stripeReady({...env,STRIPE_SECRET_KEY:'rk_live_placeholder'}),false);
+  assert.equal(stripeReady({...env,STRIPE_TEST_MODE:'1',STRIPE_SECRET_KEY:'rk_live_placeholder'}),false);
+  assert.equal(stripeReady({STRIPE_SECRET_KEY:'rk_live_placeholder',STRIPE_WEBHOOK_SECRET:'whsec_placeholder'}),false);
   await assert.rejects(createCheckoutSession(env,order,()=>{throw new Error('Must not call Stripe');}));
 });
 
@@ -30,4 +33,17 @@ test('Live code path requires explicit switch and live key',async()=>{
   const session=await createCheckoutSession(env,order,async()=>({ok:true,async json(){return {id:'cs_live_example',url:'https://checkout.stripe.com/live',livemode:true,amount_total:500,currency:'eur',client_reference_id:groupId,expires_at:Math.floor(Date.now()/1000)+1800};}}));
   assert.equal(session.livemode,true);
   assert.equal(stripeReady({...env,STRIPE_LIVE_ENABLED:'0'}),false);
+});
+
+test('restricted live key uses the same guarded Checkout path',async()=>{
+  const env={STRIPE_TEST_MODE:'0',STRIPE_LIVE_ENABLED:'1',STRIPE_SECRET_KEY:'rk_live_placeholder',STRIPE_WEBHOOK_SECRET:'whsec_placeholder'};
+  assert.deepEqual(stripeMode(env),{test:false,live:true});
+  const session=await createCheckoutSession(env,order,async(url,request)=>{
+    assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');
+    assert.equal(request.headers.Authorization,'Bearer rk_live_placeholder');
+    return {ok:true,async json(){return {id:'cs_live_restricted',url:'https://checkout.stripe.com/live',livemode:true,amount_total:500,currency:'eur',client_reference_id:groupId,expires_at:Math.floor(Date.now()/1000)+1800};}};
+  });
+  assert.equal(session.livemode,true);
+  assert.equal(stripeReady({...env,STRIPE_WEBHOOK_SECRET:''}),false);
+  assert.equal(stripeReady({...env,STRIPE_SECRET_KEY:'rk_test_placeholder'}),false);
 });

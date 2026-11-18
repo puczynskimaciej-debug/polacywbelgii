@@ -3,7 +3,8 @@ import { fail } from './common.mjs';
 export function stripeReady(env) {
   const test = env.STRIPE_TEST_MODE === '1';
   const live = env.STRIPE_TEST_MODE === '0' && env.STRIPE_LIVE_ENABLED === '1';
-  return (test || live) && Boolean(env.STRIPE_SECRET_KEY?.startsWith(test ? 'sk_test_' : 'sk_live_')) && Boolean(env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_'));
+  const prefixes = test ? ['sk_test_', 'rk_test_'] : ['sk_live_', 'rk_live_'];
+  return (test || live) && prefixes.some(prefix => env.STRIPE_SECRET_KEY?.startsWith(prefix)) && Boolean(env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_'));
 }
 export function stripeMode(env) {
   const test = env.STRIPE_TEST_MODE === '1';
