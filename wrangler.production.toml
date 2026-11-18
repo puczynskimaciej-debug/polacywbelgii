@@ -10,6 +10,8 @@ STRIPE_TEST_MODE = "0"
 STRIPE_LIVE_ENABLED = "1"
 AI_AUTOMATION_ENABLED = "0"
 GEMINI_FREE_TIER_CONFIRMED = "0"
+AD_SMTP_HOST = "ssl0.ovh.net"
+AD_SMTP_USER = "kontakt@polacywbelgii.eu"
 
 [[d1_databases]]
 binding = "DB"

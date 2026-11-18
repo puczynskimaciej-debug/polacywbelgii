@@ -368,6 +368,9 @@ test('paid ad correction token is scoped, one-use, and refund releases the slot 
   const refund = await admin('admin-reject-refund', { id, version: saved.version, reason: 'Naruszenie regulaminu: niedozwolona treść ogłoszenia.' }, { fetcher });
   assert.equal(refund.status, 200, await refund.text());
   assert.equal(refundCalls, 1);
+  const repeatedRefund = await admin('admin-reject-refund', { id, version: saved.version, reason: 'Kontrolowany powód ponowienia zwrotu.' }, { fetcher });
+  assert.equal(repeatedRefund.status, 200, await repeatedRefund.text());
+  assert.equal(refundCalls, 2);
   saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
   assert.equal(saved.status, 'refund_pending'); assert.equal(availability().used, 1);
   const event = { id: 'evt_testrefund', type: 'charge.refunded', livemode: false, created: Math.floor(Date.now() / 1000), data: { object: { id: 'ch_testrefund', payment_intent: 'pi_testpaid', amount: 200, amount_refunded: 200, refunded: true, refunds: { data: [{ id: 're_testrefund' }] } } } };
@@ -378,6 +381,9 @@ test('paid ad correction token is scoped, one-use, and refund releases the slot 
   assert.equal((await handleAdsPayment({ request: webhookRequest, env })).status, 200);
   saved = JSON.parse(DB.sqlite.prepare('SELECT data FROM ad_orders WHERE id=?').get(id).data);
   assert.equal(saved.paymentStatus, 'refunded'); assert.equal(saved.status, 'rejected'); assert.equal(availability().used, 0);
+  const afterRefund = await admin('admin-reject-refund', { id, version: saved.version, reason: 'Kontrolowany powód ponowienia zwrotu.' }, { fetcher });
+  assert.equal(afterRefund.status, 409);
+  assert.equal(refundCalls, 2);
 });
 
 test('simultaneous last-place requests and multilingual failure never oversell', async () => {
