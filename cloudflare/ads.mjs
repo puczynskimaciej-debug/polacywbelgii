@@ -435,6 +435,12 @@ export async function handleAds({ request, env }, { fetcher = fetch, mailer = se
       domain.fail('notFound', 404);
     }
     const body = await readJson(request, action === 'translate' ? 4000 : ['order-batch', 'admin-order-batch', 'admin-revise-group', 'customer-correct'].includes(action) ? 4000000 : 1450000);
+    if (action === 'admin-mail-check' && request.method === 'POST') {
+      if (request.headers.get('origin') !== new URL(request.url).origin) fail('origin', 403);
+      if (!adMailReady(env)) fail('mailConfiguration', 503);
+      await mailer(env, { to: env.AD_SMTP_USER, subject: 'PolacywBelgii.eu — test poczty reklamowej', body: 'Wiadomość kontrolna z produkcyjnego CMS PolacywBelgii.eu. Jeśli ją otrzymano, transport SMTP działa.' });
+      return json({ sent: true });
+    }
     if (action === 'customer-preview' && request.method === 'POST') {
       const group = await correctionGroup(env.DB, body.groupId, body.token);
       return json({ groupId: body.groupId, type: group[0].type, kind: group[0].kind, dates: group[0].periods?.map(period => period.date) || [group[0].startDate], variants: group.map(item => ({ language: item.language, title: item.title, description: item.description, image: item.image || '', imageMobile: item.imageMobile || '' })), company: group[0].company, publicPhone: group[0].publicPhone, publicEmail: group[0].publicEmail, contact: group[0].contact, url: group[0].url, reason: group[0].moderationReason });

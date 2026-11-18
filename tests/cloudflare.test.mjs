@@ -340,6 +340,10 @@ test('paid ad correction token is scoped, one-use, and refund releases the slot 
   const env = { DB, AD_SMTP_HOST: 'smtp.example.invalid', AD_SMTP_USER: 'kontakt@example.invalid', AD_SMTP_PASSWORD: 'local-test', STRIPE_TEST_MODE: '1', STRIPE_SECRET_KEY: 'sk_test_local', STRIPE_WEBHOOK_SECRET: 'whsec_local' };
   const messages = [], mailer = async (_env, message) => { messages.push(message); };
   const admin = (action, body, options = {}) => adsRoute({ request: request(`/api/ads?action=${action}`, 'PUT', body, `__Host-pbe_session=${session}`), env }, { mailer, ...options });
+  const mailCheck = await adsRoute({ request: request('/api/ads?action=admin-mail-check', 'POST', {}, `__Host-pbe_session=${session}`), env }, { mailer });
+  assert.equal(mailCheck.status, 200);
+  assert.equal(messages.pop().to, env.AD_SMTP_USER);
+  assert.equal((await adsRoute({ request: request('/api/ads?action=admin-mail-check', 'POST', {}), env }, { mailer })).status, 401);
   const availability = () => domain.availabilityWindow(DB.sqlite.prepare('SELECT data FROM ad_orders').all().map(row => JSON.parse(row.data)), settings, 'pl', 'STANDARD', ...Object.values(domain.windowFor(date, 1)).slice(0, 2));
   assert.equal(availability().used, 1);
   const reason = 'Prosimy poprawić opis, aby wskazywał rzeczywistą usługę.';

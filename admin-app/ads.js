@@ -11,7 +11,7 @@ const isShowcase = order => order?.demoSet === 'showcase-2026-09-29' && order.so
 const money = value => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(value / 100);
 const paymentLabel = order => order.source === 'manual' && order.paymentStatus === 'not_required' ? 'Dodane bezpłatnie przez administratora' : paymentNames[order.paymentStatus] || 'Brak płatności';
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-const errorText = error => (errors[error.code] || error.message || 'Nie udało się zapisać.') + (Array.isArray(error.details) ? ' ' + error.details.map(day => `${day.date || 'Wybrany okres'}: zajęte ${day.used}/${day.capacity}`).join(', ') : '');
+const errorText = error => (error.code === 'mailUnavailable' ? 'Serwer OVHcloud nie przyjął wiadomości. Sprawdź hasło SMTP i ustawienia skrzynki.' : errors[error.code] || error.message || 'Nie udało się zapisać.') + (Array.isArray(error.details) ? ' ' + error.details.map(day => `${day.date || 'Wybrany okres'}: zajęte ${day.used}/${day.capacity}`).join(', ') : '');
 const canModerate = order => order?.status === 'pending' && (order.source === 'public' && order.paymentStatus === 'paid' && order.effectiveStatus === 'pending_approval' || order.source === 'manual' && order.paymentStatus === 'not_required');
 const moderationButtons = order => {
   const eligible = order && (order.source === 'public' && order.paymentStatus === 'paid' || order.source === 'manual' && order.paymentStatus === 'not_required');
@@ -201,6 +201,13 @@ async function showCapacity() {
   } catch (error) { target.textContent = errorText(error); }
 }
 $('#ads-capacity-check').onclick = showCapacity;
+$('#ads-mail-check').onclick = async event => {
+  const button = event.currentTarget; button.disabled = true;
+  const result = $('#ads-mail-result'); result.textContent = 'Wysyłanie wiadomości kontrolnej…';
+  try { await api('admin-mail-check', 'POST', {}); result.textContent = 'Serwer pocztowy przyjął wiadomość. Sprawdź skrzynkę kontakt@polacywbelgii.eu.'; }
+  catch (error) { result.textContent = errorText(error); }
+  finally { button.disabled = false; }
+};
 $('#ads-capacity').onsubmit = async event => {
   event.preventDefault();
   const button = event.submitter; button.disabled = true;
