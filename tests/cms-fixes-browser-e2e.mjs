@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { chromium } from 'playwright-core';
+import { localD1Path } from '../agent/local-db.mjs';
+import { hashPassword } from '../cloudflare/auth.mjs';
+
+const origin = process.env.LOCAL_CMS_ORIGIN || 'http://127.0.0.1:8899';
+const db = new DatabaseSync(localD1Path());
+db.exec('PRAGMA busy_timeout=5000');
+const id = randomUUID(), email = `cms-fixes-${id}@example.invalid`, password = randomBytes(32).toString('base64url');
+const title = `Kontrolne ogłoszenie ${id.slice(0,8)}`;
+let browser;
+try {
+  db.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(id,email,'CMS E2E',await hashPassword(password),'admin');
+  browser = await chromium.launch({executablePath:process.env.BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',headless:true});
+  const page = await browser.newPage({viewport:{width:1366,height:768}});
+  await page.goto(`${origin}/admin/`);
+  await page.locator('#login-form [name="email"]').fill(email);
+  await page.locator('#login-form [name="password"]').fill(password);
+  await page.locator('#login-form [type="submit"]').click();
+  await page.locator('#app-view').waitFor({state:'visible'});
+  await page.locator('[data-view="ads"]').click();
+  await page.locator('#ads-new').click();
+  const frame = page.frameLocator('#ads-order-frame');
+  await frame.locator('[name="adminComplimentary"]').waitFor({state:'visible'});
+  assert.equal(await frame.locator('.site-header').isVisible(),false);
+  assert.equal(await frame.locator('.site-footer').isVisible(),false);
+  assert.equal(await frame.locator('#order-close').isVisible(),false);
+  assert.equal(await frame.locator('[name="adminComplimentary"]').isChecked(),true);
+  await frame.locator('[name="type"][value="STANDARD"]').check();
+  await frame.locator('#order-calendar button[data-date]:not([disabled])').first().click();
+  await frame.locator('[data-title="pl"]').fill(title);
+  await frame.locator('[data-description="pl"]').fill('Opis kontrolnego ogłoszenia do weryfikacji CMS.');
+  await frame.locator('[name="customerName"]').fill('CMS E2E');
+  await frame.locator('[name="email"]').fill(email);
+  await frame.locator('[name="consent"]').check();
+  await frame.locator('[name="termsAccepted"]').check();
+  await frame.locator('#order-review').click();
+  await frame.locator('#order-confirm').waitFor({state:'visible'});
+  await frame.locator('#order-confirm button.button').click();
+  await page.locator('#ads-order-dialog').waitFor({state:'hidden'});
+  const rows = db.prepare("SELECT id,data FROM ad_orders WHERE json_extract(data,'$.email')=?").all(email);
+  assert.equal(rows.length,1);
+  const order = JSON.parse(rows[0].data);
+  assert.equal(order.source,'manual');
+  assert.equal(order.paymentStatus,'not_required');
+  assert.equal(order.status,'approved');
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#ads-new').click();
+  await frame.locator('[name="adminComplimentary"]').waitFor({state:'visible'});
+  assert.equal(await frame.locator('html').evaluate(element=>element.scrollWidth<=element.clientWidth),true);
+  await page.locator('#ads-order-close').click();
+  await page.setViewportSize({width:1366,height:768});
+  await page.locator('.nav-item[data-view="events-editor"]').click();
+  await page.locator('#event-new').click();
+  const categories = await page.locator('#event-editor-form [name="category"] option').evaluateAll(options=>options.map(option=>option.value));
+  assert.deepEqual(categories,['Kultura','Koncert','Rodzina','Sport','Edukacja','Spotkanie','Inne']);
+  await page.locator('#event-editor-close').click();
+  console.log('CMS browser: one embedded form, review, complimentary order, event categories OK');
+} finally {
+  await browser?.close();
+  for (const row of db.prepare("SELECT id FROM ad_orders WHERE json_extract(data,'$.email')=?").all(email)) {
+    db.prepare('DELETE FROM ad_order_history WHERE order_id=?').run(row.id);
+    db.prepare('DELETE FROM ad_orders WHERE id=?').run(row.id);
+  }
+  db.prepare('DELETE FROM cms_sessions WHERE user_id=?').run(id);
+  db.prepare('DELETE FROM cms_audit WHERE actor_id=?').run(id);
+  db.prepare('DELETE FROM cms_users WHERE id=?').run(id);
+  db.close();
+}

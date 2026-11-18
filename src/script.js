@@ -122,6 +122,9 @@ const translations = {
     "form.send": "Envoyer le message"
   }
 };
+Object.assign(translations.en,{"category.Kultura":"Culture","category.Koncert":"Concert","category.Sport":"Sport","category.Edukacja":"Education","category.Spotkanie":"Meeting"});
+Object.assign(translations.nl,{"category.Kultura":"Cultuur","category.Koncert":"Concert","category.Sport":"Sport","category.Edukacja":"Onderwijs","category.Spotkanie":"Bijeenkomst"});
+Object.assign(translations.fr,{"category.Kultura":"Culture","category.Koncert":"Concert","category.Sport":"Sport","category.Edukacja":"Éducation","category.Spotkanie":"Rencontre"});
 
 const extraTranslations = {
   pl: { 'nav.ads':'Ogłoszenia','events.label':'Wydarzenia','events.calendar':'Kalendarz wydarzeń','events.close':'Zamknij kalendarz','events.eyebrow':'Kalendarz','events.homeTitle':'Co się dzieje w Belgii?','events.homeIntro':'Odkryj sprawdzone wydarzenia i wybierz dzień w kalendarzu.','events.open':'Otwórz kalendarz','legal.heading':'Informacje prawne','legal.portal':'Regulamin portalu','legal.ads':'Regulamin ogłoszeń','legal.privacy':'Polityka prywatności','legal.cookies':'Polityka cookies','legal.sources':'Źródła i licencje','legal.draft':'Projekt dokumentu do weryfikacji przed uruchomieniem rzeczywistych płatności.','legal.fallback':'Treść tego projektu dokumentu jest dostępna po polsku.' },

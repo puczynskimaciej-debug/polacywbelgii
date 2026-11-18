@@ -2,6 +2,7 @@
 <html lang="{{ legalLanguage or 'pl' }}">
 <head>
   <meta charset="utf-8">
+  <script>if (location.pathname === '/zamow-ogloszenie/' && new URLSearchParams(location.search).get('cms') === '1' && window.parent !== window) document.documentElement.classList.add('cms-order-embed');</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {% if pageKey == "legal" %}<meta name="robots" content="noindex, nofollow">{% endif %}
   <meta name="description" content="{{ description if category else (site.seo[pageKey].description or description) }}" data-i18n-content="meta.description">

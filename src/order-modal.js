@@ -127,6 +127,7 @@
   dialog.id = 'order-dialog';
   dialog.setAttribute('aria-labelledby', 'order-title');
   document.body.append(dialog);
+  const embeddedCms = document.documentElement.classList.contains('cms-order-embed');
 
   let config, selectedLanguages = ['pl'], primaryLanguage = 'pl', type = 'TOP', kind = 'text', month = '';
   let chosenDates = [], conflicts = {}, region = 'all', drafts = {}, titles = {}, descriptions = {};
@@ -236,7 +237,8 @@
     if ($('#order-click-behavior')) $('#order-click-behavior').textContent = clickBehavior();
     if ($('#order-breakdown')) { const base = chosenDates.length * (config?.data.markets[primaryLanguage]?.prices[type] || 0); $('#order-breakdown').textContent = `${t('baseLanguage')}: ${languages[primaryLanguage]?.name} — ${money(base)}. ${t('extraLanguages')}: ${selectedLanguages.filter(language => language !== primaryLanguage).map(language => `${languages[language].name} ${money(Math.round(base / 2))}`).join(', ') || '—'}. ${chosenDates.length} ${t('days')} = ${chosenDates.length * 24} h. ${timing()}`; }
     const invalid = [...dialog.querySelectorAll('[data-title],[data-description]')].some(field => length(field.value) > limits[type][field.dataset.title ? 'title' : 'description']);
-    $('#order-review').disabled = !availabilityReady || (!chosenDates.length && !(editId && !editDatesTouched && editOriginalDates.length)) || Object.keys(conflicts).some(date => chosenDates.includes(date)) || !selectedLanguages.length || !type || !config || invalid;
+    $('#order-review').disabled = pending;
+    $('#order-review').dataset.invalidLength = String(invalid);
     dialog.querySelectorAll('#order-calendar button[data-date]').forEach(button => {
       const date = button.dataset.date;
       button.setAttribute('aria-pressed', String(chosenDates.includes(date)));
@@ -450,12 +452,19 @@
       if (event.target.name === 'url') { const value=event.target.value.trim(); let safe=!value; if(value){try{const parsed=new URL(value);safe=['https:','http:'].includes(parsed.protocol)&&Boolean(parsed.hostname)&&!parsed.username&&!parsed.password;}catch{safe=false;}} event.target.setCustomValidity(safe?'':t('urlInvalid')); }
       capture(); requestId = crypto.randomUUID(); summary(); drawExampleBanners();
     };
+    $('#order-form').addEventListener('invalid', event => {
+      const field = event.target;
+      $('#order-message').textContent = `Uzupełnij wymagane pole: ${field.closest('label')?.textContent?.trim().slice(0,90) || field.name || 'formularz'}.`;
+      field.scrollIntoView({block:'center',behavior:'smooth'});
+    }, true);
     $('#order-form').onsubmit = event => { event.preventDefault(); review(); };
     showFields(); calendar();
   }
 
   function review() {
+    if (!config || !availabilityReady) { $('#order-message').textContent = 'Sprawdzanie dostępności terminów jeszcze trwa. Spróbuj ponownie za chwilę.'; return; }
     capture(); if ((!chosenDates.length && !(editId && !editDatesTouched && editOriginalDates.length)) || chosenDates.some(date => conflicts[date])) { setMessage('empty'); return; }
+    if (!selectedLanguages.length || !type) { $('#order-message').textContent = 'Wybierz pakiet i język ogłoszenia.'; return; }
     if (selectedLanguages.some(language => !titles[language]?.trim() || !descriptions[language]?.trim() || length(titles[language]) > limits[type].title || length(descriptions[language]) > limits[type].description)) { setMessage('tooLong'); return; }
     const box = $('#order-confirm'); box.replaceChildren(node('h3', t('preview')));
     const controls = node('div', '', 'order-preview-controls');
@@ -516,7 +525,8 @@
     restoreFocus = trigger; locale = copy[document.documentElement.lang] ? document.documentElement.lang : 'pl'; selectedLanguages = [locale]; primaryLanguage = locale; sampleLanguage = locale;
     chosenDates = []; editOriginalDates = []; editDatesTouched = false; conflicts = {}; availabilityReady = false; region = 'all'; imageData = imageName = mobileImageData = mobileImageName = ''; languageImages = {}; titles = {}; descriptions = {};
     dialog.innerHTML = `<div class="order-heading"><h2 id="order-title">${t('title')}</h2></div><p>${t('loading')}</p>`;
-    dialog.showModal(); document.body.classList.add('order-open');
+    if (embeddedCms) dialog.show(); else dialog.showModal();
+    document.body.classList.add('order-open');
     try {
       config = await api('config');
       if (new URLSearchParams(location.search).get('cms') === '1') {

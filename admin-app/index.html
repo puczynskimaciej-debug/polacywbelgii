@@ -209,8 +209,7 @@
         <label class="wide">Tytuł<input name="title" maxlength="180"></label>
         <label class="wide">Krótki opis<textarea name="description" maxlength="500" rows="3"></textarea></label>
         <label class="wide">Oryginalny opis po polsku<textarea name="body" rows="8"></textarea></label>
-        <label>Kategoria<input name="category" maxlength="120" list="event-categories"></label>
-        <datalist id="event-categories"><option value="Kultura"><option value="Koncert"><option value="Rodzina"><option value="Sport"><option value="Edukacja"><option value="Spotkanie"></datalist>
+        <label>Kategoria<select name="category"><option value="Kultura">Kultura</option><option value="Koncert">Koncert</option><option value="Rodzina">Rodzina</option><option value="Sport">Sport</option><option value="Edukacja">Edukacja</option><option value="Spotkanie">Spotkanie</option><option value="Inne">Inne</option></select></label>
         <label>Region<select name="region"><option value="">Nieokreślony</option><option value="all">Cała Belgia</option><option value="brussels">Bruksela</option><option value="flanders">Flandria</option><option value="wallonia">Walonia</option></select></label>
         <label class="wide event-check"><input name="isHoliday" type="checkbox"><span>Święto lub dzień wolny — cały dzień (bez godziny)</span></label>
         <fieldset class="event-date-group"><legend>Rozpoczęcie (czas Brukseli)</legend><label>Data rozpoczęcia<input name="startDate" type="date"></label><label>Godzina rozpoczęcia<input name="startTime" type="time"></label></fieldset>

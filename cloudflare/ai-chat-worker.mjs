@@ -1,19 +1,29 @@
 import { proposeSlot, validateEditorialConfig } from '../agent/editorial.mjs';
 
-const allowedHost = host => host === 'gov.pl' || host.endsWith('.gov.pl') || host === 'belgium.be' || host.endsWith('.belgium.be') || host === 'vlaanderen.be' || host.endsWith('.vlaanderen.be') || host === 'wallonie.be' || host.endsWith('.wallonie.be') || host === 'be.brussels' || host.endsWith('.be.brussels') || host === 'europa.eu' || host.endsWith('.europa.eu') || host === 'fgov.be' || host.endsWith('.fgov.be');
+const allowedHost = host => host === 'gov.pl' || host.endsWith('.gov.pl') || host === 'belgium.be' || host.endsWith('.belgium.be') || host === 'vlaanderen.be' || host.endsWith('.vlaanderen.be') || host === 'wallonie.be' || host.endsWith('.wallonie.be') || host === 'be.brussels' || host.endsWith('.be.brussels') || host === 'europa.eu' || host.endsWith('.europa.eu') || host === 'fgov.be' || host.endsWith('.fgov.be') || host === 'vdab.be' || host.endsWith('.vdab.be') || host === 'leforem.be' || host.endsWith('.leforem.be') || host === 'actiris.brussels' || host.endsWith('.actiris.brussels');
 const populationUrl = 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/migr_pop1ctz?geo=BE&citizen=PL&age=TOTAL&sex=T&unit=NR&freq=A&lang=EN';
 const arrivalsUrl = 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/tour_occ_arnraw?geo=BE&c_resid=PL&nace_r2=I551-I553&unit=NR&freq=A&lang=EN';
 const tourismDefinitionsUrl = 'https://statbel.fgov.be/en/themes/enterprises/tourist-accommodations';
+const employmentUrl = 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/lfsi_emp_a?geo=BE&age=Y20-64&sex=T&unit=PC_POP&indic_em=EMP_LFS&freq=A&lang=EN';
+const vacanciesUrl = 'https://www.vdab.be/trends-en-cijfers';
 const officialUrl = value => { try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && !url.port && allowedHost(url.hostname); } catch { return false; } };
 const normalize = value => String(value || '').replace(/\s+/g,' ').trim().toLocaleLowerCase('pl');
 function statisticalSources(prompt) {
   const text=normalize(prompt);
+  if (/belgi/.test(text) && /(prac|zatrudn|bezroboc|wyjeżd|wyjezd|ofert|wakans|vacatur|job)/.test(text)) return [employmentUrl,vacanciesUrl];
   if (!/belgi/.test(text) || !/(polak|polsk)/.test(text) || !/(mieszk|ilu|liczb|populacj|obywatel)/.test(text)) return [];
   const sources=[populationUrl];
   if (/(jeźd|jeżd|jezd|przyjazd|podróż|podroz|turyst|biznes|rodzinn)/.test(text)) sources.push(arrivalsUrl,tourismDefinitionsUrl);
   return sources;
 }
 function eurostatEvidence(url,data) {
+  if (url===employmentUrl) {
+    const dimensions={freq:'A',indic_em:'EMP_LFS',sex:'T',age:'Y20-64',unit:'PC_POP',geo:'BE'};
+    if (data.label!=='Employment and labour force by sex and age - annual data' || data.id?.at(-1)!=='time' || data.size?.slice(0,-1).some(size=>size!==1) || Object.entries(dimensions).some(([key,value])=>!Object.hasOwn(data.dimension?.[key]?.category?.index||{},value))) throw new Error('source_invalid');
+    const years=Object.entries(data.dimension?.time?.category?.index||{}).filter(([year,index])=>/^20\d\d$/.test(year) && Number.isFinite(data.value?.[index])).slice(-5);
+    if (!years.length) throw new Error('source_invalid');
+    return `Eurostat: ${data.label}. Wskaźnik: stopa zatrudnienia według badania siły roboczej, Belgia, osoby 20–64 lata, obie płcie, procent populacji. ${years.map(([year,index])=>`Rok ${year}: ${data.value[index]}%.`).join(' ')} Aktualizacja zbioru: ${data.updated||'niepodana'}.`;
+  }
   const population=url===populationUrl;
   const expected=population?'Population on 1 January by age group, sex and citizenship':'Arrivals at tourist accommodation establishments by country of origin of the tourist';
   const dimensions=population?{geo:'BE',citizen:'PL',age:'TOTAL',sex:'T',unit:'NR',freq:'A'}:{geo:'BE',c_resid:'PL',nace_r2:'I551-I553',unit:'NR',freq:'A'};
@@ -45,19 +55,20 @@ async function createDraft(job,env,fetcher) {
   const budget = await env.DB.prepare('UPDATE ai_daily_budget SET calls=calls+1 WHERE day=? AND calls<6').bind(budgetDay).run();
   if (!budget.meta?.changes) throw new Error('daily_limit');
   if (!urls.length) {
-    const discovery = await geminiFetch(fetcher,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',{method:'POST',headers:{'x-goog-api-key':env.GEMINI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:`Podaj jeden prawdopodobny adres HTTPS konkretnej strony urzędowej opisującej dokładnie temat: ${job.prompt}. Wybierz artykuł lub instrukcję, nie stronę kategorii ani stronę główną. Dopuszczalne domeny: gov.pl, belgium.be, vlaanderen.be, wallonie.be, be.brussels, europa.eu, fgov.be i ich subdomeny. Nie wymyślaj adresu. Odpowiedz tylko JSON: {"urls":["https://..."]}. Jeśli nie znasz dokładnego adresu, zwróć pustą tablicę.`}]}],generationConfig:{responseMimeType:'application/json',maxOutputTokens:500,temperature:0}}),signal:AbortSignal.timeout(30000)});
+    const catalog=(await env.DB.prepare('SELECT url FROM ai_sources WHERE active=1 ORDER BY priority DESC LIMIT 30').all()).results.map(row=>row.url).filter(officialUrl);
+    if (!catalog.length) throw new Error('source_search_empty');
+    const discovery=await geminiFetch(fetcher,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',{method:'POST',headers:{'x-goog-api-key':env.GEMINI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:`Wybierz maksymalnie trzy adresy z katalogu urzędowego, które mogą zawierać fakty na temat: ${job.prompt}. Nie wymyślaj URL. Zwróć tylko JSON {"urls":[...]}. Katalog: ${JSON.stringify(catalog)}`}]}],generationConfig:{responseMimeType:'application/json',maxOutputTokens:400,temperature:0}}),signal:AbortSignal.timeout(30000)});
     if (!discovery.ok) throw new Error(`gemini_http_${discovery.status}`);
-    let suggested;
-    try { const data = await discovery.json(); suggested = JSON.parse(data.candidates?.[0]?.content?.parts?.map(part=>part.text || '').join('') || '').urls; } catch { throw new Error('source_discovery_invalid'); }
-    if (!Array.isArray(suggested)) throw new Error('source_discovery_invalid');
-    urls = [...new Set(suggested.filter(url=>typeof url==='string' && officialUrl(url)))].slice(0,1);
-    if (!urls.length) throw new Error('official_source_not_found');
+    let selected;
+    try { const data=await discovery.json(); selected=JSON.parse(data.candidates?.[0]?.content?.parts?.map(part=>part.text||'').join('')||'').urls; } catch { throw new Error('source_search_invalid'); }
+    urls=[...new Set((Array.isArray(selected)?selected:[]).filter(url=>catalog.includes(url)))].slice(0,3);
+    if (!urls.length) throw new Error('source_search_empty');
   }
   const evidence = [];
   for (let url of urls) {
-    const response = await fetcher(url,{headers:{Accept:url===populationUrl||url===arrivalsUrl?'application/json':'text/html'},signal:AbortSignal.timeout(10000),redirect:'manual'});
+    const response = await fetcher(url,{headers:{Accept:[populationUrl,arrivalsUrl,employmentUrl].includes(url)?'application/json':'text/html'},signal:AbortSignal.timeout(10000),redirect:'manual'});
     if (!response.ok) throw new Error('source_unavailable');
-    if (url===populationUrl || url===arrivalsUrl) {
+    if ([populationUrl,arrivalsUrl,employmentUrl].includes(url)) {
       const payload=await response.text();
       if(payload.length>300000)throw new Error('source_too_large');
       let data;

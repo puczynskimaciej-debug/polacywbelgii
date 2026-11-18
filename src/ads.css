@@ -13,6 +13,10 @@
 .region-listing-grid .listing-card { aspect-ratio:auto; min-height:260px; }
 #listing-top .listing-card h3 { font-size:1.1rem; }
 body.order-open { overflow:hidden; }
+.cms-order-embed .site-header,.cms-order-embed #main,.cms-order-embed .site-footer,.cms-order-embed .skip-link { display:none!important; }
+.cms-order-embed body { margin:0; overflow:hidden; }
+.cms-order-embed #order-dialog { position:fixed; inset:0; width:100%; max-width:none; height:100dvh; max-height:none; margin:0; border:0; border-radius:0; box-shadow:none; }
+.cms-order-embed #order-close { display:none; }
 #order-dialog { width:min(820px,calc(100% - 24px)); max-height:90dvh; padding:32px; border:0; border-radius:20px; color:var(--ink); box-shadow:0 24px 100px #001b3d40; }
 #order-dialog::backdrop { background:#091d38b8; backdrop-filter:blur(4px); }
 #order-dialog .order-heading { display:flex; justify-content:space-between; align-items:start; gap:16px; }

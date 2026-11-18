@@ -18,7 +18,7 @@ function aiRow(row) {
   const event = row.event_json ? JSON.parse(row.event_json) : null;
   const verification = row.verification_json ? JSON.parse(row.verification_json) : {};
   const fields = row.article_fields_json ? JSON.parse(row.article_fields_json) : {};
-  return { slug: `ai-${row.id}`, url: row.kind === 'event' ? `/wydarzenia/ai-${row.id}/` : `/artykuly/ai-${row.id}/`, title: row.title, description: row.description, body: row.body, ...fields, date: row.published_at || row.scheduled_at, category: row.category, region: row.region, contentType: row.kind, event, image:event?.image || fields.image || null, verification, manual:row.owner_kind === 'admin' };
+  return { slug: `ai-${row.id}`, url: row.kind === 'event' ? `/wydarzenia/ai-${row.id}/` : `/artykuly/ai-${row.id}/`, title: row.title, description: row.description, body: row.body, ...fields, date: row.published_at || row.scheduled_at, category: row.kind === 'event' && ['History','Music'].includes(row.category) ? 'Inne' : row.category, region: row.region, contentType: row.kind, event, image:event?.image || fields.image || null, verification, manual:row.owner_kind === 'admin' };
 }
 const aiPublicSql = "SELECT c.id,c.title,c.description,c.body,c.category,c.region,c.kind,c.event_json,c.article_fields_json,c.verification_json,e.owner_kind,e.published_at,e.scheduled_at FROM ai_candidates c JOIN ai_editorial e ON e.candidate_id=c.id WHERE e.status='published' AND e.public_state='visible' AND e.approved_by IS NOT NULL AND e.approved_at IS NOT NULL";
 

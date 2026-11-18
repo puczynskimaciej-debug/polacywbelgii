@@ -136,6 +136,16 @@ export async function onRequest({ request, env }) {
       ]);
       return json({ id:input.id,status:'archived' });
     }
+    if (input.action === 'delete-event') {
+      if (actor.kind !== 'admin' || current.kind !== 'event') fail('forbidden',403);
+      await env.DB.batch([
+        env.DB.prepare('UPDATE ai_chat_jobs SET candidate_id=NULL WHERE candidate_id=?').bind(input.id),
+        env.DB.prepare('UPDATE ai_discovery_jobs SET candidate_id=NULL WHERE candidate_id=?').bind(input.id),
+        env.DB.prepare('DELETE FROM ai_candidate_history WHERE candidate_id=?').bind(input.id),
+        env.DB.prepare("DELETE FROM ai_candidates WHERE id=? AND kind='event'").bind(input.id)
+      ]);
+      return json({ id:input.id,deleted:true });
+    }
     if (input.action === 'verify-event') {
       if (actor.kind !== 'admin' || current.kind !== 'event' || !['draft','pending_review','changes_requested','approved','scheduled'].includes(current.editorial_status)) fail('forbidden',403);
       const manual = current.owner_kind === 'admin';

@@ -9,6 +9,7 @@ import { handleAds } from '../cloudflare/ads.mjs';
 import { translateAd } from '../cloudflare/ad-translation.mjs';
 import { processChatJobs } from '../cloudflare/ai-chat-worker.mjs';
 import { onRequest as aiChatRoute } from '../cloudflare/ai-chat.mjs';
+import { onRequest as aiEditorRoute } from '../cloudflare/ai-editor.mjs';
 import { sha256 } from '../cloudflare/common.mjs';
 import { publicEntry } from '../cloudflare/public-pages.mjs';
 
@@ -101,7 +102,7 @@ test('durable article job reaches pending_review once and stays nonpublic',async
 });
 
 test('article job can discover and verify an official source without a supplied URL',async()=>{
-  const DB=database(),jobId=randomUUID(),conversationId=randomUUID(),url='https://www.gov.pl/web/belgium/passport-for-an-adult',at=new Date().toISOString();
+  const DB=database(),jobId=randomUUID(),conversationId=randomUUID(),url='https://www.gov.pl/web/belgia/aktualnosci',at=new Date().toISOString();
   DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(jobId,conversationId,'editor','Napisz artykuł o paszporcie dla dorosłych w Belgii',at,at);
   const quote='Wniosek o wydanie paszportu możesz złożyć w urzędzie konsularnym.';
   const output={title:'Paszport dla dorosłych w Belgii',description:'Informacje urzędowe dla osób składających wniosek o paszport.',body:`${'Wniosek składa się w urzędzie konsularnym. '.repeat(25)}\n\nŹródło: ${url}`,evidenceQuotes:[{url,quote}]};
@@ -109,7 +110,7 @@ test('article job can discover and verify an official source without a supplied 
   const fetcher=async(endpoint,options)=>{
     if(endpoint===url)return new Response(`<main>${quote.repeat(10)}</main>`,{headers:{'content-type':'text/html'}});
     calls++;
-    const discovery=JSON.parse(options.body).generationConfig.maxOutputTokens===500;
+    const discovery=JSON.parse(options.body).generationConfig.maxOutputTokens===400;
     return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(discovery?{urls:[url]}:output)}]}}]});
   };
   const result=await processChatJobs({DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'},{fetcher});
@@ -171,4 +172,28 @@ test('authenticated CMS chat stores both messages and rejects unauthenticated ac
     const blocked=await aiChatRoute({request:new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'send',mode:'article',text:'Prepare an article with an official source.'})}),env});
     assert.equal(blocked.status,409);assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_chat_jobs').get().n,2);
   }finally{globalThis.fetch=originalFetch;}
+});
+
+test('administrator permanently deletes one manual or AI event without touching another event',async()=>{
+  const DB=database(),token=randomBytes(32).toString('base64url'),userId=randomUUID();
+  DB.sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(userId,'event-admin@example.com','Event Admin','unused','admin');
+  DB.sqlite.prepare('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(await sha256(token),userId,'2099-01-01');
+  const ids=['1'.repeat(20),'2'.repeat(20),'3'.repeat(20)];
+  for(const [index,id] of ids.entries()){
+    const event={start:'2090-01-01T10:00:00.000Z',timezone:'Europe/Brussels',city:'Bruksela',venue:'Sala',organizer:'Organizator',category:'Kultura',region:'brussels',sourceUrl:'https://www.belgium.be/en',status:'scheduled'};
+    DB.sqlite.prepare('INSERT INTO ai_candidates(id,kind,status,title,description,body,category,region,sources_json,verification_json,event_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'event','published',`Event ${index}`,'Description','Body','Kultura','brussels','[]',JSON.stringify({status:'verified'}),JSON.stringify(event),'2026-01-01','2026-01-01');
+    DB.sqlite.prepare("INSERT INTO ai_editorial(candidate_id,status,owner_kind,owner_id,approved_by,approved_at,published_at,public_state,updated_at) VALUES(?,'published',?,?,'admin','2026-01-01','2026-01-01','visible','2026-01-01')").run(id,index===1?'agent':'admin',index===1?'agent':userId);
+    DB.sqlite.prepare('INSERT INTO ai_candidate_history(candidate_id,new_status,at) VALUES(?,?,?)').run(id,'published','2026-01-01');
+  }
+  const env={DB};
+  const send=id=>aiEditorRoute({request:new Request('https://polacywbelgii.pages.dev/api/ai-editor',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'delete-event',id})}),env});
+  assert.equal((await send(ids[0])).status,200);
+  assert.equal((await send(ids[1])).status,200);
+  for(const id of ids.slice(0,2)){
+    assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_candidates WHERE id=?').get(id).n,0);
+    assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_candidate_history WHERE candidate_id=?').get(id).n,0);
+    assert.equal(await publicEntry(DB,`ai-${id}`),null);
+  }
+  assert.equal((await publicEntry(DB,`ai-${ids[2]}`)).title,'Event 2');
+  assert.equal((await aiEditorRoute({request:new Request('https://polacywbelgii.pages.dev/api/ai-editor',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json'},body:JSON.stringify({action:'delete-event',id:ids[2]})}),env})).status,401);
 });
