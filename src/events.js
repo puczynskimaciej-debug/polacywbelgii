@@ -19,7 +19,8 @@
   Object.assign(copy.fr,{homeEmpty:'Aucun événement à venir. Consultez le calendrier complet.',show:'Voir dans le calendrier',unknownTime:'Heure à confirmer',untitled:'Événement sans titre',regions:{flanders:'Flandre',wallonia:'Wallonie',brussels:'Bruxelles'}});
   const t = () => copy[document.documentElement.lang] || copy.pl;
   const localDay = value => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
-  const localDateTime = value => new Intl.DateTimeFormat(t().locale,{timeZone:'Europe/Brussels',dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
+  const localDateTime = value => new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
+  const displayDate = value => String(value || '').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3.$2.$1');
   const today = localDay(new Date());
   let month = today.slice(0,7), selected = today, miniMonth = month, events = [], opener = null, nameDays = null;
   const regions = ['flanders','wallonia','brussels','all'];
@@ -33,9 +34,9 @@
   const eventDate = event => event.date || event.start && localDay(event.start);
   const upcoming = event => !eventDate(event) || (event.end ? Date.parse(event.end) >= Date.now() : (event.endDate || eventDate(event)) >= today);
   const onDay = (event, date) => eventDate(event) && eventDate(event) <= date && (event.endDate || event.end && localDay(event.end) || eventDate(event)) >= date;
-  const eventTime = event => event.start ? localDateTime(event.start) : `${eventDate(event)} · ${t().unknownTime}`;
-  const dateLabel = event => event.start ? new Intl.DateTimeFormat(t().locale,{timeZone:'Europe/Brussels',day:'numeric',month:'short'}).format(new Date(event.start)) : new Intl.DateTimeFormat(t().locale,{timeZone:'UTC',day:'numeric',month:'short'}).format(new Date(`${eventDate(event)}T12:00:00Z`));
-  const timeLabel = event => event.start ? new Intl.DateTimeFormat(t().locale,{timeZone:'Europe/Brussels',timeStyle:'short'}).format(new Date(event.start)) : t().unknownTime;
+  const eventTime = event => event.start ? localDateTime(event.start) : displayDate(eventDate(event));
+  const dateLabel = event => displayDate(eventDate(event));
+  const timeLabel = event => event.start ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start)) : '';
   const node = (tag, text, className) => { const item = document.createElement(tag); if (text !== undefined) item.textContent = text; if (className) item.className = className; return item; };
   const safeLink = value => { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : null; } catch { return null; } };
   const holidayScope = {pl:'Dzień wolny dla pracowników właściwych instytucji publicznych; nie jest dniem wolnym dla wszystkich pracowników.',en:'A day off for the relevant public institutions, not a general day off for all workers.',nl:'Vrije dag voor de betrokken overheidsdiensten, niet voor alle werknemers.',fr:'Jour de congé pour les services publics concernés, pas pour tous les travailleurs.'};
@@ -74,7 +75,7 @@
 
   function showEvent(event, container) {
     container.replaceChildren();
-    container.append(node('h4',event.title || t().untitled),node('p',event.description),node('p',`${t().time}: ${eventTime(event)}${event.end ? ` – ${localDateTime(event.end)}` : ''}`));
+    container.append(node('h4',event.title || t().untitled),node('p',event.description),node('p',`${t().time}: ${eventTime(event)}${event.end ? ` – ${localDateTime(event.end)}` : event.endDate ? ` – ${displayDate(event.endDate)}` : ''}`));
     if (event.venue || event.city || event.address) container.append(node('p',`${t().place}: ${[event.venue,event.city,event.address].filter(Boolean).join(', ')}`));
     if (event.organizer) container.append(node('p',`${t().organizer}: ${event.organizer}`));
     if (document.documentElement.lang !== 'pl') container.append(node('p',t().fallback,'language-fallback'));
@@ -141,7 +142,7 @@
 
   function renderHome() {
     if (!home) return;
-    const upcomingEvents = [...new Map(events.filter(event => eventDate(event) && upcoming(event) && !event.isHoliday).map(event => [event.url,event])).values()].sort((a,b) => String(a.start || a.date).localeCompare(String(b.start || b.date))).slice(0,3);
+    const upcomingEvents = [...new Map(events.filter(event => eventDate(event) && upcoming(event) && !event.isHoliday).map(event => [event.url,event])).values()].sort((a,b) => String(a.start || a.date).localeCompare(String(b.start || b.date))).slice(0,2);
     home.replaceChildren();
     if (!upcomingEvents.length) { const empty = node('p',t().homeEmpty,'home-events-empty'); home.append(empty); renderMini(); return; }
     for (const event of upcomingEvents) {
@@ -149,7 +150,7 @@
       const date = node('div',dateLabel(event),'event-card__date');
       const info = node('div'); info.append(node('h3',event.title || t().untitled));
       const place = event.city || t().regions[event.region]; if (place) info.append(node('p',place,'event-card__place'));
-      info.append(node('p',timeLabel(event),'event-card__time'));
+      if (timeLabel(event)) info.append(node('p',timeLabel(event),'event-card__time'));
       if (document.documentElement.lang !== 'pl') info.append(node('small',t().fallback,'language-fallback'));
       const button = node('span',t().show,'event-card__button');
       card.addEventListener('click',click => { click.preventDefault(); region = regions.includes(event.region) ? event.region : 'all'; selected = eventDate(event); month = selected.slice(0,7); open(card); const chosen = [...details.querySelectorAll('[data-event-url]')].find(item => item.dataset.eventUrl === event.url); chosen?.click(); chosen?.scrollIntoView({block:'nearest'}); });

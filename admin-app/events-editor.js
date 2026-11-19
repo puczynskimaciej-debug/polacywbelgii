@@ -11,6 +11,8 @@ const statusLabel = status => eventText(status) || statusName[status] || status;
 const label = (key, polish) => eventText(key) || polish;
 const categoryLabel = value => label(`eventCategory${['History','Music'].includes(value) ? 'Inne' : value}`, ['History','Music'].includes(value) ? 'Inne' : value || 'Inne');
 const local = value => value ? new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value)).replace(' ','T') : '';
+const displayDate = value => String(value || '').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3.$2.$1');
+const displayDateTime = value => new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
 function toUtc(value) {
   if (!value) return null;
   const base = Date.parse(`${value}:00Z`);
@@ -53,7 +55,7 @@ function render() {
     actions.push(`<button type="button" class="ghost danger" data-event-action="delete-event" data-id="${row.id}">${label('deleteEvent','Usuń wydarzenie')}</button>`);
     const region = event.region ? label(event.region,event.region) : label('unspecifiedRegion','Nieokreślony');
     const source = row.owner_kind === 'agent' ? label('aiSource','AI Redaktor') : label('editorialSource','Redakcja');
-    const term = event.start ? new Date(event.start).toLocaleString(document.documentElement.lang,{timeZone:'Europe/Brussels'}) : event.date ? `${event.date} · ${label('unknownTime','Godzina nieustalona')}` : label('undated','Termin do ustalenia');
+    const term = event.start ? displayDateTime(event.start) : event.date ? displayDate(event.date) : label('undated','Termin do ustalenia');
     return `<tr><td data-label="${label('colEvent','Wydarzenie')}"><strong>${escapeHtml(row.title || label('untitled','Wydarzenie bez tytułu'))}</strong><span class="table-subtitle">${escapeHtml(categoryLabel(event.category || row.category))}</span></td><td data-label="${label('colDate','Termin')}">${escapeHtml(term)}</td><td data-label="${label('colRegion','Region')}">${escapeHtml(region)}</td><td data-label="${label('colSource','Źródło')}">${escapeHtml(source)}</td><td data-label="${label('colStatus','Status')}">${escapeHtml(statusLabel(row.status))}</td><td data-label="${label('colVerification','Weryfikacja')}">${row.owner_kind === 'agent' ? verification.status === 'verified' ? label('verified','Potwierdzone') : label('needsReview','Do sprawdzenia') : '—'}</td><td data-label="${label('colActions','Akcje')}"><div class="row-actions">${actions.join('')}</div></td></tr>`;
   }).join('')}</tbody></table>` : `<p class="empty-state">${label('empty','Brak wydarzeń w wybranym widoku.')}</p>`;
 }

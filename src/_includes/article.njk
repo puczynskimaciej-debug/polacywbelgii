@@ -14,6 +14,7 @@ pageKey: articles
   </header>
   {% if image %}<div class="single-article__image container"><img src="{{ image }}" alt="" loading="eager"></div>{% endif %}
   <div class="prose container" data-i18n-html="article.{{ page.fileSlug }}.body">{{ content | safe }}</div>
+  <footer class="container"><a class="back-link" href="/artykuly/" data-i18n="articles.back">← Wróć do artykułów</a></footer>
   {% if body_nl %}<template data-article-translation="nl">{{ body_nl | renderMarkdown | safe }}</template>{% endif %}
   {% if body_fr %}<template data-article-translation="fr">{{ body_fr | renderMarkdown | safe }}</template>{% endif %}
   {% if body_en %}<template data-article-translation="en">{{ body_en | renderMarkdown | safe }}</template>{% endif %}

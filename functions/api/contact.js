@@ -1,5 +1,6 @@
 import { currentUser } from '../../cloudflare/auth.mjs';
 import { errorResponse, fail, json, sha256 } from '../../cloudflare/common.mjs';
+import { sendAdEmail } from '../../cloudflare/ad-mail.mjs';
 
 export async function onRequest({ request, env }) {
   try {
@@ -26,6 +27,7 @@ export async function onRequest({ request, env }) {
     const count = await env.DB.prepare('SELECT count(*) AS n FROM contact_messages WHERE ip_hash=? AND created_at>?').bind(ipHash, threshold).first();
     if (count.n >= 5) fail('rateLimit', 429);
     await env.DB.prepare('INSERT INTO contact_messages(id,name,email,subject,message,ip_hash) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(), name, email, subject, message, ipHash).run();
-    return Response.redirect(new URL('/kontakt/?sent=1', request.url), 303);
+    await sendAdEmail(env, { to:env.AD_SMTP_USER, subject:'PolacywBelgii.eu — nowa wiadomość kontaktowa', body:`Nadawca: ${name}\nE-mail: ${email}\nTemat: ${subject}\n\n${message}` });
+    return request.headers.get('accept')?.includes('application/json') ? json({sent:true}) : Response.redirect(new URL('/kontakt/?sent=1', request.url), 303);
   } catch (error) { return errorResponse(error); }
 }
