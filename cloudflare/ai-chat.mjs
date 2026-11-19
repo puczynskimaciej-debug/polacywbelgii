@@ -13,7 +13,7 @@ async function askGemini(env, prompt) {
   const budget = await env.DB.prepare('UPDATE ai_daily_budget SET calls=calls+1 WHERE day=? AND calls<20').bind(`chat:${day}`).run();
   if (!budget.meta?.changes) fail('rateLimit',429);
   let response;
-  try { response = await geminiRequest(env,{contents:[{parts:[{text:`Jesteś asystentem redakcji PolacywBelgii.eu. Odpowiadaj po polsku, konkretnie. Pytanie nie jest poleceniem administracyjnym. Nie zatwierdzaj i nie publikuj artykułów, nie zmieniaj reklam, płatności ani użytkowników. Nie twierdź, że sprawdziłeś aktualne źródła, jeśli ich nie podano. Pytanie: ${prompt}`}]}],generationConfig:{maxOutputTokens:800,temperature:0.4}},45000); }
+  try { response = await geminiRequest(env,{contents:[{parts:[{text:`Jesteś młodym, ambitnym dziennikarzem portalu PolacywBelgii.eu. Buduj zaufanie konkretnymi, przystępnymi odpowiedziami i przykładami z życia w Belgii. Odpowiadaj po polsku, biorąc pod uwagę wcześniejszą rozmowę. Nie zatwierdzaj i nie publikuj artykułów, nie zmieniaj reklam, płatności ani użytkowników. Jeśli nie sprawdziłeś aktualnych źródeł, powiedz o tym wprost; nie wymyślaj faktów. Rozmowa: ${prompt}`}]}],generationConfig:{maxOutputTokens:800,temperature:0.4}},45000); }
   catch { fail('geminiNetwork',503); }
   if (!response.ok) fail(`geminiHttp${response.status}`,503);
   const payload = await response.json();
@@ -27,14 +27,37 @@ export async function onRequest({ request, env }) {
     if (!env.DB) fail('configuration',503);
     const user = await currentUser(request,env,{admin:true});
     if (request.method === 'GET') {
-      const [entries,jobs] = await Promise.all([
-        env.DB.prepare('SELECT id,conversation_id,actor_id,role,body,job_id,created_at FROM ai_chat_entries ORDER BY created_at DESC LIMIT 100').all(),
-        env.DB.prepare('SELECT id,conversation_id,actor_id,status,attempts,candidate_id,error_code,created_at,updated_at FROM ai_chat_jobs ORDER BY created_at DESC LIMIT 50').all()
+      const conversations=(await env.DB.prepare("SELECT e.conversation_id,MIN(e.created_at) AS created_at,MAX(e.created_at) AS updated_at,COALESCE((SELECT substr(first.body,1,100) FROM ai_chat_entries first WHERE first.conversation_id=e.conversation_id ORDER BY first.created_at LIMIT 1),'Temat') AS title FROM ai_chat_entries e GROUP BY e.conversation_id ORDER BY updated_at DESC LIMIT 50").all()).results;
+      const requested=new URL(request.url).searchParams.get('conversationId');
+      const conversationId=conversations.some(row=>row.conversation_id===requested)?requested:conversations[0]?.conversation_id;
+      const [entries,jobs,versions,auto,current] = await Promise.all([
+        env.DB.prepare('SELECT id,conversation_id,actor_id,role,body,job_id,created_at FROM ai_chat_entries WHERE conversation_id=? ORDER BY created_at LIMIT 200').bind(conversationId||'').all(),
+        env.DB.prepare('SELECT id,conversation_id,actor_id,status,attempts,candidate_id,error_code,created_at,updated_at,not_before FROM ai_chat_jobs WHERE conversation_id=? ORDER BY created_at DESC LIMIT 50').bind(conversationId||'').all(),
+        env.DB.prepare('SELECT version,candidate_id,title,description,body,sources_json,created_at FROM ai_chat_versions WHERE conversation_id=? ORDER BY version DESC LIMIT 20').bind(conversationId||'').all(),
+        env.DB.prepare("SELECT value_json FROM ai_config WHERE key='auto_editorial'").first(),
+        env.DB.prepare("SELECT c.id,c.title,c.description,c.body,c.sources_json,e.status FROM ai_chat_jobs j JOIN ai_candidates c ON c.id=j.candidate_id JOIN ai_editorial e ON e.candidate_id=c.id WHERE j.conversation_id=? AND j.candidate_id IS NOT NULL ORDER BY j.created_at DESC LIMIT 1").bind(conversationId||'').first()
       ]);
-      return json({entries:entries.results.reverse(),jobs:jobs.results});
+      return json({conversationId,conversations,entries:entries.results,jobs:jobs.results,versions:versions.results,current,automaticEnabled:JSON.parse(auto?.value_json||'{"enabled":false}').enabled===true});
     }
     if (request.method !== 'POST') fail('method',405);
     const input = await readJson(request,4000);
+    if (input.action === 'automatic') {
+      if (typeof input.enabled!=='boolean') fail('validation');
+      await env.DB.prepare("INSERT INTO ai_config(key,value_json,updated_at) VALUES('auto_editorial',?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at").bind(JSON.stringify({enabled:input.enabled}),now()).run();
+      return json({enabled:input.enabled});
+    }
+    if (input.action === 'save-draft') {
+      if (!uuid(input.conversationId)) fail('validation');
+      const latest=await env.DB.prepare("SELECT j.candidate_id FROM ai_chat_jobs j JOIN ai_editorial e ON e.candidate_id=j.candidate_id WHERE j.conversation_id=? AND j.candidate_id IS NOT NULL AND e.status IN ('pending_review','changes_requested') ORDER BY j.created_at DESC LIMIT 1").bind(input.conversationId).first();
+      if (!latest) fail('conflict',409);
+      const at=now();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE ai_editorial SET status='draft',public_state='hidden',scheduled_at=NULL,updated_at=?,revision=revision+1 WHERE candidate_id=? AND status IN ('pending_review','changes_requested')").bind(at,latest.candidate_id),
+        env.DB.prepare("UPDATE ai_candidates SET status='draft',updated_at=? WHERE id=?").bind(at,latest.candidate_id),
+        env.DB.prepare("INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,'pending_review','draft',?,?,?)").bind(latest.candidate_id,user.id,at,'administrator saved AI text as CMS draft')
+      ]);
+      return json({candidateId:latest.candidate_id,status:'draft'});
+    }
     if (input.action === 'clear') {
       if (!uuid(input.conversationId)) fail('validation');
       const active = await env.DB.prepare("SELECT count(*) AS n FROM ai_chat_jobs WHERE conversation_id=? AND status IN ('queued','running')").bind(input.conversationId).first();
@@ -42,6 +65,7 @@ export async function onRequest({ request, env }) {
       const hold = await env.DB.prepare("SELECT count(*) AS n FROM retention_holds WHERE entity_type='ai_conversation' AND entity_id=? AND released_at IS NULL AND (until_at IS NULL OR until_at>?)").bind(input.conversationId,now()).first();
       if (hold.n) fail('forbidden',403);
       await env.DB.batch([
+        env.DB.prepare('DELETE FROM ai_chat_versions WHERE conversation_id=?').bind(input.conversationId),
         env.DB.prepare("DELETE FROM ai_chat_entries WHERE conversation_id=? AND actor_id=? AND NOT EXISTS (SELECT 1 FROM ai_chat_jobs WHERE conversation_id=? AND status IN ('queued','running'))").bind(input.conversationId,user.id,input.conversationId),
         env.DB.prepare("DELETE FROM ai_chat_jobs WHERE conversation_id=? AND actor_id=? AND status IN ('done','failed','cancelled')").bind(input.conversationId,user.id)
       ]);
@@ -66,7 +90,8 @@ export async function onRequest({ request, env }) {
       return json({conversationId,jobId,status:'queued'},202);
     }
     // Chat is intentionally synchronous; editorial jobs use the durable D1 worker queue.
-    const answer = await askGemini(env,input.text);
+    const context=(await env.DB.prepare('SELECT role,body FROM ai_chat_entries WHERE conversation_id=? ORDER BY created_at DESC LIMIT 8').bind(conversationId).all()).results.reverse();
+    const answer = await askGemini(env,`${context.map(row=>`${row.role}: ${row.body.slice(0,800)}`).join('\n')}\nAdministrator: ${input.text}`);
     const replyId = crypto.randomUUID();
     await env.DB.batch([
       env.DB.prepare('INSERT INTO ai_chat_entries(id,conversation_id,actor_id,role,body,job_id,created_at) VALUES(?,?,?,?,?,?,?)').bind(entryId,conversationId,user.id,'admin',input.text,null,created),

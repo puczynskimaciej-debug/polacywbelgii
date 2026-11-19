@@ -6,6 +6,7 @@ workers_dev = false
 
 [vars]
 GEMINI_FREE_TIER_CONFIRMED = "1"
+AI_AUTOMATION_ENABLED = "1"
 
 [triggers]
 crons = ["* * * * *"]

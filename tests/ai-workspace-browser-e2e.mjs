@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { chromium } from 'playwright-core';
+import { localD1Path } from '../agent/local-db.mjs';
+import { hashPassword } from '../cloudflare/auth.mjs';
+
+const origin=process.env.LOCAL_CMS_ORIGIN||'http://127.0.0.1:8899';
+const db=new DatabaseSync(localD1Path());
+db.exec('PRAGMA busy_timeout=5000');
+const id=randomUUID(),conversationId=randomUUID(),jobId=randomUUID(),candidateId=randomBytes(10).toString('hex');
+const email=`ai-ui-${id}@example.invalid`,password=randomBytes(32).toString('base64url'),at=new Date().toISOString();
+const originalAuto=db.prepare("SELECT value_json FROM ai_config WHERE key='auto_editorial'").get()?.value_json;
+let browser;
+try {
+  db.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(id,email,'AI UI E2E',await hashPassword(password),'admin');
+  db.prepare("INSERT INTO ai_candidates(id,kind,status,title,description,body,category,region,sources_json,verification_json,ai_generated,created_at,updated_at) VALUES(?,'article','pending_review',?,?,?,'Życie w Belgii','all',?,'{\"status\":\"needs_review\"}',1,?,?)").run(candidateId,'Praktyczny przewodnik po Brukseli','Informacje o komunikacji w Brukseli.','## Transport\n\nPodróżni korzystają z metra i tramwajów.','[{"url":"https://en.wikipedia.org/wiki/Transport_in_Brussels"}]',at,at);
+  db.prepare("INSERT INTO ai_editorial(candidate_id,status,owner_kind,owner_id,updated_at) VALUES(?,'pending_review','agent',?,?)").run(candidateId,id,at);
+  db.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,candidate_id,created_at,updated_at) VALUES(?,?,?,'Napisz o komunikacji w Brukseli','done',?,?,?)").run(jobId,conversationId,id,candidateId,at,at);
+  db.prepare("INSERT INTO ai_chat_entries(id,conversation_id,actor_id,role,body,job_id,created_at) VALUES(?,?,?,'admin','Napisz o komunikacji w Brukseli',?,?)").run(randomUUID(),conversationId,id,jobId,at);
+  db.prepare('INSERT INTO ai_chat_versions(conversation_id,candidate_id,job_id,version,title,description,body,sources_json,created_at) VALUES(?,?,?,1,?,?,?,?,?)').run(conversationId,candidateId,jobId,'Praktyczny przewodnik po Brukseli','Informacje o komunikacji w Brukseli.','## Transport\n\nPodróżni korzystają z metra i tramwajów.','[{"url":"https://en.wikipedia.org/wiki/Transport_in_Brussels"}]',at);
+  browser=await chromium.launch({executablePath:process.env.BROWSER_PATH||'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',headless:true});
+  const page=await browser.newPage({viewport:{width:1366,height:768}});
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(`${origin}/admin/`);
+  await page.locator('#login-form [name="email"]').fill(email);
+  await page.locator('#login-form [name="password"]').fill(password);
+  await page.locator('#login-form [type="submit"]').click();
+  await page.locator('#app-view').waitFor({state:'visible'});
+  await page.locator('.nav-item[data-view="ai-editor"]').click();
+  await page.locator('#ai-conversations .ai-topic').first().waitFor();
+  assert.match(await page.locator('#ai-article-preview').innerText(),/Praktyczny przewodnik po Brukseli/);
+  assert.equal(await page.locator('[data-panel="ai-editor"] .settings-panel').isVisible(),false);
+  await page.locator('#ai-automatic').check();
+  await page.waitForFunction(()=>document.querySelector('#ai-chat-notice').textContent.includes('włączone'));
+  assert.equal(JSON.parse(db.prepare("SELECT value_json FROM ai_config WHERE key='auto_editorial'").get().value_json).enabled,true);
+  await page.locator('#ai-save-draft').click();
+  await page.waitForFunction(()=>document.querySelector('#ai-chat-notice').textContent.includes('Szkic zapisano'));
+  assert.equal(db.prepare('SELECT status FROM ai_editorial WHERE candidate_id=?').get(candidateId).status,'draft');
+  assert.deepEqual(errors,[]);
+  console.log('AI workspace browser: conversations, preview, automatic switch, draft save OK');
+} finally {
+  await browser?.close();
+  db.prepare("UPDATE ai_config SET value_json=? WHERE key='auto_editorial'").run(originalAuto||'{"enabled":false}');
+  db.prepare('DELETE FROM ai_chat_versions WHERE conversation_id=?').run(conversationId);
+  db.prepare('DELETE FROM ai_chat_entries WHERE conversation_id=?').run(conversationId);
+  db.prepare('DELETE FROM ai_chat_jobs WHERE conversation_id=?').run(conversationId);
+  db.prepare('DELETE FROM ai_candidate_history WHERE candidate_id=?').run(candidateId);
+  db.prepare('DELETE FROM ai_editorial WHERE candidate_id=?').run(candidateId);
+  db.prepare('DELETE FROM ai_candidates WHERE id=?').run(candidateId);
+  db.prepare('DELETE FROM cms_sessions WHERE user_id=?').run(id);
+  db.prepare('DELETE FROM cms_audit WHERE actor_id=?').run(id);
+  db.prepare('DELETE FROM cms_users WHERE id=?').run(id);
+  db.close();
+}

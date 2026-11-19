@@ -8,6 +8,7 @@ import domain from '../server/ads-domain.js';
 import { handleAds } from '../cloudflare/ads.mjs';
 import { translateAd } from '../cloudflare/ad-translation.mjs';
 import { processChatJobs } from '../cloudflare/ai-chat-worker.mjs';
+import { queueMorning } from '../cloudflare/ai-morning.mjs';
 import { onRequest as aiChatRoute } from '../cloudflare/ai-chat.mjs';
 import { onRequest as aiEditorRoute } from '../cloudflare/ai-editor.mjs';
 import { sha256 } from '../cloudflare/common.mjs';
@@ -16,7 +17,7 @@ import { publicEntry, publicEntries } from '../cloudflare/public-pages.mjs';
 globalThis.crypto ??= webcrypto;
 function database() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','agent/migrations/001_agent.sql','agent/migrations/002_editorial.sql','agent/migrations/003_content.sql','agent/migrations/004_discovery.sql','agent/migrations/005_chat.sql','agent/migrations/006_article_fields.sql','agent/migrations/007_article_publication.sql','deploy/cloudflare-d1-0004-retention.sql']) sqlite.exec(readFileSync(new URL(`../${file}`,import.meta.url),'utf8'));
+  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','agent/migrations/001_agent.sql','agent/migrations/002_editorial.sql','agent/migrations/003_content.sql','agent/migrations/004_discovery.sql','agent/migrations/005_chat.sql','agent/migrations/006_article_fields.sql','agent/migrations/007_article_publication.sql','agent/migrations/008_ai_conversations.sql','deploy/cloudflare-d1-0004-retention.sql']) sqlite.exec(readFileSync(new URL(`../${file}`,import.meta.url),'utf8'));
   const prepare = (sql,params=[])=>({bind(...next){return prepare(sql,next);},async first(){return sqlite.prepare(sql).get(...params) || null;},async all(){return {results:sqlite.prepare(sql).all(...params)};},async run(){const result=sqlite.prepare(sql).run(...params);return {meta:{changes:result.changes}};}});
   return {sqlite,prepare,async batch(statements){sqlite.exec('BEGIN');try{const values=[];for(const statement of statements)values.push(await statement.run());sqlite.exec('COMMIT');return values;}catch(error){sqlite.exec('ROLLBACK');throw error;}}};
 }
@@ -101,17 +102,18 @@ test('durable article job reaches pending_review once and stays nonpublic',async
   assert.equal(await publicEntry(DB,`ai-${row.candidate_id}`),null);
 });
 
-test('article job can discover and verify an official source without a supplied URL',async()=>{
-  const DB=database(),jobId=randomUUID(),conversationId=randomUUID(),url='https://www.gov.pl/web/belgia/aktualnosci',at=new Date().toISOString();
+test('article job searches news and verifies a non-official source without a supplied URL',async()=>{
+  const DB=database(),jobId=randomUUID(),conversationId=randomUUID(),url='https://example.be/praca-w-belgii',at=new Date().toISOString();
   DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(jobId,conversationId,'editor','Napisz artykuł o paszporcie dla dorosłych w Belgii',at,at);
   const quote='Wniosek o wydanie paszportu możesz złożyć w urzędzie konsularnym.';
-  const output={title:'Paszport dla dorosłych w Belgii',description:'Informacje urzędowe dla osób składających wniosek o paszport.',body:`${'Wniosek składa się w urzędzie konsularnym. '.repeat(25)}\n\nŹródło: ${url}`,evidenceQuotes:[{url,quote}]};
+  const output={title:'Paszport dla dorosłych w Belgii',description:'Praktyczne informacje dla osób składających wniosek o paszport.',body:`${'Wniosek składa się w urzędzie konsularnym. '.repeat(15)}`,evidenceQuotes:[{url,quote}]};
   let calls=0;
   const fetcher=async(endpoint,options)=>{
-    if(endpoint===url)return new Response(`<main>${quote.repeat(10)}</main>`,{headers:{'content-type':'text/html'}});
+    if(endpoint===url)return new Response(`<article>${quote.repeat(10)}</article>`,{headers:{'content-type':'text/html'}});
+    if(String(endpoint).startsWith('https://api.gdeltproject.org/'))return Response.json({articles:[{url,title:'Paszport dla dorosłych w Belgii',seendate:'20261119T070000Z'}]});
     calls++;
-    const discovery=JSON.parse(options.body).generationConfig.maxOutputTokens===400;
-    return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(discovery?{urls:[url]}:output)}]}}]});
+    const discovery=JSON.parse(options.body).generationConfig.maxOutputTokens===180;
+    return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(discovery?{queries:['Belgium passport application']}:output)}]}}]});
   };
   const result=await processChatJobs({DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'},{fetcher});
   assert.equal(result.status,'done');assert.equal(calls,2);
@@ -143,9 +145,46 @@ test('Polish population request without links uses official statistics and disti
   assert.equal(result.status,'done');assert.equal(geminiCalls,1);
   assert.ok(requestPrompt.includes('65705'));assert.ok(requestPrompt.includes('121946'));
   const candidate=DB.sqlite.prepare('SELECT status,sources_json,verification_json FROM ai_candidates WHERE id=?').get(result.candidateId);
-  assert.equal(candidate.status,'pending_review');assert.equal(JSON.parse(candidate.sources_json).length,3);
+  assert.equal(candidate.status,'pending_review');assert.equal(JSON.parse(candidate.sources_json).length,2);
   assert.equal(JSON.parse(candidate.verification_json).evidenceQuotes.length,2);
   assert.equal(await publicEntry(DB,`ai-${result.candidateId}`),null);
+});
+
+test('follow-up edits the same unpublished article and records both full versions',async()=>{
+  const DB=database(),conversationId=randomUUID(),url='https://example.be/zycie',at=new Date().toISOString();
+  const source='W Belgii dostępność mieszkań zależy od lokalizacji, ceny i rodzaju umowy najmu.';
+  const fetcher=async endpoint=>endpoint===url
+    ? new Response(`<article>${source.repeat(12)}</article>`,{headers:{'content-type':'text/html'}})
+    : Response.json({candidates:[{content:{parts:[{text:JSON.stringify({title:'Mieszkanie po przeprowadzce do Belgii',description:'Praktyczne porady o wynajmie mieszkania po przyjeździe do Belgii.',body:'Najem mieszkania wymaga sprawdzenia umowy i lokalizacji. '.repeat(12),evidenceQuoteIds:['0:0']})}]}}]});
+  const env={DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'};
+  for(const prompt of [`Napisz o wynajmie mieszkań ${url}`,`Dodaj więcej przykładów o umowach ${url}`]){
+    DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(randomUUID(),conversationId,'editor',prompt,at,at);
+    assert.equal((await processChatJobs(env,{fetcher})).status,'done');
+  }
+  assert.equal(DB.sqlite.prepare('SELECT count(DISTINCT candidate_id) AS n FROM ai_chat_jobs WHERE conversation_id=?').get(conversationId).n,1);
+  assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_chat_versions WHERE conversation_id=?').get(conversationId).n,2);
+  assert.equal(DB.sqlite.prepare("SELECT status FROM ai_editorial WHERE candidate_id=(SELECT candidate_id FROM ai_chat_jobs WHERE conversation_id=? LIMIT 1)").get(conversationId).status,'pending_review');
+});
+
+test('Gemini quota keeps article queued without consuming its retry allowance',async()=>{
+  const DB=database(),jobId=randomUUID(),at=new Date().toISOString();
+  DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?)").run(jobId,randomUUID(),'editor','Napisz o belgijskich kosztach życia',at,at);
+  const result=await processChatJobs({DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'},{fetcher:async()=>new Response('{}',{status:429})});
+  assert.equal(result.status,'waiting_quota');
+  const job=DB.sqlite.prepare('SELECT status,attempts,not_before FROM ai_chat_jobs WHERE id=?').get(jobId);
+  assert.equal(job.status,'queued');assert.equal(job.attempts,0);assert.ok(Date.parse(job.not_before)>Date.now());
+});
+
+test('morning scheduler creates three distinct unpublished topics once',async()=>{
+  const DB=database(),at=new Date('2026-11-19T06:00:00Z');
+  DB.sqlite.prepare("INSERT INTO ai_config(key,value_json,updated_at) VALUES('auto_editorial',?,?)").run(JSON.stringify({enabled:true}),at.toISOString());
+  const fetcher=async url=>{const term=new URL(url).searchParams.get('query');return Response.json({articles:[{url:`https://example.be/${encodeURIComponent(term)}`,title:`Belgium: ${term} — praktyczny temat`,seendate:'20261119T050000Z'}]});};
+  const env={DB,AI_AUTOMATION_ENABLED:'1'};
+  assert.deepEqual(await queueMorning(env,{fetcher,at}),{status:'queued',count:3});
+  assert.equal((await queueMorning(env,{fetcher,at})).status,'already_queued');
+  assert.equal(DB.sqlite.prepare("SELECT count(*) AS n FROM ai_chat_jobs WHERE status='queued'").get().n,3);
+  assert.equal(DB.sqlite.prepare('SELECT count(DISTINCT conversation_id) AS n FROM ai_chat_jobs').get().n,3);
+  assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_candidates').get().n,0);
 });
 
 test('authenticated CMS chat stores both messages and rejects unauthenticated access',async()=>{

@@ -10,7 +10,7 @@ const { onRequest: retentionRequest } = await import(`data:text/javascript;base6
 
 function database() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','deploy/cloudflare-d1-0003-stripe.sql','agent/migrations/005_chat.sql','deploy/cloudflare-d1-0004-retention.sql','deploy/cloudflare-d1-0005-security-log-holds.sql']) sqlite.exec(readFileSync(file,'utf8'));
+  for (const file of ['deploy/cloudflare-d1.sql','deploy/cloudflare-d1-0002.sql','deploy/cloudflare-d1-0003-stripe.sql','agent/migrations/005_chat.sql','agent/migrations/008_ai_conversations.sql','deploy/cloudflare-d1-0004-retention.sql','deploy/cloudflare-d1-0005-security-log-holds.sql']) sqlite.exec(readFileSync(file,'utf8'));
   const statement = (sql,values=[]) => ({
     bind(...next) { return statement(sql,next); },
     first() { return Promise.resolve(sqlite.prepare(sql).get(...values) || null); },
@@ -36,6 +36,7 @@ test('retention dry run, holds, closed cases, legal preservation and idempotency
   for(const [id,closed] of [['contact-old',old],['contact-open',null],['contact-held',old]]) insert('INSERT INTO contact_messages(id,name,email,subject,message,ip_hash,created_at,closed_at) VALUES(?,?,?,?,?,?,?,?)',id,'Synthetic','synthetic@example.invalid','Synthetic','Synthetic','hash',old,closed);
   insert("INSERT INTO retention_holds(entity_type,entity_id,reason_code) VALUES('contact','contact-held','complaint')");
   for(const [id,conversation] of [['entry-old','conv-old'],['entry-running','conv-running'],['entry-held','conv-held']]) insert('INSERT INTO ai_chat_entries(id,conversation_id,actor_id,role,body,created_at) VALUES(?,?,?,\'admin\',\'Synthetic\',?)',id,conversation,user,old);
+  for(const [conversation,job] of [['conv-old','old-version-job'],['conv-running','running-version-job'],['conv-held','held-version-job']]) insert('INSERT INTO ai_chat_versions(conversation_id,candidate_id,job_id,version,title,description,body,sources_json,created_at) VALUES(?,?,?,1,?,?,?,?,?)',conversation,'candidate',job,'Synthetic','Synthetic','Synthetic','[]',old);
   insert("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,created_at,updated_at) VALUES('job-running','conv-running',?,'Synthetic','running',?,?)",user,old,old);
   insert("INSERT INTO retention_holds(entity_type,entity_id,reason_code) VALUES('ai_conversation','conv-held','dispute')");
   insert('INSERT INTO cms_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)','expired-session',user,old);
@@ -51,7 +52,7 @@ test('retention dry run, holds, closed cases, legal preservation and idempotency
   const before=db.sqlite.prepare('SELECT count(*) n FROM contact_messages').get().n;
   const preview=await runRetention(env,{dryRun:true,at});
   assert.equal(preview.counts.contact,1);
-  assert.equal(preview.counts.ai_history,1);
+  assert.equal(preview.counts.ai_history,2);
   assert.equal(preview.counts.sessions,1);
   assert.equal(preview.counts.unpaid_orders,1);
   assert.equal(preview.counts.paid_orders,0);
@@ -65,6 +66,8 @@ test('retention dry run, holds, closed cases, legal preservation and idempotency
   assert.equal(db.sqlite.prepare("SELECT count(*) n FROM ad_payment_events WHERE group_id='paid-old'").get().n,1);
   assert.equal(db.sqlite.prepare("SELECT count(*) n FROM contact_messages WHERE id='contact-held'").get().n,1);
   assert.equal(db.sqlite.prepare("SELECT count(*) n FROM ai_chat_entries WHERE id='entry-running'").get().n,1);
+  assert.equal(db.sqlite.prepare("SELECT count(*) n FROM ai_chat_versions WHERE conversation_id='conv-old'").get().n,0);
+  assert.equal(db.sqlite.prepare("SELECT count(*) n FROM ai_chat_versions WHERE conversation_id='conv-held'").get().n,1);
   assert.deepEqual(db.sqlite.prepare('PRAGMA foreign_key_check').all(),[]);
   const again=await runRetention(env,{at});
   assert.equal(again.counts.contact,0);

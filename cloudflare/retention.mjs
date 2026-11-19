@@ -28,6 +28,9 @@ function aiEntryWhere() {
 function aiJobWhere() {
   return `created_at<? AND status IN ${terminalJobs} AND NOT EXISTS (SELECT 1 FROM retention_holds h WHERE h.entity_type='ai_conversation' AND h.entity_id=ai_chat_jobs.conversation_id AND ${activeHold})`;
 }
+function aiVersionWhere() {
+  return `created_at<? AND NOT EXISTS (SELECT 1 FROM ai_chat_jobs j WHERE j.conversation_id=ai_chat_versions.conversation_id AND j.status IN ('queued','running')) AND NOT EXISTS (SELECT 1 FROM retention_holds h WHERE h.entity_type='ai_conversation' AND h.entity_id=ai_chat_versions.conversation_id AND ${activeHold})`;
+}
 
 async function eligibleOrderGroups(db, rules, at) {
   if (rules.unpaid_orders === null && rules.paid_orders === null) return [];
@@ -60,7 +63,8 @@ export async function previewRetention(db, at = new Date().toISOString()) {
   if (rules.ai_history !== null) {
     const limit = cutoff(at,rules.ai_history);
     result.ai_history = await count(db,`SELECT count(*) n FROM ai_chat_entries WHERE ${aiEntryWhere()}`,limit,at)
-      + await count(db,`SELECT count(*) n FROM ai_chat_jobs WHERE ${aiJobWhere()}`,limit,at);
+      + await count(db,`SELECT count(*) n FROM ai_chat_jobs WHERE ${aiJobWhere()}`,limit,at)
+      + await count(db,`SELECT count(*) n FROM ai_chat_versions WHERE ${aiVersionWhere()}`,limit,at);
   }
   if (rules.sessions !== null) result.sessions = await count(db,'SELECT count(*) n FROM cms_sessions WHERE expires_at<?',cutoff(at,rules.sessions));
   if (rules.security_logs !== null) {
@@ -101,9 +105,11 @@ export async function runRetention(env, { dryRun = false, at = new Date().toISOS
       const limit = cutoff(at,rules.ai_history);
       const entries = await ids(db,`SELECT id FROM ai_chat_entries WHERE ${aiEntryWhere()} LIMIT 100`,limit,at);
       totals.ai_history += await removeSelected(db,'ai_chat_entries',entries,aiEntryWhere(),[limit,at]);
+      const versions = await ids(db,`SELECT id FROM ai_chat_versions WHERE ${aiVersionWhere()} LIMIT 100`,limit,at);
+      totals.ai_history += await removeSelected(db,'ai_chat_versions',versions,aiVersionWhere(),[limit,at]);
       const jobs = await ids(db,`SELECT id FROM ai_chat_jobs WHERE ${aiJobWhere()} LIMIT 100`,limit,at);
       totals.ai_history += await removeSelected(db,'ai_chat_jobs',jobs,aiJobWhere(),[limit,at]);
-      if (entries.length || jobs.length) await q(db,"DELETE FROM retention_holds WHERE entity_type='ai_conversation' AND (released_at IS NOT NULL OR until_at<=?) AND NOT EXISTS (SELECT 1 FROM ai_chat_entries e WHERE e.conversation_id=retention_holds.entity_id) AND NOT EXISTS (SELECT 1 FROM ai_chat_jobs j WHERE j.conversation_id=retention_holds.entity_id)",at).run();
+      if (entries.length || versions.length || jobs.length) await q(db,"DELETE FROM retention_holds WHERE entity_type='ai_conversation' AND (released_at IS NOT NULL OR until_at<=?) AND NOT EXISTS (SELECT 1 FROM ai_chat_entries e WHERE e.conversation_id=retention_holds.entity_id) AND NOT EXISTS (SELECT 1 FROM ai_chat_jobs j WHERE j.conversation_id=retention_holds.entity_id) AND NOT EXISTS (SELECT 1 FROM ai_chat_versions v WHERE v.conversation_id=retention_holds.entity_id)",at).run();
     }
     if (rules.sessions !== null) {
       const selected = await ids(db,'SELECT token_hash AS id FROM cms_sessions WHERE expires_at<? LIMIT 100',cutoff(at,rules.sessions));
