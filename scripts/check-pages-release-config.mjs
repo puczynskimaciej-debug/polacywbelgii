@@ -2,7 +2,7 @@
 import {readFileSync} from 'node:fs';
 
 const expected={
-  test:{file:'wrangler.toml',name:'polacywbelgii-test',database:'polacywbelgii-test',id:'76deb616-3e1d-4a64-9c68-7275336a91d4',stripe:'1',live:'0',gemini:'0'},
+  test:{file:'wrangler.toml',name:'polacywbelgii-test',database:'polacywbelgii-test',id:'76deb616-3e1d-4a64-9c68-7275336a91d4',stripe:'1',live:'0',gemini:'1'},
   production:{file:'wrangler.production.toml',name:'polacywbelgii',database:'polacywbelgii-preview',id:'be9435a1-b3ff-41dc-b70d-6f79f768d887',stripe:'0',live:'1',gemini:'1'}
 };
 const activeProduction=process.argv.includes('--active-production');
