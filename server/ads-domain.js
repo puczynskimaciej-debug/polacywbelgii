@@ -12,10 +12,21 @@ function dates(start, end) {
   if (count < 1 || count > 366) fail('dates');
   return Array.from({ length: count }, (_, i) => new Date(Date.parse(start) + i * DAY).toISOString().slice(0, 10));
 }
-function defaults() { return { types: { TOP: { capacity: 5 }, STANDARD: { capacity: 30 }, PREMIUM: { capacity: 2 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0, PREMIUM: 0 } }])) , capacityOverrides: {} }; }
+const placeholderCopy = {
+  pl: { title:'Twoja reklama może być tutaj!', description:'Dotrzyj do Polaków mieszkających i pracujących w Belgii.', image:'' },
+  nl: { title:'Jouw advertentie kan hier staan!', description:'Bereik Polen die in België wonen en werken.', image:'' },
+  fr: { title:'Votre publicité peut être ici !', description:'Touchez les Polonais qui vivent et travaillent en Belgique.', image:'' }
+};
+function defaultDisplay() { return { STANDARD:{ visible:5, seconds:5 }, TOP:{ visible:2, seconds:5 }, PREMIUM:{ maxItems:2, seconds:5, placeholder:{ enabled:true, locales:structuredClone(placeholderCopy) } } }; }
+function defaults() { return { types: { TOP: { capacity: 5 }, STANDARD: { capacity: 30 }, PREMIUM: { capacity: 2 } }, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { enabled: false, currency: 'EUR', prices: { TOP: 0, STANDARD: 0, PREMIUM: 0 } }])) , capacityOverrides: {}, display:defaultDisplay() }; }
 function normalizeSettings(value) {
   const base = defaults();
-  return { types: base.types, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { ...base.markets[language], ...value?.markets?.[language], prices: { ...base.markets[language].prices, ...value?.markets?.[language]?.prices } }])), capacityOverrides: value?.capacityOverrides && typeof value.capacityOverrides === 'object' ? value.capacityOverrides : {} };
+  const display = value?.display || {};
+  return { types: base.types, markets: Object.fromEntries(Object.keys(languages).map(language => [language, { ...base.markets[language], ...value?.markets?.[language], prices: { ...base.markets[language].prices, ...value?.markets?.[language]?.prices } }])), capacityOverrides: value?.capacityOverrides && typeof value.capacityOverrides === 'object' ? value.capacityOverrides : {}, display:{
+    STANDARD:{ ...base.display.STANDARD, ...display.STANDARD },
+    TOP:{ ...base.display.TOP, ...display.TOP },
+    PREMIUM:{ ...base.display.PREMIUM, ...display.PREMIUM, placeholder:{ ...base.display.PREMIUM.placeholder, ...display.PREMIUM?.placeholder, locales:Object.fromEntries(['pl','nl','fr'].map(language => [language,{ ...base.display.PREMIUM.placeholder.locales[language], ...display.PREMIUM?.placeholder?.locales?.[language] }])) } }
+  } };
 }
 const capacityKey = (language, type, date) => `${language}:${type}:${date}`;
 function capacityForDate(settings, language, type, date) {
@@ -95,6 +106,16 @@ function availabilityWindow(orders, settings, language, type, startAt, endAt, ex
 }
 function validateSettings(value) {
   const result = defaults();
+  const display = normalizeSettings(value).display;
+  for (const type of ['STANDARD','TOP']) {
+    if (!Number.isSafeInteger(display[type].visible) || display[type].visible < 1 || display[type].visible > result.types[type].capacity) fail('settings');
+    if (!Number.isSafeInteger(display[type].seconds) || display[type].seconds < 1 || display[type].seconds > 120) fail('settings');
+  }
+  if (!Number.isSafeInteger(display.PREMIUM.maxItems) || display.PREMIUM.maxItems < 1 || display.PREMIUM.maxItems > result.types.PREMIUM.capacity || !Number.isSafeInteger(display.PREMIUM.seconds) || display.PREMIUM.seconds < 1 || display.PREMIUM.seconds > 120 || typeof display.PREMIUM.placeholder.enabled !== 'boolean') fail('settings');
+  for (const locale of Object.values(display.PREMIUM.placeholder.locales)) {
+    if (typeof locale.title !== 'string' || !locale.title.trim() || locale.title.length > 100 || typeof locale.description !== 'string' || locale.description.length > 250 || typeof locale.image !== 'string' || locale.image.length > 500 || locale.image && !/^\/images\/[a-zA-Z0-9/_-]+\.(?:svg|png|jpe?g|webp|avif)$/.test(locale.image)) fail('settings');
+  }
+  result.display = display;
   for (const language of Object.keys(languages)) {
     const market = value?.markets?.[language];
     if (!market || typeof market.enabled !== 'boolean') fail('settings');

@@ -22,6 +22,21 @@ const moderationButtons = order => {
   return `${canModerate(order) ? `<button class="primary" type="button" data-ad-moderate="approved" data-ad-id="${id}">Akceptuj</button>` : ''}<button class="secondary" type="button" data-ad-decision="changes" data-ad-id="${id}">Poproś o poprawienie</button><button class="secondary" type="button" data-ad-decision="reject" data-ad-id="${id}">${order.source === 'public' ? 'Odrzuć i zwróć pieniądze' : 'Odrzuć'}</button>`;
 };
 const sharedEditButton = order => `<button class="secondary" type="button" data-ad-shared-edit="${escape(order.id)}">Edytuj</button>`;
+function renderDisplaySettings(display) {
+  const form = $('#ads-display-settings');
+  for (const [name,value] of Object.entries({
+    standardVisible:display.STANDARD.visible, standardSeconds:display.STANDARD.seconds,
+    topVisible:display.TOP.visible, topSeconds:display.TOP.seconds,
+    premiumMaxItems:display.PREMIUM.maxItems, premiumSeconds:display.PREMIUM.seconds
+  })) form.elements[name].value = value;
+  form.elements.placeholderEnabled.checked = display.PREMIUM.placeholder.enabled;
+  $('#ads-placeholder-locales').innerHTML = ['pl','nl','fr'].map(language => {
+    const copy = display.PREMIUM.placeholder.locales[language];
+    return `<fieldset><legend>${language.toUpperCase()} · baner portalu</legend><label>Tytuł<input name="placeholder-${language}-title" maxlength="100" required value="${escape(copy.title)}"></label><label>Opis<input name="placeholder-${language}-description" maxlength="250" value="${escape(copy.description)}"></label><label>Grafika z biblioteki (/images/…) <input name="placeholder-${language}-image" list="ads-placeholder-media" maxlength="500" value="${escape(copy.image)}" placeholder="/images/uploads/baner.png"></label></fieldset>`;
+  }).join('');
+  let mediaList = $('#ads-placeholder-media');
+  if (!mediaList) { mediaList = document.createElement('datalist'); mediaList.id = 'ads-placeholder-media'; form.append(mediaList); }
+}
 async function api(action, method = 'GET', body, params = {}) {
   return cmsRequest('ads', { action, ...params }, method, body);
 }
@@ -29,7 +44,13 @@ async function load() {
   $('#ads-notice').textContent = 'Ładowanie…';
   try {
     const [settings, result] = await Promise.all([api('admin-settings'), api('admin-orders')]);
-    configuration = settings; orders = result.orders;
+    configuration = settings; orders = result.orders; renderDisplaySettings(settings.data.display);
+    cmsRequest('cms-content',{path:'src/Images/uploads'}).then(files => {
+      const list = $('#ads-placeholder-media'); if (!list || !Array.isArray(files)) return;
+      list.replaceChildren(...files.filter(file => /\.(?:png|jpe?g|webp|avif)$/i.test(file.name)).map(file => {
+        const option = document.createElement('option'); option.value = `/${file.path.replace(/^src\//,'').replace(/^Images\//,'images/')}`; option.label = file.name; return option;
+      }));
+    }).catch(() => { /* A saved local image path remains editable. */ });
     $('#ads-prices').innerHTML = Object.entries(settings.languages).map(([key, language]) => `<fieldset><legend>${escape(language.name)}</legend><div class="form-grid"><label>Zamówienia<select name="${key}-enabled"><option value="false">Wyłączone</option><option value="true" ${settings.data.markets[key].enabled ? 'selected' : ''}>Włączone</option></select></label>${['TOP', 'STANDARD', 'PREMIUM'].map(type => `<label>${escape(type)} / dzień (EUR)<input name="${key}-${type}" type="number" min="0" max="10000" step="0.01" required value="${settings.data.markets[key].prices[type] / 100}"></label>`).join('')}</div><p>PREMIUM: 0 EUR wyłącza publiczne zamówienia tego miejsca.</p></fieldset>`).join('');
     await Promise.all(Object.keys(settings.languages).map(async (language, index) => {
       const occupancy = await Promise.all(['PREMIUM', 'TOP', 'STANDARD'].map(async type => {
@@ -191,6 +212,28 @@ $('#ads-settings').onsubmit = async event => {
     const saved = await api('admin-settings', 'PUT', { data, version: configuration.version }); configuration = { ...configuration, ...saved };
     $('#ads-notice').textContent = 'Cennik zapisany. Obowiązuje od razu. Istniejące zamówienia zachowują ceny.';
   } catch (error) { $('#ads-notice').textContent = errorText(error); } finally { button.disabled = false; }
+};
+$('#ads-display-settings').onsubmit = async event => {
+  event.preventDefault(); if (!configuration) return;
+  const button = event.submitter; button.disabled = true;
+  const notice = $('#ads-display-notice'); notice.textContent = '';
+  try {
+    const values = Object.fromEntries(new FormData(event.target));
+    const data = structuredClone(configuration.data);
+    data.display.STANDARD = { visible:Number(values.standardVisible), seconds:Number(values.standardSeconds) };
+    data.display.TOP = { visible:Number(values.topVisible), seconds:Number(values.topSeconds) };
+    data.display.PREMIUM.maxItems = Number(values.premiumMaxItems);
+    data.display.PREMIUM.seconds = Number(values.premiumSeconds);
+    data.display.PREMIUM.placeholder.enabled = values.placeholderEnabled === 'on';
+    for (const language of ['pl','nl','fr']) data.display.PREMIUM.placeholder.locales[language] = {
+      title:values[`placeholder-${language}-title`].trim(),
+      description:values[`placeholder-${language}-description`].trim(),
+      image:values[`placeholder-${language}-image`].trim()
+    };
+    const saved = await api('admin-settings','PUT',{ data, version:configuration.version });
+    configuration = { ...configuration, ...saved };
+    notice.textContent = 'Ustawienia wyświetlania zapisano. Strona odczyta je bez nowego wdrożenia.';
+  } catch (error) { notice.textContent = errorText(error); } finally { button.disabled = false; }
 };
 async function showCapacity() {
   const values = Object.fromEntries(new FormData($('#ads-capacity')));

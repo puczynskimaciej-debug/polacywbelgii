@@ -403,7 +403,7 @@ export async function handleAds({ request, env }, { fetcher = fetch, mailer = se
           return { date, ...counts, capacity: availability.capacity, used: availability.used, remaining: availability.remaining };
         }) });
       }
-      if (action === 'public') return new Response(JSON.stringify({ ads: publicAds(await orders(env.DB), query.get('language')) }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+      if (action === 'public') return new Response(JSON.stringify({ ads: publicAds(await orders(env.DB), query.get('language')), display: current.data.display }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       if (action === 'availability' || action === 'admin-availability') {
         const input = Object.fromEntries(query);
         const price = domain.quote(current.data, input, domain.today(), true);

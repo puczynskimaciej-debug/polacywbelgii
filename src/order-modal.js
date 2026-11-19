@@ -149,7 +149,12 @@
     try {
       if (bitmap.width < 100 || bitmap.height < 100 || bitmap.width * bitmap.height > 40_000_000) throw new Error('imageError');
       const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-      const context = canvas.getContext('2d'); context.fillStyle = '#eef3f7'; context.fillRect(0,0,width,height);
+      const context = canvas.getContext('2d'); context.fillStyle = '#102846'; context.fillRect(0,0,width,height);
+      const coverScale = Math.max(width / bitmap.width, height / bitmap.height);
+      const coverWidth = bitmap.width * coverScale, coverHeight = bitmap.height * coverScale;
+      context.save(); context.filter = 'blur(24px) brightness(.65)';
+      context.drawImage(bitmap, (width - coverWidth) / 2 - 24, (height - coverHeight) / 2 - 24, coverWidth + 48, coverHeight + 48);
+      context.restore();
       const scale = Math.min(width / bitmap.width, height / bitmap.height);
       const fittedWidth = Math.round(bitmap.width * scale), fittedHeight = Math.round(bitmap.height * scale);
       context.drawImage(bitmap, Math.round((width - fittedWidth) / 2), Math.round((height - fittedHeight) / 2), fittedWidth, fittedHeight);

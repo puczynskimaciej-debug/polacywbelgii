@@ -53,7 +53,7 @@
     if (link.tagName === 'BUTTON') { link.type = 'button'; link.onclick = () => showDetail(ad, link); }
     else if (url) { link.href = url; link.rel = 'sponsored noopener noreferrer'; link.target = '_blank'; }
     link.append(window.buildAdCreative(ad));
-    if (ad.image) link.append(element('small', `${ad.isDemo ? 'DEMO' : t('sponsored')}${ad.company ? ` · ${ad.company}` : ''}`), element('h3', ad.title), element('p', ad.description));
+    if (ad.image) link.append(element('small', ad.isDemo ? 'DEMO' : t('sponsored')));
     item.append(link); return item;
   }
   function premiumCard(ad) {
@@ -71,14 +71,26 @@
     fr: { title: 'Votre publicité pourrait être ici', description: 'Présentez votre offre aux Polonais de Belgique.', action: 'Commander une annonce' },
     en: { title: 'Your ad could be here', description: 'Show your offer to Poles in Belgium.', action: 'Place an ad' }
   };
+  let displaySettings = {
+    STANDARD:{visible:5,seconds:5}, TOP:{visible:2,seconds:5},
+    PREMIUM:{maxItems:2,seconds:5,placeholder:{enabled:true,locales:{}}}
+  };
   function placeholderCard(type) {
-    const copy = placeholderCopy[document.documentElement.lang] || placeholderCopy.pl;
+    const language = document.documentElement.lang;
+    const copy = type === 'PREMIUM' ? displaySettings.PREMIUM.placeholder.locales[language] || displaySettings.PREMIUM.placeholder.locales.pl || placeholderCopy[language] || placeholderCopy.pl : placeholderCopy[language] || placeholderCopy.pl;
     const item = element(type === 'PREMIUM' ? 'div' : 'article', '', type === 'PREMIUM' ? 'premium-banner__link ad-placeholder ad-placeholder--premium' : `listing-card ad-placeholder ad-placeholder--${type.toLowerCase()}`);
     const content = element('div', '', 'ad-placeholder__content');
-    const action = element('a', copy.action, 'ad-placeholder__action');
+    const action = element('a', copy.action || placeholderCopy[language]?.action || placeholderCopy.pl.action, 'ad-placeholder__action');
     action.href = '/zamow-ogloszenie/';
     content.append(element('h3', copy.title), element('p', copy.description), action);
-    item.append(content);
+    if (type === 'PREMIUM') {
+      const body = element('div', '', 'ad-placeholder__body');
+      body.append(content);
+      if (copy.image && /^\/images\/[a-zA-Z0-9/_-]+\.(?:svg|png|jpe?g|webp|avif)$/.test(copy.image)) {
+        const image = element('img', '', 'ad-placeholder__image'); image.src = copy.image; image.alt = ''; body.append(image);
+      }
+      item.append(body, element('small',t('sponsored'),'ad-placeholder__label'));
+    } else item.append(content);
     return item;
   }
   let loadedAds = [];
@@ -92,14 +104,19 @@
     for (const type of ['PREMIUM', 'TOP', 'STANDARD']) {
       const list = $(`[data-ad-list="${type}"]`);
       if (!list) continue;
-      const items = regionAds(loadedAds.filter(ad => ad.type === type && (ad.isDemo || (ad.periods?.length ? ad.periods.some(period => Date.parse(period.startAt) <= Date.now() && Date.now() < Date.parse(period.endAt)) : (!ad.actualStartAt || Date.parse(ad.actualStartAt) <= Date.now()) && (!ad.actualEndAt || Date.parse(ad.actualEndAt) > Date.now())))),type);
-      const signature = JSON.stringify([document.documentElement.lang, items]);
+      const eligible = regionAds(loadedAds.filter(ad => ad.type === type && (ad.isDemo || (ad.periods?.length ? ad.periods.some(period => Date.parse(period.startAt) <= Date.now() && Date.now() < Date.parse(period.endAt)) : (!ad.actualStartAt || Date.parse(ad.actualStartAt) <= Date.now()) && (!ad.actualEndAt || Date.parse(ad.actualEndAt) > Date.now())))),type);
+      const items = type === 'PREMIUM' ? eligible.slice(0,displaySettings.PREMIUM.maxItems) : eligible;
+      const signature = JSON.stringify([document.documentElement.lang, items, displaySettings[type]]);
       if (list.dataset.content !== signature) {
-        list.replaceChildren(...(items.length ? items.map(type === 'PREMIUM' ? premiumCard : card) : [placeholderCard(type)])); list.dataset.content = signature;
+        const cards = items.map(type === 'PREMIUM' ? premiumCard : card);
+        if (type === 'PREMIUM' && displaySettings.PREMIUM.placeholder.enabled || type !== 'PREMIUM' && !cards.length) cards.push(placeholderCard(type));
+        if (type === 'PREMIUM' && !cards.length) cards.push(element('div','Brak aktywnych reklam PREMIUM.','premium-banner__link ad-empty'));
+        list.replaceChildren(...cards); list.dataset.content = signature;
+        if (type !== 'PREMIUM') list.style.setProperty('--ad-visible',String(Math.max(1,Math.min(displaySettings[type].visible,cards.length))));
+        list.closest('section').hidden = false;
         if (type === 'PREMIUM') setupPremium(list);
         if (type === 'TOP') setupTop(list);
-        if (type === 'STANDARD' && document.body.dataset.page === 'ads') setupMore(list);
-        if (type === 'STANDARD' && document.body.dataset.page !== 'ads') setupScroller(list, 'STANDARD');
+        if (type === 'STANDARD') { list.classList.add('standard-carousel'); setupScroller(list, 'STANDARD'); }
       }
       if (type !== 'STANDARD') list.closest('section').hidden = false;
       if (type === 'STANDARD') {
@@ -133,41 +150,36 @@
     list.classList.add('premium-rotation');
     list.classList.toggle('premium-rotation--dense',cards.some(card => card.querySelector('.ad-creative--dense')));
     let index = 0;
-    const choose = next => { show(next); startTimer(); };
+    let manualPause = false;
+    const choose = next => { manualPause = true; clearInterval(list._rotation); list._rotation = null; show(next); };
     const show = next => { index = (next + cards.length) % cards.length; cards.forEach((card, i) => { card.classList.toggle('is-current', i === index); card.inert = i !== index; card.setAttribute('aria-hidden', String(i !== index)); }); dots(list, 'PREMIUM', cards.length, index, choose); };
-    const startTimer = () => { clearInterval(list._rotation); if (cards.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) list._rotation = setInterval(() => { if (!document.hidden && !(matchMedia('(hover: hover)').matches && cards[index].matches(':hover')) && !cards[index].contains(document.activeElement) && !detail.open) show(index + 1); }, 5000); };
+    const startTimer = () => { clearInterval(list._rotation); if (!manualPause && cards.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) list._rotation = setInterval(() => { if (!document.hidden && !(matchMedia('(hover: hover)').matches && cards[index].matches(':hover')) && !cards[index].contains(document.activeElement) && !detail.open) show(index + 1); }, displaySettings.PREMIUM.seconds * 1000); };
     show(0);
     startTimer();
   }
   function setupTop(list) {
-    if (list.children.length < 2) { clearInterval(list._rotation); list.parentElement.querySelector('.ad-dots')?.remove(); return; }
     list.classList.add('top-carousel');
+    if (list.children.length < 2) { clearInterval(list._rotation); list.parentElement.querySelector('.ad-dots')?.remove(); return; }
     setupScroller(list, 'TOP');
   }
   function setupScroller(list, label) {
     clearInterval(list._rotation);
     let index = 0;
-    const step = () => list.children.length > 1 ? list.children[1].offsetLeft - list.children[0].offsetLeft : list.clientWidth;
+    let manualPause = false;
+    const step = () => list.children.length > 1 ? Math.max(1,list.children[1].offsetLeft - list.children[0].offsetLeft) : Math.max(1,list.clientWidth);
     const count = () => Math.max(1, Math.round((list.scrollWidth - list.clientWidth) / step()) + 1);
     const move = (next, instant = false) => { index = Math.max(0,Math.min(next,count()-1)); list.scrollTo({ left: index * step(), behavior: instant || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); update(); };
-    const choose = selected => { move(selected); startTimer(); };
+    const choose = selected => { manualPause = true; clearInterval(list._rotation); list._rotation = null; move(selected); };
     const update = () => dots(list, label, count(), index, choose);
     list.onscroll = () => { clearTimeout(list._dotsTimer); list._dotsTimer = setTimeout(() => { index = Math.min(count()-1,Math.round(list.scrollLeft / step())); update(); }, 550); };
-    list.onkeydown = event => { if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); move((index + (event.key === 'ArrowRight' ? 1 : -1) + count()) % count(),true); } };
+    list.onkeydown = event => { if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); manualPause = true; clearInterval(list._rotation); list._rotation = null; move((index + (event.key === 'ArrowRight' ? 1 : -1) + count()) % count(),true); } };
+    list.onpointerdown = () => { manualPause = true; clearInterval(list._rotation); list._rotation = null; };
     if (list._resize) window.removeEventListener('resize',list._resize);
     list._resize = () => { index = Math.min(index,count()-1); list.scrollTo({left:index*step(),behavior:'instant'}); update(); };
     window.addEventListener('resize',list._resize);
     update();
-    const startTimer = () => { clearInterval(list._rotation); if (!matchMedia('(prefers-reduced-motion: reduce)').matches) list._rotation = setInterval(() => { if (!document.hidden && !(matchMedia('(hover: hover)').matches && list.matches(':hover')) && !list.contains(document.activeElement) && !detail.open && count() > 1) move((index + 1) % count()); }, 5000); };
+    const startTimer = () => { clearInterval(list._rotation); if (!manualPause && count() > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) list._rotation = setInterval(() => { if (!document.hidden && !(matchMedia('(hover: hover)').matches && list.matches(':hover')) && !list.contains(document.activeElement) && !detail.open && count() > 1) move((index + 1) % count()); }, displaySettings[label].seconds * 1000); };
     startTimer();
-  }
-  function setupMore(list) {
-    list.parentElement.querySelector('.ad-show-more')?.remove();
-    if (list.children.length <= 8) return;
-    let expanded = false;
-    const button = element('button', '', 'button ad-show-more'); button.type = 'button';
-    const update = () => { [...list.children].forEach((card, i) => { card.hidden = !expanded && i >= 8; }); button.textContent = expanded ? ({ pl: 'Pokaż mniej', en: 'Show less', nl: 'Minder tonen', fr: 'Afficher moins' }[document.documentElement.lang] || 'Pokaż mniej') : ({ pl: 'Pokaż więcej', en: 'Show more', nl: 'Meer tonen', fr: 'Afficher plus' }[document.documentElement.lang] || 'Pokaż więcej'); };
-    button.onclick = () => { expanded = !expanded; update(); }; list.after(button); update();
   }
   let publicVersion = 0;
   async function loadAds(clear = false) {
@@ -175,9 +187,10 @@
     const version = ++publicVersion;
     if (clear) for (const id of ['#listing-premium', '#listing-top', '#ogloszenia']) { const section = $(id); if (!section) continue; section.hidden = id !== '#ogloszenia'; const list = section.querySelector('[data-ad-list]'); list.replaceChildren(); delete list.dataset.content; }
     try {
-      const { ads } = await api('public', { language: document.documentElement.lang });
+      const { ads, display } = await api('public', { language: document.documentElement.lang });
       if (version !== publicVersion) return;
       loadedAds = ads;
+      if (display) displaySettings = display;
       renderAds();
     } catch { /* Keep the last verified response when the API is unavailable. */ }
   }
