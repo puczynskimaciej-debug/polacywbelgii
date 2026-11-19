@@ -41,7 +41,7 @@ export async function onRequest({ request, env }) {
       ]);
       const visible = candidates.results.filter(row => actor.kind === 'admin' || row.owner_kind === 'agent' && row.owner_id === actor.id).map(row => ({ ...row, status: row.editorial_status }));
       const now = Date.now();
-      const diagnosed = visible.map(row => ({ ...row, overdue: row.status === 'scheduled' && row.public_state === 'hidden' && Boolean(row.scheduled_at) && Date.parse(row.scheduled_at) <= now, publicationBlock: row.status !== 'scheduled' ? null : !row.approved_by || !row.approved_at ? 'approval_missing' : JSON.parse(row.verification_json || '{}').status !== 'verified' ? 'verification_required' : null }));
+      const diagnosed = visible.map(row => ({ ...row, overdue: row.status === 'scheduled' && row.public_state === 'hidden' && Boolean(row.scheduled_at) && Date.parse(row.scheduled_at) <= now, publicationBlock: row.status !== 'scheduled' ? null : !row.approved_by || !row.approved_at ? 'approval_missing' : row.kind === 'event' && JSON.parse(row.verification_json || '{}').status !== 'verified' ? 'verification_required' : null }));
       return json({ candidates: diagnosed, sources: actor.kind === 'admin' ? sources.results : [], runs: actor.kind === 'admin' ? runs.results : [], history: actor.kind === 'admin' ? history.results : history.results.filter(row => visible.some(candidate => candidate.id === row.candidate_id)), costUsd: actor.kind === 'admin' ? usage.cost : null, config: JSON.parse(config?.value_json || '{}'), canManage: actor.kind === 'admin', publicationMode: ['localhost','127.0.0.1'].includes(new URL(request.url).hostname) ? 'manual_local' : 'external_cron' });
     }
     if (request.method !== 'POST') fail('method', 405);
@@ -102,7 +102,7 @@ export async function onRequest({ request, env }) {
     if (input.action === 'retry-publication') {
       if (actor.kind !== 'admin') fail('forbidden',403);
       if (current.editorial_status !== 'scheduled' || !current.scheduled_at || Date.parse(current.scheduled_at) > Date.now() || !current.approved_by || !current.approved_at) fail('publicationNotDue',409);
-      if (JSON.parse(current.verification_json || '{}').status !== 'verified') fail('verificationRequired',409);
+      if (current.kind === 'event' && JSON.parse(current.verification_json || '{}').status !== 'verified') fail('verificationRequired',409);
       const result = await publishDue(env.DB,new Date(),new Set([input.id]));
       if (!result.published.includes(input.id)) fail('publicationBlocked',409);
       await env.DB.prepare('INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,?,?,?,?,?)').bind(input.id,current.editorial_status,'published',actor.id,now,'administrator retried due publication').run();
@@ -110,7 +110,7 @@ export async function onRequest({ request, env }) {
     }
     if (input.action === 'publish-now') {
       if (actor.kind !== 'admin' || current.kind !== 'article' || !['approved','scheduled'].includes(current.editorial_status)) fail('forbidden',403);
-      if (JSON.parse(current.verification_json || '{}').status !== 'verified') fail('verificationRequired',409);
+      if (!current.title?.trim() || !current.body?.trim()) fail('validation');
       await env.DB.prepare("UPDATE ai_editorial SET status='scheduled',scheduled_at=?,revision=revision+1,updated_at=? WHERE candidate_id=? AND status=? AND approved_by IS NOT NULL AND approved_at IS NOT NULL").bind(now,now,input.id,current.editorial_status).run();
       const result = await publishDue(env.DB,new Date(),new Set([input.id]));
       if (!result.published.includes(input.id)) fail('publicationBlocked',409);

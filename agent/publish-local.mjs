@@ -21,13 +21,13 @@ export function publishLocal(db, now = new Date(), build = rebuild, baseRoot = r
   const rows = db.prepare('SELECT c.*,e.status AS editorial_status,e.scheduled_at,e.approved_by,e.approved_at,e.public_state FROM ai_candidates c JOIN ai_editorial e ON e.candidate_id=c.id').all().filter(row => !onlyIds || onlyIds.has(row.id));
   const due = dueCandidates(rows.map(row => ({ ...row, status: row.editorial_status, scheduledAt: row.scheduled_at, approvedBy: row.approved_by, approvedAt: row.approved_at, publicState: row.public_state })),now).filter(row => {
     const verification = JSON.parse(row.verification_json || '{}');
+    if (row.kind !== 'event') return Boolean(row.title?.trim() && row.body?.trim());
     if (verification.status !== 'verified') return false;
-    if (row.kind !== 'event') return true;
     const event = JSON.parse(row.event_json || '{}');
     return verification.status === 'verified' && event.status === 'scheduled' && Date.parse(event.end || event.start) > now.getTime();
   });
   const dueEvents = due.filter(row => row.kind === 'event');
-  const materialize = rows.filter(row => row.kind === 'article' && row.editorial_status === 'published' && row.public_state === 'visible' && row.approved_by && row.approved_at && JSON.parse(row.verification_json || '{}').status === 'verified' && !fs.existsSync(target(row.id,baseRoot).article));
+  const materialize = rows.filter(row => row.kind === 'article' && row.editorial_status === 'published' && row.public_state === 'visible' && row.approved_by && row.approved_at && row.title?.trim() && row.body?.trim() && !fs.existsSync(target(row.id,baseRoot).article));
   const withdrawn = rows.filter(row => row.kind !== 'event' && row.editorial_status === 'archived' && fs.existsSync(target(row.id, baseRoot).article));
   const touched = [];
   for (const row of [...due.filter(item => item.kind !== 'event'),...materialize]) {
