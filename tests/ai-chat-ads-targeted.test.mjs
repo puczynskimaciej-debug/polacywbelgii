@@ -195,12 +195,20 @@ test('authenticated CMS chat stores both messages and rejects unauthenticated ac
   const anonymous=await aiChatRoute({request:new Request('https://polacywbelgii.pages.dev/api/ai-chat'),env});
   assert.equal(anonymous.status,401);
   const originalFetch=globalThis.fetch;
-  globalThis.fetch=async()=>Response.json({candidates:[{content:{parts:[{text:'Trzy propozycje tematów do opracowania.'}]}}]});
+  let modelPrompt='';
+  globalThis.fetch=async(_url,options)=>{modelPrompt=JSON.parse(options.body).contents[0].parts[0].text;return Response.json({candidates:[{content:{parts:[{text:'Trzy propozycje tematów do opracowania.'}]}}]});};
   try{
     const request=new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'send',mode:'chat',text:'Jakie tematy warto omówić?'})});
     const response=await aiChatRoute({request,env});assert.equal(response.status,200);
     const conversationId=(await response.json()).conversationId;
     assert.equal(DB.sqlite.prepare('SELECT count(*) AS n FROM ai_chat_entries').get().n,2);
+    const candidateId='a'.repeat(20),draftJob=randomUUID(),at=new Date().toISOString();
+    DB.sqlite.prepare("INSERT INTO ai_candidates(id,kind,status,title,description,body,region,sources_json,verification_json,created_at,updated_at) VALUES(?,'article','pending_review',?,?,?,'all','[]','{}',?,?)").run(candidateId,'Transport w Brukseli','Praktyczny przewodnik','Metro i tramwaje w Brukseli.',at,at);
+    DB.sqlite.prepare("INSERT INTO ai_editorial(candidate_id,status,owner_kind,owner_id,updated_at) VALUES(?,'pending_review','agent',?,?)").run(candidateId,userId,at);
+    DB.sqlite.prepare("INSERT INTO ai_chat_jobs(id,conversation_id,actor_id,prompt,status,candidate_id,created_at,updated_at) VALUES(?,?,?,'Napisz artykuł','done',?,?,?)").run(draftJob,conversationId,userId,candidateId,at,at);
+    const followup=new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'send',mode:'chat',conversationId,text:'Czy w artykule jest informacja o tramwajach?'})});
+    assert.equal((await aiChatRoute({request:followup,env})).status,200);
+    assert.match(modelPrompt,/Metro i tramwaje w Brukseli/);
     const clearRequest=()=>new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',Cookie:`__Host-pbe_session=${token}`},body:JSON.stringify({action:'clear',conversationId})});
     DB.sqlite.prepare("INSERT INTO retention_holds(entity_type,entity_id,reason_code) VALUES('ai_conversation',?,'legal_other')").run(conversationId);
     assert.equal((await aiChatRoute({request:clearRequest(),env})).status,403);

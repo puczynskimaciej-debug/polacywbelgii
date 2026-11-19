@@ -91,7 +91,8 @@ export async function onRequest({ request, env }) {
     }
     // Chat is intentionally synchronous; editorial jobs use the durable D1 worker queue.
     const context=(await env.DB.prepare('SELECT role,body FROM ai_chat_entries WHERE conversation_id=? ORDER BY created_at DESC LIMIT 8').bind(conversationId).all()).results.reverse();
-    const answer = await askGemini(env,`${context.map(row=>`${row.role}: ${row.body.slice(0,800)}`).join('\n')}\nAdministrator: ${input.text}`);
+    const draft=await env.DB.prepare("SELECT c.title,c.description,c.body FROM ai_chat_jobs j JOIN ai_candidates c ON c.id=j.candidate_id WHERE j.conversation_id=? AND j.candidate_id IS NOT NULL ORDER BY j.created_at DESC LIMIT 1").bind(conversationId).first();
+    const answer = await askGemini(env,`${context.map(row=>`${row.role}: ${row.body.slice(0,800)}`).join('\n')}\n${draft?`Bieżący artykuł: ${JSON.stringify({title:draft.title,description:draft.description,body:draft.body.slice(0,16000)})}.\n`:''}Administrator: ${input.text}`);
     const replyId = crypto.randomUUID();
     await env.DB.batch([
       env.DB.prepare('INSERT INTO ai_chat_entries(id,conversation_id,actor_id,role,body,job_id,created_at) VALUES(?,?,?,?,?,?,?)').bind(entryId,conversationId,user.id,'admin',input.text,null,created),
