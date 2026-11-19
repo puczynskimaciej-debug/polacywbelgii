@@ -27,7 +27,6 @@ permalink: /kontakt/index.html
     </aside>
 
     <form class="contact-form" name="kontakt" method="POST" action="/api/contact">
-      <p id="contact-result" role="status" hidden></p>
       <p class="honeypot"><label><span data-i18n="form.honeypot">Nie wypełniaj:</span> <input name="bot-field"></label></p>
       <div class="form-field">
         <label for="name" data-i18n="form.name">Imię i nazwisko</label>
@@ -54,6 +53,7 @@ permalink: /kontakt/index.html
       <label class="consent"><input type="checkbox" name="privacyNoticeAcknowledged" value="yes" required> <span data-i18n="form.privacyAcknowledged">Zapoznałem się z informacją o przetwarzaniu danych.</span></label>
       <a data-privacy-link href="/polityka-prywatnosci/" data-i18n="form.privacyLink">Polityka prywatności</a>
       <button class="button" type="submit" data-i18n="form.send">Wyślij wiadomość</button>
+      <p id="contact-result" class="contact-result" role="status" aria-live="polite" hidden></p>
     </form>
   </div>
 </section>
@@ -61,13 +61,12 @@ permalink: /kontakt/index.html
   const form = document.querySelector('.contact-form');
   const notice = document.getElementById('contact-result');
   const copy = {
-    pl:{sent:'Wiadomość została wysłana.',error:'Nie udało się wysłać wiadomości. Spróbuj ponownie później.',invalid:'Sprawdź pola formularza.',limit:'Zbyt wiele wiadomości. Spróbuj później.'},
-    nl:{sent:'Bericht verzonden.',error:'Het bericht kon niet worden verzonden. Probeer het later opnieuw.',invalid:'Controleer de velden van het formulier.',limit:'Te veel berichten. Probeer het later opnieuw.'},
-    fr:{sent:'Message envoyé.',error:'Le message n’a pas pu être envoyé. Réessayez plus tard.',invalid:'Vérifiez les champs du formulaire.',limit:'Trop de messages. Réessayez plus tard.'},
-    en:{sent:'Message sent.',error:'The message could not be sent. Please try again later.',invalid:'Check the form fields.',limit:'Too many messages. Please try again later.'}
+    pl:{sent:'Wiadomość została wysłana. Dziękujemy za kontakt!',error:'Nie udało się wysłać wiadomości. Spróbuj ponownie później.',invalid:'Sprawdź pola formularza.',limit:'Zbyt wiele wiadomości. Spróbuj później.'},
+    nl:{sent:'Bericht verzonden. Bedankt voor uw bericht!',error:'Het bericht kon niet worden verzonden. Probeer het later opnieuw.',invalid:'Controleer de velden van het formulier.',limit:'Te veel berichten. Probeer het later opnieuw.'},
+    fr:{sent:'Message envoyé. Merci de nous avoir contactés !',error:'Le message n’a pas pu être envoyé. Réessayez plus tard.',invalid:'Vérifiez les champs du formulaire.',limit:'Trop de messages. Réessayez plus tard.'},
+    en:{sent:'Message sent. Thank you for contacting us!',error:'The message could not be sent. Please try again later.',invalid:'Check the form fields.',limit:'Too many messages. Please try again later.'}
   };
   const language = () => copy[sessionStorage.getItem('siteLanguage')] || copy.pl;
-  if (new URLSearchParams(location.search).has('sent')) { notice.hidden=false; notice.textContent=language().sent; }
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -76,8 +75,8 @@ permalink: /kontakt/index.html
       const response=await fetch(form.action,{method:'POST',body:new URLSearchParams(new FormData(form)),headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},credentials:'same-origin'});
       const result=await response.json().catch(()=>({}));
       if (!response.ok || result.sent!==true) throw new Error(result.error==='validation'?language().invalid:result.error==='rateLimit'?language().limit:language().error);
-      notice.textContent=language().sent; notice.hidden=false; form.reset();
-    } catch(error) { notice.textContent=Object.values(language()).includes(error.message)?error.message:language().error; notice.hidden=false; }
+      notice.textContent=language().sent; notice.dataset.state='success'; notice.setAttribute('role','status'); notice.hidden=false; form.reset();
+    } catch(error) { notice.textContent=Object.values(language()).includes(error.message)?error.message:language().error; notice.dataset.state='error'; notice.setAttribute('role','alert'); notice.hidden=false; }
     finally { button.disabled=false; }
   });
 </script>

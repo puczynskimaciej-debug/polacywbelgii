@@ -158,6 +158,10 @@ p { margin: 0; }
 .contact-detail span { display: block; margin-bottom: 5px; color: var(--muted); font-size: .82rem; text-transform: uppercase; }
 .contact-detail a, .contact-detail strong { color: var(--blue-dark); text-decoration: none; }
 .contact-form { padding: 38px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.contact-result { margin: 16px 0 0; padding: 14px 16px; border: 1px solid; border-radius: 10px; font-weight: 700; line-height: 1.45; }
+.contact-result[data-state="success"] { border-color: #8cc6a0; background: #eaf7ee; color: #175b35; }
+.contact-result[data-state="error"] { border-color: #e6a3a3; background: #fff0f0; color: #a1262e; }
+.contact-result[hidden] { display: none; }
 .form-field { margin-bottom: 21px; }
 .form-field label { display: block; margin-bottom: 7px; color: var(--navy); font-weight: 600; }
 .form-field input, .form-field select, .form-field textarea { width: 100%; padding: 13px 14px; border: 1px solid #cfd6dc; border-radius: 7px; background: #fff; color: var(--ink); font: inherit; }
