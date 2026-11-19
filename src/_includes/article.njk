@@ -12,7 +12,8 @@ pageKey: articles
     <h1 data-translation-en="{{ title_en }}" data-translation-nl="{{ title_nl }}" data-translation-fr="{{ title_fr }}">{{ title }}</h1>
     <p class="lead" data-translation-en="{{ description_en }}" data-translation-nl="{{ description_nl }}" data-translation-fr="{{ description_fr }}">{{ description }}</p>
   </header>
-  {% if image %}<div class="single-article__image container"><img src="{{ image }}" alt="" loading="eager"></div>{% endif %}
+  {% if image or image_pl or image_nl or image_fr %}<div class="single-article__image container" data-article-image-container {% if not (image_pl or image) %}hidden{% endif %}><img src="{{ image_pl or image }}" alt="" loading="eager" data-article-image data-image-common="{{ image }}" data-image-pl="{{ image_pl }}" data-image-nl="{{ image_nl }}" data-image-fr="{{ image_fr }}"></div>{% endif %}
+  <div class="article-tags container" data-article-tags data-tags-common="{{ tags }}" data-tags-pl="{{ tags_pl }}" data-tags-nl="{{ tags_nl }}" data-tags-fr="{{ tags_fr }}" {% if not (tags_pl or tags) %}hidden{% endif %}></div>
   <div class="prose container" data-i18n-html="article.{{ page.fileSlug }}.body">{{ content | safe }}</div>
   <footer class="container"><a class="back-link" href="/artykuly/" data-i18n="articles.back">← Wróć do artykułów</a></footer>
   {% if body_nl %}<template data-article-translation="nl">{{ body_nl | renderMarkdown | safe }}</template>{% endif %}

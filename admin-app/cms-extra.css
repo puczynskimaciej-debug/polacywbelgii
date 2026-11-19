@@ -27,7 +27,17 @@
 .article-preview { max-width: 680px; margin: auto; color: #273344; line-height: 1.75; }
 .article-preview h1 { margin-bottom: 12px; color: var(--navy); }
 .article-preview .preview-description { margin-bottom: 28px; color: var(--muted); font-size: 1.08rem; }
-.article-preview img { width: 100%; max-height: 330px; margin-bottom: 28px; object-fit: cover; border-radius: 10px; }
+.article-preview img { width: 100%; max-height: 330px; margin-bottom: 28px; object-fit: contain; border-radius: 10px; }
+.article-media-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 0 0 12px; }
+.article-media-controls select { flex: 1 1 220px; min-width: 0; }
+.article-media-controls button { flex: 0 0 auto; }
+.article-language-image { display: grid; gap: 6px; margin: 0 0 18px; }
+.article-language-image img { display: block; max-width: min(100%, 360px); max-height: 190px; object-fit: contain; border: 1px solid var(--line); border-radius: 9px; background: #f7f4ee; }
+.article-language-image img[hidden] { display: none; }
+.article-language-image small { color: var(--muted); }
+.article-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.article-tags:empty { display: none; }
+.article-tags span { padding: 4px 9px; border-radius: 999px; background: #eef3f8; color: var(--navy); font-size: .78rem; font-weight: 700; }
 .article-preview h2, .article-preview h3 { margin: 1.5em 0 .6em; color: var(--navy); }
 .history-avatar { width: 34px; height: 34px; border-radius: 50%; }
 .history-author { display: flex; align-items: center; gap: 10px; margin-top: 7px; }

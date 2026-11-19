@@ -208,6 +208,8 @@ function formData(form) { return Object.fromEntries(new FormData(form).entries()
 function openArticle(article = null) {
   const form = $("#article-form"); form.reset(); state.editingAiId = article?.aiId || null; $("#article-dialog-title").textContent = article ? "Edytuj artykuł" : "Nowy artykuł";
   const values = article || { date: new Date().toISOString() }; Object.entries(values).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = key === "date" ? brusselsDateTime(value) : value || ""; });
+  populateArticleMedia();
+  ['pl','nl','fr'].forEach(refreshArticleLanguageMedia);
   form.elements.status.value = ['draft','scheduled','published'].includes(article?.status) ? article.status : 'draft';
   form.elements.status.disabled = Boolean(state.editingAiId);
   form.elements.status.querySelector('[value="published"]').disabled = !state.isAdmin;
@@ -234,6 +236,26 @@ function aiArticle(row) {
   return { aiId:row.id, title:row.title, description:row.description, body:row.body, date:row.scheduled_at || row.proposed_publish_at || row.created_at, category:row.category || 'Życie w Belgii', region:row.region || 'all', sources:sources.map(source=>source.url).filter(Boolean).join('\n'), ...fields, status:row.status };
 }
 async function uploadImage(target = null) { state.uploadTarget = target; $("#media-input").click(); }
+function articleImage(form, language) { return form.elements[`image_${language}`]?.value.trim() || form.elements.image.value.trim(); }
+function articleTags(form, language) { return form.elements[`tags_${language}`]?.value.trim() || form.elements.tags.value.trim(); }
+function articleMediaPath(file) { return `/${file.path.replace(/^\//, '').replace(/^src\//, '').replace(/^Images\//, 'images/')}`; }
+function populateArticleMedia() {
+  ['pl','nl','fr'].forEach(language => {
+    const select = document.querySelector(`[data-article-media-select="${language}"]`);
+    select.replaceChildren(new Option('Wybierz z biblioteki mediów', ''));
+    state.media.forEach(file => select.add(new Option(file.name, articleMediaPath(file))));
+  });
+}
+function refreshArticleLanguageMedia(language) {
+  const form = $('#article-form');
+  const custom = form.elements[`image_${language}`].value.trim();
+  const image = articleImage(form, language);
+  const preview = document.querySelector(`[data-article-image-preview="${language}"]`);
+  preview.hidden = !image;
+  if (image) preview.src = image; else preview.removeAttribute('src');
+  document.querySelector(`[data-article-image-note="${language}"]`).textContent = custom ? 'Zdjęcie tej wersji językowej' : image ? 'Zdjęcie wspólne (starszy artykuł)' : 'Brak zdjęcia';
+  document.querySelector(`[data-article-media-select="${language}"]`).value = state.media.some(file => articleMediaPath(file) === custom) ? custom : '';
+}
 document.addEventListener('cms:upload-event-image', event => uploadImage(event.detail));
 document.addEventListener('cms:edit-ai-article',event => { const row=(aiSnapshot?.candidates||[]).find(item=>item.id===event.detail); if(row)openArticle(aiArticle(row)); });
 document.addEventListener('cms:edit-manual-article',event => { const row=state.articles.find(item=>item.slug===event.detail); if(row)openArticle(row); });
@@ -245,9 +267,10 @@ function renderArticlePreview(language = state.previewLanguage) {
   const title = form.elements[`title${suffix}`]?.value.trim() || form.title.value.trim() || "Bez tytułu";
   const description = form.elements[`description${suffix}`]?.value.trim() || form.description.value.trim();
   const body = form.elements[`body${suffix}`]?.value.trim() || form.body.value.trim();
-  const image = form.image.value.trim();
+  const image = articleImage(form, language);
+  const tags = articleTags(form, language).split(',').map(tag => tag.trim()).filter(Boolean);
   $("#preview-title").textContent = title;
-  $("#article-preview").innerHTML = `${image ? `<img src="${escapeHtml(image)}" alt="">` : ""}<h1>${escapeHtml(title)}</h1><p class="preview-description">${escapeHtml(description)}</p>${renderMarkdown(body)}`;
+  $("#article-preview").innerHTML = `${image ? `<img src="${escapeHtml(image)}" alt="">` : ""}<h1>${escapeHtml(title)}</h1><p class="preview-description">${escapeHtml(description)}</p>${tags.length ? `<div class="article-tags">${tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>` : ''}${renderMarkdown(body)}`;
   $$("[data-preview-language]").forEach((button) => button.classList.toggle("is-active", button.dataset.previewLanguage === language));
 }
 $('#login-form').addEventListener('submit', async event => {
@@ -275,7 +298,10 @@ $$(".nav-item").forEach((button) => button.addEventListener("click", () => switc
 $('.nav-item[data-view="articles"]').addEventListener('click',() => document.dispatchEvent(new Event('cms:load-ai')));
 $$('[data-event-view]').forEach(button => button.addEventListener('click', () => { switchView(button.dataset.eventView); document.dispatchEvent(new Event('cms:load-events')); }));
 document.querySelectorAll('.dashboard-grid [data-view]').forEach(button=>button.addEventListener('click',()=>document.querySelector(`.nav-item[data-view="${button.dataset.view}"]`).click()));
-$$("[data-language-tab]").forEach((button) => button.addEventListener("click", () => { $$("[data-language-tab]").forEach((tab) => tab.classList.toggle("is-active", tab === button)); $$("[data-language-pane]").forEach((pane) => pane.classList.toggle("is-active", pane.dataset.languagePane === button.dataset.languageTab)); }));
+$$("[data-language-tab]").forEach((button) => button.addEventListener("click", () => { $$("[data-language-tab]").forEach((tab) => tab.classList.toggle("is-active", tab === button)); $$("[data-language-pane]").forEach((pane) => pane.classList.toggle("is-active", pane.dataset.languagePane === button.dataset.languageTab)); if (['pl','nl','fr'].includes(button.dataset.languageTab)) refreshArticleLanguageMedia(button.dataset.languageTab); }));
+$$("[data-article-media-select]").forEach(select => select.addEventListener('change', () => { $('#article-form').elements[`image_${select.dataset.articleMediaSelect}`].value = select.value; refreshArticleLanguageMedia(select.dataset.articleMediaSelect); }));
+$$("[data-article-image-clear]").forEach(button => button.addEventListener('click', () => { $('#article-form').elements[`image_${button.dataset.articleImageClear}`].value = ''; refreshArticleLanguageMedia(button.dataset.articleImageClear); }));
+$('#article-form').addEventListener('input', event => { const language = event.target.name?.match(/^image_(pl|nl|fr)$/)?.[1]; if (language) refreshArticleLanguageMedia(language); });
 
 $("#home-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
@@ -292,7 +318,7 @@ $("#article-form").addEventListener("submit", async (event) => {
     if (state.editingAiId) {
       const row=(aiSnapshot?.candidates||[]).find(item=>item.id===state.editingAiId);
       if (!row) throw new Error('Nie znaleziono artykułu AI. Odśwież kolejkę.');
-      await cmsRequest('ai-editor',{},'POST',{action:'edit',id:row.id,title:values.title.trim(),description:values.description.trim(),body:values.body.trim(),category:values.category,region:values.region,sources:values.sources.split(/\r?\n/).map(url=>url.trim()).filter(Boolean).map(url=>({url})),articleFields:Object.fromEntries(['title_nl','description_nl','body_nl','title_fr','description_fr','body_fr','image','tags'].map(key=>[key,values[key] || '']))});
+      await cmsRequest('ai-editor',{},'POST',{action:'edit',id:row.id,title:values.title.trim(),description:values.description.trim(),body:values.body.trim(),category:values.category,region:values.region,sources:values.sources.split(/\r?\n/).map(url=>url.trim()).filter(Boolean).map(url=>({url})),articleFields:Object.fromEntries(['title_nl','description_nl','body_nl','title_fr','description_fr','body_fr','image','tags','image_pl','image_nl','image_fr','tags_pl','tags_nl','tags_fr'].map(key=>[key,values[key] || '']))});
       document.dispatchEvent(new Event('cms:load-ai'));
       notify('Poprawki AI zapisane. Przed publikacją ponownie zweryfikuj treść i źródła.');
     } else {
@@ -304,7 +330,7 @@ $("#article-form").addEventListener("submit", async (event) => {
 });
 $("#media-input").addEventListener("change", async (event) => {
   const file=event.target.files[0]; if(!file)return;
-  try { const uploaded=await state.repository.upload(file); if(state.uploadTarget) state.uploadTarget.value=uploaded.path; state.media=await state.repository.media(); renderAll(); notify("Obraz zapisany."); } catch(error){notify(error.message,true);} finally{state.uploadTarget=null;event.target.value="";}
+  try { const uploaded=await state.repository.upload(file); if(state.uploadTarget) { state.uploadTarget.value=uploaded.path; state.uploadTarget.dispatchEvent(new Event('input',{bubbles:true})); } state.media=await state.repository.media(); populateArticleMedia(); renderAll(); notify("Obraz zapisany."); } catch(error){notify(error.message,true);} finally{state.uploadTarget=null;event.target.value="";}
 });
 let scheduleTarget=null;
 async function publicationAction(kind,id,action,scheduledAt=null,fold='earlier') {
@@ -364,7 +390,7 @@ $('#article-schedule-form').elements.localTime.addEventListener('input',event=>{
 });
 document.addEventListener("click", async (event) => {
   const action=event.target.closest("[data-action]")?.dataset.action;
-  if(action==="new-article")openArticle(); if(action==="add-news"){state.home.news.push({title:"",category:"",description:"",image:"",link:"/artykuly/"});renderRepeater("news",state.home.news);} if(action==="add-notice"){state.home.notices.push({title:"",category:"",date:"",description:"",contact:""});renderRepeater("notices",state.home.notices);} if(action==="upload-media")uploadImage(); if(action==="pick-article-image")uploadImage($("#article-form").image);
+  if(action==="new-article")openArticle(); if(action==="add-news"){state.home.news.push({title:"",category:"",description:"",image:"",link:"/artykuly/"});renderRepeater("news",state.home.news);} if(action==="add-notice"){state.home.notices.push({title:"",category:"",date:"",description:"",contact:""});renderRepeater("notices",state.home.notices);} if(action==="upload-media")uploadImage(); if(action==="pick-article-image")uploadImage($("#article-form").elements[`image_${event.target.closest('[data-image-language]').dataset.imageLanguage}`]);
   if(action==="preview-article"){state.previewLanguage="pl";renderArticlePreview("pl");$("#preview-dialog").showModal();}
   if(action==="new-user"&&state.isAdmin)openUser();
   const editUser=event.target.closest("[data-edit-user]");if(editUser&&state.isAdmin)openUser(state.users.find(user=>user.id===editUser.dataset.editUser));

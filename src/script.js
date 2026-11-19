@@ -213,6 +213,18 @@ function applyLanguage(language, remember = false) {
     const translated = element.getAttribute(`data-translation-${selected}`);
     element.textContent = selected === "pl" || !translated ? originalContent.get(element) : translated;
   });
+  document.querySelectorAll('img[data-article-image]').forEach(image => {
+    const path = image.getAttribute(`data-image-${selected}`) || image.dataset.imageCommon || image.dataset.imageDefault || '';
+    if (path) image.src = path; else image.removeAttribute('src');
+    const container = image.closest('[data-article-image-container]');
+    if (container) container.hidden = !path;
+  });
+  document.querySelectorAll('[data-article-tags]').forEach(container => {
+    const value = container.getAttribute(`data-tags-${selected}`) || container.dataset.tagsCommon || '';
+    const tags = value.split(',').map(tag => tag.trim()).filter(Boolean);
+    container.replaceChildren(...tags.map(tag => { const span = document.createElement('span'); span.textContent = tag; return span; }));
+    container.hidden = tags.length === 0;
+  });
   document.querySelectorAll("[data-category]").forEach((element) => {
     if (!originalContent.has(element)) originalContent.set(element, element.textContent);
     const original = originalContent.get(element);
