@@ -36,6 +36,7 @@
   const onDay = (event, date) => eventDate(event) && eventDate(event) <= date && (event.endDate || event.end && localDay(event.end) || eventDate(event)) >= date;
   const startsOn = (event, date) => eventDate(event) === date;
   const eventTime = event => event.start ? localDateTime(event.start) : displayDate(eventDate(event));
+  const eventImage = event => event.image || `/images/event-placeholders/${({Rodzina:'rodzina',Spotkanie:'spotkanie',Kultura:'kultura',Edukacja:'edukacja',Sport:'sport',Koncert:'koncert',Inne:'inne',History:'inne',Music:'inne'})[event.category] || 'wydarzenie'}.svg`;
   const dateLabel = event => displayDate(eventDate(event));
   const timeLabel = event => event.start ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start)) : '';
   const node = (tag, text, className) => { const item = document.createElement(tag); if (text !== undefined) item.textContent = text; if (className) item.className = className; return item; };
@@ -138,7 +139,7 @@
     if (!upcomingEvents.length) { const empty = node('p',t().homeEmpty,'home-events-empty'); home.append(empty); renderMini(); return; }
     for (const event of upcomingEvents) {
       const card = node('a',undefined,'event-card'); card.href=event.url;
-      if (event.image) { const image=node('img',undefined,'event-card__image'); image.src=event.image; image.alt=''; image.loading='lazy'; card.append(image); }
+      const image=node('img',undefined,'event-card__image'); image.src=eventImage(event); image.alt=''; image.loading='lazy'; card.append(image);
       const info = node('div',undefined,'event-card__content'); info.append(node('h3',event.title || t().untitled));
       info.append(node('p',`${dateLabel(event)}${timeLabel(event) ? `, ${timeLabel(event)}` : ''}`,'event-card__date'));
       const place = event.city || t().regions[event.region]; if (place) info.append(node('p',place,'event-card__place'));

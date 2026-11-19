@@ -7,6 +7,7 @@ const markdown = new MarkdownIt({ html: false, linkify: true, typographer: true 
 const escape = value => String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const eventDate = value => String(value || '').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3.$2.$1');
 const eventDateTime = value => new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
+const eventImage = entry => entry.image || `/images/event-placeholders/${({Rodzina:'rodzina',Spotkanie:'spotkanie',Kultura:'kultura',Edukacja:'edukacja',Sport:'sport',Koncert:'koncert',Inne:'inne',History:'inne',Music:'inne'})[entry.category] || 'wydarzenie'}.svg`;
 const decode = value => new TextDecoder().decode(Uint8Array.from(atob(value), char => char.charCodeAt(0)));
 const notFound = () => new Response('Not Found', { status: 404, headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
 
@@ -53,7 +54,8 @@ export async function articlePage(context) {
   if (!entry) return notFound();
   const html = await shell(context, '/dynamic-article.html');
   const date = entry.event ? entry.event.start ? eventDateTime(entry.event.start) : eventDate(entry.event.date) : entry.date ? new Date(entry.date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Brussels' }) : '';
-  const image = entry.image ? `<div class="single-article__image container"><img src="${escape(entry.image)}" alt=""></div>` : '';
+  const imageSource = entry.event ? eventImage(entry) : entry.image;
+  const image = imageSource ? `<div class="single-article__image container"><img src="${escape(imageSource)}" alt=""></div>` : '';
   const translations = ['en', 'nl', 'fr'].map(lang => entry[`body_${lang}`] ? `<template data-article-translation="${lang}">${markdown.render(entry[`body_${lang}`])}</template>` : '').join('');
   const attrs = field => ['en','nl','fr'].filter(lang => entry[`${field}_${lang}`]).map(lang => `data-translation-${lang}="${escape(entry[`${field}_${lang}`])}"`).join(' ');
   const sources = entry.sources ? `<section><h2>Źródła</h2><ul>${entry.sources.split(/\r?\n/).filter(Boolean).map(url => `<li><a href="${escape(url.trim())}" rel="noopener noreferrer">${escape(url.trim())}</a></li>`).join('')}</ul></section>` : '';
