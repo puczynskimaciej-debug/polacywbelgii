@@ -61,8 +61,7 @@
     const banner = element(url ? 'a' : hasContact(ad) ? 'button' : 'div', '', `premium-banner__link${url || hasContact(ad) ? '' : ' ad-static'}`);
     if (banner.tagName === 'BUTTON') { banner.type = 'button'; banner.onclick = () => showDetail(ad, banner); }
     else if (url) { banner.href = url; banner.target = '_blank'; banner.rel = 'sponsored noopener noreferrer'; }
-    const caption = element('span', ad.isDemo ? 'DEMO' : t('sponsored'), 'premium-banner__caption');
-    banner.append(window.buildAdCreative(ad), caption);
+    banner.append(window.buildAdCreative(ad));
     return banner;
   }
   const placeholderCopy = {
@@ -89,7 +88,7 @@
       if (copy.image && /^\/images\/[a-zA-Z0-9/_-]+\.(?:svg|png|jpe?g|webp|avif)$/.test(copy.image)) {
         const image = element('img', '', 'ad-placeholder__image'); image.src = copy.image; image.alt = ''; body.append(image);
       }
-      item.append(body, element('small',t('sponsored'),'ad-placeholder__label'));
+      item.append(body);
     } else item.append(content);
     return item;
   }

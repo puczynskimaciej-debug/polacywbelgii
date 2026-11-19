@@ -14,17 +14,18 @@
     };
     if (ad.image) {
       const frame = document.createElement('div'); frame.className = `ad-image-creative ad-image-creative--${ad.type.toLowerCase()}`;
-      const backdrop = document.createElement('picture'); backdrop.className = 'ad-image-creative__backdrop'; backdrop.setAttribute('aria-hidden','true');
+      const backdrop = ad.type === 'PREMIUM' ? null : document.createElement('picture');
+      if (backdrop) { backdrop.className = 'ad-image-creative__backdrop'; backdrop.setAttribute('aria-hidden','true'); }
       const picture = document.createElement('picture');
       const mobileImage = ad.imageMobile || ad.image;
       if (mobileImage !== ad.image) {
         const source = document.createElement('source'); source.media = '(max-width: 580px)'; source.srcset = mobileImage; picture.append(source);
-        const backdropSource = document.createElement('source'); backdropSource.media = '(max-width: 580px)'; backdropSource.srcset = mobileImage; backdrop.append(backdropSource);
+        if (backdrop) { const backdropSource = document.createElement('source'); backdropSource.media = '(max-width: 580px)'; backdropSource.srcset = mobileImage; backdrop.append(backdropSource); }
       }
       const image = document.createElement('img'); image.src = mobile && ad.type === 'PREMIUM' ? mobileImage : ad.image;
       image.alt = ad.company || ad.title; image.loading = 'lazy'; picture.append(image);
-      const blurred = document.createElement('img'); blurred.src = image.src; blurred.alt = ''; blurred.loading = 'lazy'; backdrop.append(blurred);
-      frame.append(backdrop,picture);
+      if (backdrop) { const blurred = document.createElement('img'); blurred.src = image.src; blurred.alt = ''; blurred.loading = 'lazy'; backdrop.append(blurred); frame.append(backdrop); }
+      frame.append(picture);
       const meta = makeMeta(); if (meta) frame.append(meta);
       return frame;
     }

@@ -501,10 +501,6 @@ body.order-open { overflow:hidden; }
 @media (prefers-reduced-motion: reduce) { .standard-carousel { scroll-behavior:auto; } }
 
 /* Use the supplied artwork proportions in both public PREMIUM placements. */
-body[data-page="home"] #listing-premium::before { content:"Reklama"; display:block; margin:0 0 4px; color:#526579; font-size:.68rem; line-height:1; text-transform:uppercase; letter-spacing:.08em; }
-html[lang="nl"] body[data-page="home"] #listing-premium::before { content:"Advertentie"; }
-html[lang="fr"] body[data-page="home"] #listing-premium::before { content:"Publicité"; }
-html[lang="en"] body[data-page="home"] #listing-premium::before { content:"Advertisement"; }
 #listing-premium .premium-rotation,
 #listing-premium .premium-rotation--dense { position:relative; display:block; height:auto; aspect-ratio:6 / 1; min-height:0; }
 body[data-page="home"] #listing-premium .premium-rotation { width:min(1280px,calc(100vw - 40px)); max-width:100%; margin-inline:auto; }
