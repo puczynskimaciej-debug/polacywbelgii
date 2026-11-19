@@ -23,7 +23,7 @@ function render() {
   $('#ai-conversations').innerHTML=state.conversations.length?state.conversations.map(row=>`<button type="button" class="ai-topic ${row.conversation_id===conversationId?'is-active':''}" data-conversation="${escapeHtml(row.conversation_id)}"><strong>${escapeHtml(row.title)}</strong><small>${escapeHtml(formatDate(row.updated_at,true))}</small></button>`).join(''):'<p class="empty-state">Nie ma jeszcze rozmów.</p>';
   const active=state.jobs.find(job=>['queued','running'].includes(job.status));
   const latest=state.jobs[0];
-  $('#ai-chat-history').innerHTML=state.entries.map(entry=>`<article class="ai-chat-message ${entry.role==='admin'?'from-admin':'from-agent'}"><strong>${entry.role==='admin'?'Administrator':'AI Redaktor'}</strong><p>${escapeHtml(entry.body)}</p><small>${escapeHtml(formatDate(entry.created_at,true))}</small></article>`).join('')+(
+  $('#ai-chat-history').innerHTML=state.entries.map(entry=>`<article class="ai-chat-message ${entry.role==='admin'?'from-admin':'from-agent'}"><strong>${entry.role==='admin'?'Administrator':'AI Redaktor'}</strong><div>${entry.role==='admin'?escapeHtml(entry.body):renderMarkdown(entry.body,{allowImages:false})}</div><small>${escapeHtml(formatDate(entry.created_at,true))}</small></article>`).join('')+(
     latest?`<div class="ai-job-state" role="status"><strong>${escapeHtml(status[latest.status]||latest.status)}</strong>${latest.error_code?` · ${escapeHtml(errorText[latest.error_code]||`Zadanie nie powiodło się: ${latest.error_code}`)}`:''}${latest.status==='failed'&&latest.attempts<3?` <button class="secondary" type="button" data-retry="${escapeHtml(latest.id)}">Ponów</button>`:''}</div>`:'');
   const versions=state.versions;
   const current=state.current;

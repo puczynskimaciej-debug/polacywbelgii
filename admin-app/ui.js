@@ -8,9 +8,9 @@ export function formatDate(value, withTime = false) {
   return new Intl.DateTimeFormat('pl-PL',{ dateStyle:'medium',...(withTime ? { timeStyle:'short' } : {}),timeZone:'Europe/Brussels' }).format(date);
 }
 
-export function renderMarkdown(value) {
-  const inline = text => escapeHtml(text)
-    .replace(/!\[([^\]]*)\]\((https:\/\/[^\s)]+)\)/g,(_match,label,url) => `<img src="${url}" alt="${label}">`)
+export function renderMarkdown(value,{allowImages=true}={}) {
+  const inline = text => (allowImages ? escapeHtml(text)
+    .replace(/!\[([^\]]*)\]\((https:\/\/[^\s)]+)\)/g,(_match,label,url) => `<img src="${url}" alt="${label}">`):escapeHtml(text))
     .replace(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g,(_match,label,url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`)
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
