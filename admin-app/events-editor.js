@@ -122,6 +122,26 @@ $('#event-editor-form').elements.startDate.addEventListener('change',event => { 
 document.addEventListener('cms:load-events',load);
 document.addEventListener('cmslanguagechange',() => { applyEventLanguage(); render(); renderCalendar(); });
 applyEventLanguage();
+const formatCopy = {
+  pl:{bold:'Pogrubienie',italic:'Kursywa',bullets:'Lista punktowana',numbers:'Lista numerowana',paragraph:'Nowy akapit',help:'Pogrubienia, kursywa, listy i akapity będą widoczne na stronie wydarzenia.'},
+  en:{bold:'Bold',italic:'Italic',bullets:'Bulleted list',numbers:'Numbered list',paragraph:'New paragraph',help:'Bold, italic, lists and paragraphs will appear on the event page.'},
+  nl:{bold:'Vet',italic:'Cursief',bullets:'Opsomming',numbers:'Genummerde lijst',paragraph:'Nieuwe alinea',help:'Vet, cursief, lijsten en alinea’s verschijnen op de evenementpagina.'},
+  fr:{bold:'Gras',italic:'Italique',bullets:'Liste à puces',numbers:'Liste numérotée',paragraph:'Nouveau paragraphe',help:'Le gras, l’italique, les listes et les paragraphes apparaîtront sur la page de l’événement.'}
+};
+function formatLanguage() {
+  const words = formatCopy[document.documentElement.lang] || formatCopy.pl;
+  document.querySelectorAll('[data-event-format]').forEach(button => button.setAttribute('aria-label',words[button.dataset.eventFormat]));
+  document.querySelector('.event-body-field small').textContent = words.help;
+}
+formatLanguage();
+document.addEventListener('cmslanguagechange',formatLanguage);
+document.querySelector('.event-markdown-toolbar').addEventListener('click',event => {
+  const action = event.target.closest('[data-event-format]')?.dataset.eventFormat;
+  if (!action) return;
+  const input = $('#event-body'), start = input.selectionStart, end = input.selectionEnd, chosen = input.value.slice(start,end);
+  const replacement = action === 'bold' ? `**${chosen || 'tekst'}**` : action === 'italic' ? `*${chosen || 'tekst'}*` : action === 'bullets' ? (chosen || 'Element listy').split('\n').map(line => `- ${line}`).join('\n') : action === 'numbers' ? (chosen || 'Element listy').split('\n').map((line,index) => `${index+1}. ${line}`).join('\n') : '\n\n';
+  input.setRangeText(replacement,start,end,'select'); input.focus(); input.dispatchEvent(new Event('input',{bubbles:true}));
+});
 $('#event-image-upload').addEventListener('click',() => document.dispatchEvent(new CustomEvent('cms:upload-event-image',{detail:$('#event-editor-form').elements.image})));
 $('#event-editor-close').addEventListener('click',() => $('#event-editor-dialog').close());
 $('#events-editor-refresh').addEventListener('click',load);

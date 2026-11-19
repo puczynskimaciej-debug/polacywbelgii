@@ -27,6 +27,9 @@ const selectors = {
 };
 const originals = new WeakMap();
 const formFields = ['title','description','body','category','region','startDate','startTime','endDate','endTime','city','venue','address','organizer','price','sourceUrl','image','imageRightsConfirmed','familyFriendly','eventStatus'];
+Object.assign(copy.en,{body:'Full event description (Markdown)'});
+Object.assign(copy.nl,{body:'Volledige beschrijving van het evenement (Markdown)'});
+Object.assign(copy.fr,{body:'Description complète de l’événement (Markdown)'});
 function setText(node,text,language) {
   if (!node) return;
   const target = [...node.childNodes].find(child => child.nodeType === Node.TEXT_NODE && child.textContent.trim()) || [...node.querySelectorAll('span')].flatMap(span => [...span.childNodes]).find(child => child.nodeType === Node.TEXT_NODE && child.textContent.trim());
@@ -45,6 +48,7 @@ export function applyEventLanguage() {
     const node=document.querySelector(`#event-editor-form [name="${key}"]`)?.closest('label');
     if (node) setText(node,copy[language]?.[key],language);
   }
+  setText(document.querySelector('#event-editor-form label[for="event-body"]'),copy[language]?.body,language);
   for (const category of ['Kultura','Koncert','Rodzina','Sport','Edukacja','Spotkanie','Inne']) setText(document.querySelector(`#event-editor-form [name="category"] option[value="${category}"]`),copy[language]?.[`eventCategory${category}`],language);
   for (const [key,index] of [['startGroup',0],['endGroup',1]]) setText(document.querySelectorAll('#event-editor-form .event-date-group legend')[index],copy[language]?.[key],language);
   for (const [selector,key] of [['#event-new','new'],['#events-editor-filter option[value=""]','allStatuses'],['#events-editor-filter option[value="pending_review"]','pending_review'],['#events-editor-filter option[value="scheduled"]','scheduled'],['#events-editor-filter option[value="published"]','published'],['#events-editor-filter option[value="draft"]','drafts'],['#events-editor-filter option[value="approved"]','approvedItems'],['#events-editor-filter option[value="changes_requested"]','changesItems'],['#events-editor-filter option[value="rejected"]','rejectedItems'],['#events-editor-filter option[value="archived"]','archivedItems'],['#event-editor-form [name="region"] option[value=""]','unspecifiedRegion']]) setText(document.querySelector(selector),copy[language]?.[key],language);

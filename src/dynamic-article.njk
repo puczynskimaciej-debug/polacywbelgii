@@ -10,12 +10,13 @@ eleventyExcludeFromCollections: true
 ---
 <article class="single-article">
   <header class="single-article__header container">
-    <a class="back-link" href="/artykuly/">← Wszystkie artykuły</a>
+    <a class="back-link" href="%%BACK_URL%%" data-i18n="%%BACK_I18N%%">%%BACK_LABEL%%</a>
     <div class="article-meta"><span class="tag" data-category>%%CATEGORY%%</span><time datetime="%%DATE_ISO%%" %%DATE_ATTRIBUTE%%>%%DATE%%</time></div>
-    <h1 %%TITLE_I18N%%>%%TITLE%%</h1><p class="lead" %%DESCRIPTION_I18N%%>%%DESCRIPTION%%</p>
+    <h1 %%TITLE_I18N%%>%%TITLE%%</h1><p class="lead" %%DESCRIPTION_I18N%% %%LEAD_ATTRIBUTE%%>%%DESCRIPTION%%</p>
   </header>
   %%IMAGE%%
+  <div class="container">%%EVENT_FACTS%%</div>
   <div class="prose container">%%BODY%%</div>
-  <footer class="container"><a class="back-link" href="/artykuly/" data-i18n="articles.back">← Wróć do artykułów</a></footer>
+  <footer class="container"><a class="back-link" href="%%BACK_URL%%" data-i18n="%%BACK_I18N%%">%%BACK_LABEL%%</a></footer>
   %%TRANSLATIONS%%
 </article>

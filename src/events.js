@@ -13,10 +13,10 @@
     nl:{locale:'nl-BE',days:['ma','di','wo','do','vr','za','zo'],time:'Datum',place:'Plaats',organizer:'Organisator',source:'Website van organisator →',empty:'Geen komende evenementen op deze dag.',show:'Toon in kalender →',unavailable:'De kalender is tijdelijk niet beschikbaar.',fallback:'De evenementinformatie is beschikbaar in het Pools.',count:'evenementen'},
     fr:{locale:'fr-BE',days:['lun','mar','mer','jeu','ven','sam','dim'],time:'Date',place:'Lieu',organizer:'Organisateur',source:'Site de l’organisateur →',empty:'Aucun événement à venir ce jour-là.',show:'Voir dans le calendrier →',unavailable:'Le calendrier est temporairement indisponible.',fallback:'Les détails de l’événement sont disponibles en polonais.',count:'événements'}
   };
-  Object.assign(copy.pl,{homeEmpty:'Brak nadchodzących wydarzeń. Sprawdź pełny kalendarz.',show:'Zobacz w kalendarzu',unknownTime:'Godzina nieustalona',untitled:'Wydarzenie bez tytułu',regions:{flanders:'Flandria',wallonia:'Walonia',brussels:'Bruksela'}});
-  Object.assign(copy.en,{homeEmpty:'No upcoming events. Explore the full calendar.',show:'See in calendar',unknownTime:'Time to be confirmed',untitled:'Untitled event',regions:{flanders:'Flanders',wallonia:'Wallonia',brussels:'Brussels'}});
-  Object.assign(copy.nl,{homeEmpty:'Geen aankomende evenementen. Bekijk de volledige kalender.',show:'Bekijk in kalender',unknownTime:'Tijd nog te bepalen',untitled:'Evenement zonder titel',regions:{flanders:'Vlaanderen',wallonia:'Wallonië',brussels:'Brussel'}});
-  Object.assign(copy.fr,{homeEmpty:'Aucun événement à venir. Consultez le calendrier complet.',show:'Voir dans le calendrier',unknownTime:'Heure à confirmer',untitled:'Événement sans titre',regions:{flanders:'Flandre',wallonia:'Wallonie',brussels:'Bruxelles'}});
+  Object.assign(copy.pl,{homeEmpty:'Brak nadchodzących wydarzeń. Sprawdź pełny kalendarz.',show:'Zobacz szczegóły',unknownTime:'Godzina nieustalona',untitled:'Wydarzenie bez tytułu',regions:{flanders:'Flandria',wallonia:'Walonia',brussels:'Bruksela'}});
+  Object.assign(copy.en,{homeEmpty:'No upcoming events. Explore the full calendar.',show:'See details',unknownTime:'Time to be confirmed',untitled:'Untitled event',regions:{flanders:'Flanders',wallonia:'Wallonia',brussels:'Brussels'}});
+  Object.assign(copy.nl,{homeEmpty:'Geen aankomende evenementen. Bekijk de volledige kalender.',show:'Bekijk details',unknownTime:'Tijd nog te bepalen',untitled:'Evenement zonder titel',regions:{flanders:'Vlaanderen',wallonia:'Wallonië',brussels:'Brussel'}});
+  Object.assign(copy.fr,{homeEmpty:'Aucun événement à venir. Consultez le calendrier complet.',show:'Voir les détails',unknownTime:'Heure à confirmer',untitled:'Événement sans titre',regions:{flanders:'Flandre',wallonia:'Wallonie',brussels:'Bruxelles'}});
   const t = () => copy[document.documentElement.lang] || copy.pl;
   const localDay = value => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
   const localDateTime = value => new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
@@ -34,6 +34,7 @@
   const eventDate = event => event.date || event.start && localDay(event.start);
   const upcoming = event => !eventDate(event) || (event.end ? Date.parse(event.end) >= Date.now() : (event.endDate || eventDate(event)) >= today);
   const onDay = (event, date) => eventDate(event) && eventDate(event) <= date && (event.endDate || event.end && localDay(event.end) || eventDate(event)) >= date;
+  const startsOn = (event, date) => eventDate(event) === date;
   const eventTime = event => event.start ? localDateTime(event.start) : displayDate(eventDate(event));
   const dateLabel = event => displayDate(eventDate(event));
   const timeLabel = event => event.start ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start)) : '';
@@ -73,16 +74,6 @@
     if (names.length) container.append(node('p',`Imieniny obchodzą: ${names.join(', ')}`,'event-name-days'));
   }
 
-  function showEvent(event, container) {
-    container.replaceChildren();
-    container.append(node('h4',event.title || t().untitled),node('p',event.description),node('p',`${t().time}: ${eventTime(event)}${event.end ? ` – ${localDateTime(event.end)}` : event.endDate ? ` – ${displayDate(event.endDate)}` : ''}`));
-    if (event.venue || event.city || event.address) container.append(node('p',`${t().place}: ${[event.venue,event.city,event.address].filter(Boolean).join(', ')}`));
-    if (event.organizer) container.append(node('p',`${t().organizer}: ${event.organizer}`));
-    if (document.documentElement.lang !== 'pl') container.append(node('p',t().fallback,'language-fallback'));
-    const source = safeLink(event.sourceUrl);
-    if (source) { const link = node('a',t().source,'text-link'); link.href = source; link.target = '_blank'; link.rel = 'noopener noreferrer'; container.append(link); }
-  }
-
   function renderDay() {
     const date = new Date(`${selected}T12:00:00Z`);
     const heading = node('h3',new Intl.DateTimeFormat(t().locale,{dateStyle:'full',timeZone:'UTC'}).format(date));
@@ -93,10 +84,10 @@
     if (!matches.length) { details.append(node('p',t().empty)); return; }
     for (const event of matches) {
       const item = node('article',undefined,'event-day-item');
-      const button = node('button',event.title || t().untitled,'event-day-event'); button.type = 'button'; button.dataset.eventUrl = event.url; button.setAttribute('aria-expanded','false');
-      const content = node('div',undefined,'event-day-event-detail'); content.hidden = true;
-      button.addEventListener('click',() => { const open = content.hidden; details.querySelectorAll('.event-day-event-detail').forEach(panel => { panel.hidden = true; panel.previousElementSibling.setAttribute('aria-expanded','false'); }); content.hidden = !open; button.setAttribute('aria-expanded',String(open)); if (open) showEvent(event,content); });
-      item.append(button,content); details.append(item);
+      const link = node('a',event.title || t().untitled,'event-day-event'); link.href = event.url; link.dataset.eventUrl = event.url;
+      const meta = node('span',`${eventTime(event)}${event.city ? ` · ${event.city}` : ''}`,'event-day-event-meta');
+      const action = node('span',t().show,'event-day-event-action');
+      link.append(meta,action); item.append(link); details.append(item);
     }
   }
 
@@ -110,7 +101,7 @@
     const count = new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
     for (let number=1;number<=count;number++) {
       const date = `${month}-${String(number).padStart(2,'0')}`;
-      const matchCount = dateEvents(date).length;
+      const matchCount = dateEvents(date).filter(event => startsOn(event,date)).length;
       const isHoliday = (calendarInfo?.holidays(date,region).length || 0) > 0 || calendarInfo?.sunday(date) || manualHolidayOn(date);
       const button = node('button',String(number),`event-calendar-day${matchCount ? ' has-events' : ''}${isHoliday ? ' is-holiday' : ''}${date === today ? ' is-today' : ''}${date === selected ? ' is-selected' : ''}`);
       button.type = 'button'; button.dataset.date = date; button.setAttribute('aria-label',`${number} ${title.textContent}${matchCount ? `, ${matchCount} ${t().count}` : ''}`); button.setAttribute('aria-pressed',String(date === selected));
@@ -131,7 +122,7 @@
     const count = new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
     for (let number=1;number<=count;number++) {
       const date = `${miniMonth}-${String(number).padStart(2,'0')}`;
-      const hasEvents = dateEvents(date).length > 0;
+      const hasEvents = dateEvents(date).some(event => startsOn(event,date));
       const isHoliday = (calendarInfo?.holidays(date).length || 0) > 0 || calendarInfo?.sunday(date) || manualHolidayOn(date);
       const button = node('button',String(number),`event-calendar-day${hasEvents ? ' has-events' : ''}${isHoliday ? ' is-holiday' : ''}${date === today ? ' is-today' : ''}`);
       button.type='button'; button.dataset.date=date; button.setAttribute('aria-label',date);
@@ -146,15 +137,15 @@
     home.replaceChildren();
     if (!upcomingEvents.length) { const empty = node('p',t().homeEmpty,'home-events-empty'); home.append(empty); renderMini(); return; }
     for (const event of upcomingEvents) {
-      const card = node('a',undefined,'event-card'); card.href='/wydarzenia/';
-      const date = node('div',dateLabel(event),'event-card__date');
-      const info = node('div'); info.append(node('h3',event.title || t().untitled));
+      const card = node('a',undefined,'event-card'); card.href=event.url;
+      if (event.image) { const image=node('img',undefined,'event-card__image'); image.src=event.image; image.alt=''; image.loading='lazy'; card.append(image); }
+      const info = node('div',undefined,'event-card__content'); info.append(node('h3',event.title || t().untitled));
+      info.append(node('p',`${dateLabel(event)}${timeLabel(event) ? `, ${timeLabel(event)}` : ''}`,'event-card__date'));
       const place = event.city || t().regions[event.region]; if (place) info.append(node('p',place,'event-card__place'));
-      if (timeLabel(event)) info.append(node('p',timeLabel(event),'event-card__time'));
+      if (event.description) info.append(node('p',event.description,'event-card__description'));
       if (document.documentElement.lang !== 'pl') info.append(node('small',t().fallback,'language-fallback'));
       const button = node('span',t().show,'event-card__button');
-      card.addEventListener('click',click => { click.preventDefault(); region = regions.includes(event.region) ? event.region : 'all'; selected = eventDate(event); month = selected.slice(0,7); open(card); const chosen = [...details.querySelectorAll('[data-event-url]')].find(item => item.dataset.eventUrl === event.url); chosen?.click(); chosen?.scrollIntoView({block:'nearest'}); });
-      info.append(button); card.append(date,info); home.append(card);
+      info.append(button); card.append(info); home.append(card);
     }
     const more = node('button',moreLabel[document.documentElement.lang] || moreLabel.pl,'event-card__button'); more.type='button'; more.addEventListener('click',() => { region='all'; open(more); }); home.append(more);
     renderMini();
