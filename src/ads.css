@@ -528,3 +528,19 @@ body[data-page="home"] #listing-top .top-carousel .listing-card { flex:0 0 calc(
   #listing-premium .ad-placeholder--premium .ad-placeholder__action { min-height:32px; padding:5px 10px; font-size:.75rem; }
   body[data-page="home"] #listing-top .top-carousel .listing-card { flex-basis:100%; }
 }
+
+/* TOP artwork and copy use the same card in the public feed and order preview. */
+#listing-top .listing-top-card__open { display:flex; flex-direction:column; align-items:stretch; gap:8px; width:100%; height:100%; padding:12px; border:0; background:transparent; color:var(--ink); text-align:left; cursor:pointer; }
+#listing-top .listing-top-card__visual { display:block; width:100%; }
+#listing-top .listing-top-card__visual .ad-image-creative { width:100%; aspect-ratio:5 / 3; }
+#listing-top .listing-top-card__visual .ad-image-creative > picture,#listing-top .listing-top-card__visual .ad-image-creative img { display:block; width:100%; height:100%; object-fit:contain; }
+.ad-image-creative--top { aspect-ratio:5 / 3; border-radius:0; background:transparent; }
+.ad-image-creative--top .ad-creative__meta { display:none; }
+#listing-top .listing-top-card__title,.order-preview .listing-top-card__title { margin:0; color:var(--navy); font-size:clamp(1.1rem,2vw,1.4rem); line-height:1.25; overflow-wrap:anywhere; }
+#listing-top .listing-top-card__description,.order-preview .listing-top-card__description { margin:0; color:var(--ink); font-size:clamp(.86rem,1.3vw,1rem); line-height:1.45; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+#listing-top .listing-top-card__cta,.order-preview .listing-top-card__cta { display:inline-flex; align-self:flex-start; margin-top:auto; padding:8px 12px; border-radius:8px; background:var(--navy); color:#fff; font-size:.84rem; font-weight:700; }
+#listing-top .listing-top-card__open:hover .listing-top-card__cta,#listing-top .listing-top-card__open:focus-visible .listing-top-card__cta { background:var(--red); }
+.listing-detail__image { display:block; width:100%; height:auto; max-height:50vh; object-fit:contain; margin:16px 0; }
+.listing-detail__website { display:inline-flex; margin:8px 0 16px; text-decoration:none; }
+.order-preview .listing-card:has(.listing-top-card__title) { display:flex; flex-direction:column; gap:8px; padding:12px; }
+.order-preview .listing-card:has(.listing-top-card__title) > .ad-image-creative { width:100%; aspect-ratio:5 / 3; }

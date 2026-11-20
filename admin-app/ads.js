@@ -122,8 +122,16 @@ async function open(order) {
     catch { $('#ads-payment-history').textContent += ' · Historia moderacji niedostępna.'; }
   }
   $('#ads-edit-error').textContent = '';
-  $('#ads-image-preview').hidden = order.kind === 'text' || !order.image;
+  const preview = $('#ads-public-preview');
+  preview.hidden = !['TOP','PREMIUM'].includes(order.type);
+  preview.classList.toggle('ads-public-preview--premium', order.type === 'PREMIUM');
+  $('#ads-image-preview').hidden = !order.image;
   if (order.image) $('#ads-image-preview').src = order.image;
+  else $('#ads-image-preview').removeAttribute('src');
+  $('#ads-preview-title').textContent = order.title || '';
+  $('#ads-preview-description').textContent = order.description || '';
+  $('#ads-preview-title').hidden = $('#ads-preview-description').hidden = order.type === 'PREMIUM' && !!order.image;
+  $('#ads-preview-action').hidden = order.type !== 'TOP';
   $('#ads-dialog').showModal();
 }
 function openSharedOrder(id = '') { $('#ads-order-frame').src = '/zamow-ogloszenie/?cms=1' + (id ? `&edit=${encodeURIComponent(id)}` : ''); $('#ads-order-dialog').showModal(); }

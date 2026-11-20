@@ -14,7 +14,7 @@
     };
     if (ad.image) {
       const frame = document.createElement('div'); frame.className = `ad-image-creative ad-image-creative--${ad.type.toLowerCase()}`;
-      const backdrop = ad.type === 'PREMIUM' ? null : document.createElement('picture');
+      const backdrop = ad.type === 'PREMIUM' || ad.type === 'TOP' ? null : document.createElement('picture');
       if (backdrop) { backdrop.className = 'ad-image-creative__backdrop'; backdrop.setAttribute('aria-hidden','true'); }
       const picture = document.createElement('picture');
       const mobileImage = ad.imageMobile || ad.image;

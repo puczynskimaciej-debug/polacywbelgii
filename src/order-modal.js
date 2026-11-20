@@ -119,6 +119,10 @@
   Object.assign(copy.en,{phoneInvalid:'Enter a valid phone number with at least 6 digits.',urlInvalid:'Enter an http:// or https:// website without login details.'});
   Object.assign(copy.nl,{phoneInvalid:'Vul een geldig telefoonnummer met minstens 6 cijfers in.',urlInvalid:'Vul een website met http:// of https:// in, zonder inloggegevens.'});
   Object.assign(copy.fr,{phoneInvalid:'Saisissez un numéro de téléphone valide d’au moins 6 chiffres.',urlInvalid:'Saisissez un site en http:// ou https://, sans identifiants.'});
+  Object.assign(copy.pl, {premiumImage:'PREMIUM: wymagane proporcje 6:1 (np. 1200 × 200 lub 2400 × 400 px). Osobna grafika 660 × 300 px na telefon jest opcjonalna.',topImage:'TOP: grafika jest skalowana proporcjonalnie bez przycinania i rozmycia.',dimensionError:'Nieprawidłowe proporcje grafiki. Wymagany format:',actualDimensions:'Wymiary pliku',topDetails:'Zobacz ogłoszenie'});
+  Object.assign(copy.nl, {premiumImage:'PREMIUM: verhouding 6:1 vereist (bijv. 1200 × 200 of 2400 × 400 px). Een aparte afbeelding van 660 × 300 px voor mobiel is optioneel.',topImage:'TOP: de afbeelding wordt proportioneel geschaald zonder bijsnijden of vervagen.',dimensionError:'Onjuiste beeldverhouding. Vereist formaat:',actualDimensions:'Afmetingen van het bestand',topDetails:'Bekijk de advertentie'});
+  Object.assign(copy.fr, {premiumImage:'PREMIUM : format 6:1 requis (p. ex. 1200 × 200 ou 2400 × 400 px). Une image mobile distincte de 660 × 300 px est facultative.',topImage:'TOP : l’image est redimensionnée proportionnellement sans recadrage ni flou.',dimensionError:'Proportions incorrectes. Format requis :',actualDimensions:'Dimensions du fichier',topDetails:'Voir l’annonce'});
+  Object.assign(copy.en, {premiumImage:'PREMIUM: 6:1 ratio required (e.g. 1200 × 200 or 2400 × 400 px). A separate 660 × 300 px mobile image is optional.',topImage:'TOP: artwork is scaled proportionally without cropping or blur.',dimensionError:'Incorrect image ratio. Required format:',actualDimensions:'File dimensions',topDetails:'View listing'});
   const languages = window.siteLanguages;
   const keys = Object.keys(languages).filter(language => language !== 'en');
   const visualOrder = ['pl','nl','fr'].filter(language => keys.includes(language));
@@ -143,21 +147,20 @@
   const node = (tag, value = '', className = '') => { const element = document.createElement(tag); element.textContent = value; if (className) element.className = className; return element; };
   const dateAt = (date, offset) => new Date(Date.parse(date) + offset * 86400000).toISOString().slice(0, 10);
   const money = cents => new Intl.NumberFormat(languages[locale]?.locale || 'pl-PL', { style: 'currency', currency: 'EUR' }).format(cents / 100);
-  async function fitImage(file, width, height) {
+  async function fitImage(file, width, height, requireRatio = false) {
     if (!file || file.size > 5_000_000 || !['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error('imageError');
     const bitmap = await createImageBitmap(file);
     try {
       if (bitmap.width < 100 || bitmap.height < 100 || bitmap.width * bitmap.height > 40_000_000) throw new Error('imageError');
-      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-      const context = canvas.getContext('2d'); context.fillStyle = '#102846'; context.fillRect(0,0,width,height);
-      const coverScale = Math.max(width / bitmap.width, height / bitmap.height);
-      const coverWidth = bitmap.width * coverScale, coverHeight = bitmap.height * coverScale;
-      context.save(); context.filter = 'blur(24px) brightness(.65)';
-      context.drawImage(bitmap, (width - coverWidth) / 2 - 24, (height - coverHeight) / 2 - 24, coverWidth + 48, coverHeight + 48);
-      context.restore();
-      const scale = Math.min(width / bitmap.width, height / bitmap.height);
+      if (requireRatio && bitmap.width * height !== bitmap.height * width) {
+        const error = new Error('dimensionError');
+        Object.assign(error, { actualWidth: bitmap.width, actualHeight: bitmap.height, requiredWidth: width, requiredHeight: height });
+        throw error;
+      }
+      const scale = Math.min(1, width / bitmap.width, height / bitmap.height);
       const fittedWidth = Math.round(bitmap.width * scale), fittedHeight = Math.round(bitmap.height * scale);
-      context.drawImage(bitmap, Math.round((width - fittedWidth) / 2), Math.round((height - fittedHeight) / 2), fittedWidth, fittedHeight);
+      const canvas = document.createElement('canvas'); canvas.width = fittedWidth; canvas.height = fittedHeight;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, fittedWidth, fittedHeight);
       for (const quality of [.86,.76,.66,.55,.43]) {
         const data = canvas.toDataURL('image/webp', quality);
         if (data.length < 680000) return data;
@@ -223,7 +226,7 @@
     const base = chosenDates.length * (config.data.markets[primaryLanguage]?.prices[type] || 0);
     return base + selectedLanguages.filter(language => language !== primaryLanguage).length * Math.round(base / 2);
   }
-  const clickBehavior = () => type === 'STANDARD' ? t('clickStandard') : url.trim() ? t('clickWebsite') : [publicPhone,publicEmail,contact].some(value => value.trim()) ? t('clickDetails') : t('clickNone');
+  const clickBehavior = () => type === 'STANDARD' ? t('clickStandard') : type === 'TOP' ? t('topDetails') : url.trim() ? t('clickWebsite') : [publicPhone,publicEmail,contact].some(value => value.trim()) ? t('clickDetails') : t('clickNone');
   const timing = () => {
     if (!chosenDates.length) return '';
     if (chosenDates.includes(config.today)) return t('todayTiming');
@@ -257,6 +260,11 @@
     for (const sampleType of ['PREMIUM','TOP']) $('#order-example-' + sampleType.toLowerCase())?.replaceChildren(window.buildAdCreative({type:sampleType,title,description,company:advertiser,publicPhone:($('[name=publicPhone]')?.value ?? publicPhone).trim(),publicEmail:($('[name=publicEmail]')?.value ?? publicEmail).trim(),contact:($('[name=contact]')?.value ?? contact).trim()}));
   }
   function setMessage(key) { $('#order-message').textContent = key ? t(key) : ''; }
+  function setImageError(error) {
+    $('#order-message').textContent = error?.message === 'dimensionError'
+      ? `${t('dimensionError')} ${error.requiredWidth} × ${error.requiredHeight} px. ${t('actualDimensions')}: ${error.actualWidth} × ${error.actualHeight} px.`
+      : t('imageError');
+  }
   function showFields(captureExisting = true) {
     if (captureExisting) capture();
     if (type === 'STANDARD') kind = 'text';
@@ -292,7 +300,7 @@
         if (kind === 'image' && language !== primaryLanguage) {
           const label = node('label', t('languageGraphic'));
           const field = document.createElement('input'); field.type = 'file'; field.accept = 'image/png,image/jpeg,image/webp'; field.dataset.languageImage = language;
-          field.onchange = async () => { try { const file = field.files[0]; languageImages[language] = file ? { image:await fitImage(file,1200,type === 'PREMIUM' ? 200 : 720), imageMobile:type === 'PREMIUM' ? await fitImage(file,660,300) : '' } : null; setMessage(''); } catch { setMessage('imageError'); field.value=''; } };
+          field.onchange = async () => { try { const file = field.files[0]; const image = file ? await fitImage(file,1200,type === 'PREMIUM' ? 200 : 720,type === 'PREMIUM') : ''; languageImages[language] = image ? { image, imageMobile:type === 'PREMIUM' ? image : '' } : null; setMessage(''); } catch (error) { setImageError(error); field.value=''; } };
           label.append(field); wrapper.append(label);
         }
         (kind === 'text' ? textBox : bannerBox).append(wrapper);
@@ -438,15 +446,14 @@
         else { imageData = ''; imageName = ''; $('#order-image-name').textContent = ''; }
         if (file) {
           try {
-            if (mobile) { mobileImageData = await fitImage(file, 660, 300); mobileImageName = file.name; $('#order-mobile-image-name').textContent = file.name; }
+            if (mobile) { mobileImageData = await fitImage(file, 660, 300, type === 'PREMIUM'); mobileImageName = file.name; $('#order-mobile-image-name').textContent = file.name; }
             else {
-              imageData = await fitImage(file, 1200, type === 'PREMIUM' ? 200 : 720); imageName = file.name; $('#order-image-name').textContent = file.name;
-              if (type === 'PREMIUM' && !mobileImageName) { mobileImageData = await fitImage(file, 660, 300); $('#order-mobile-image-name').textContent = t('autoImage'); }
+              imageData = await fitImage(file, 1200, type === 'PREMIUM' ? 200 : 720, type === 'PREMIUM'); imageName = file.name; $('#order-image-name').textContent = file.name;
             }
             $('[name=imageFile]').required = false;
             $('[name=imageMobileFile]').required = false;
             setMessage('');
-          } catch { setMessage('imageError'); event.target.value = ''; }
+          } catch (error) { setImageError(error); event.target.value = ''; }
         }
         requestId = crypto.randomUUID(); summary();
       };
@@ -481,8 +488,8 @@
       if (type === 'TOP' || type === 'PREMIUM') {
         const artwork = languageImages[previewLanguage] || {};
         const ownImage = kind === 'image' ? artwork.image || imageData : '';
-        item.append(window.buildAdCreative({type,title:titles[previewLanguage],description:descriptions[previewLanguage],company,publicPhone,publicEmail,contact,image:ownImage,imageMobile:kind === 'image' ? artwork.imageMobile || mobileImageData : ''},device === 'mobile'));
-        if (type === 'TOP' && ownImage) item.append(node('h3',titles[previewLanguage]),node('p',descriptions[previewLanguage]));
+        if (type === 'PREMIUM' || ownImage) item.append(window.buildAdCreative({type,title:titles[previewLanguage],description:descriptions[previewLanguage],company,publicPhone,publicEmail,contact,image:ownImage,imageMobile:kind === 'image' ? artwork.imageMobile || (artwork.image ? artwork.image : mobileImageData) : ''},device === 'mobile'));
+        if (type === 'TOP') item.append(node('h3',titles[previewLanguage],'listing-top-card__title'),node('p',descriptions[previewLanguage],'listing-top-card__description'),node('span',t('topDetails'),'listing-top-card__cta'));
       } else item.append(node('h3',titles[previewLanguage]),node('p',descriptions[previewLanguage], 'listing-copy'),node('p',[company,publicPhone,publicEmail,contact].filter(Boolean).join(' · '),'listing-contact'));
       preview.append(item);
     }

@@ -13,13 +13,16 @@
   const safePhone = value => typeof value === 'string' && /^\+?[0-9][0-9 ().-]*$/.test(value) && (value.match(/\d/g) || []).length >= 6 ? value.replace(/(?!^)\+|[^+\d]/g,'') : '';
   const safeEmail = value => typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? value : '';
   const labels = { pl:{phone:'Telefon',email:'E-mail',website:'Strona internetowa',other:'Kontakt'},nl:{phone:'Telefoon',email:'E-mail',website:'Website',other:'Contact'},fr:{phone:'Téléphone',email:'E-mail',website:'Site internet',other:'Contact'},en:{phone:'Phone',email:'Email',website:'Website',other:'Contact'} };
+  const topActions = { pl:{details:'Zobacz ogłoszenie',website:'Otwórz stronę reklamodawcy'},nl:{details:'Bekijk de advertentie',website:'Open de website van de adverteerder'},fr:{details:'Voir l’annonce',website:'Ouvrir le site de l’annonceur'},en:{details:'View listing',website:'Open advertiser website'} };
   const hasContact = ad => Boolean(safePhone(ad.publicPhone) || safeEmail(ad.publicEmail) || ad.contact);
   const detail = document.createElement('dialog'); detail.className = 'listing-detail'; detail.setAttribute('aria-label', 'Ogłoszenie'); document.body.append(detail);
   function showDetail(ad, trigger) {
     const lang = document.documentElement.lang;
     detail.setAttribute('aria-label', t('sponsored'));
     const close = element('button', { pl: 'Zamknij', en: 'Close', fr: 'Fermer', nl: 'Sluiten' }[lang] || 'Zamknij', 'button'); close.type = 'button'; close.onclick = () => detail.close();
-    detail.replaceChildren(element('h2', ad.title || t('sponsored')), element('p', ad.description, 'listing-copy'));
+    detail.replaceChildren(element('h2', ad.title || t('sponsored')));
+    if (ad.type === 'TOP' && ad.image) { const image = element('img', '', 'listing-detail__image'); image.src = ad.image; image.alt = ad.title || ad.company || ''; detail.append(image); }
+    detail.append(element('p', ad.description, 'listing-copy'));
     if (ad.company) detail.append(element('p', ad.company, 'listing-company'));
     const addDetailContact = (label, value, href) => {
       if (!value) return;
@@ -31,8 +34,9 @@
     const names = labels[lang] || labels.pl;
     addDetailContact(names.phone,ad.publicPhone,safePhone(ad.publicPhone) ? `tel:${safePhone(ad.publicPhone)}` : '');
     addDetailContact(names.email,ad.publicEmail,safeEmail(ad.publicEmail) ? `mailto:${safeEmail(ad.publicEmail)}` : '');
-    addDetailContact(names.website,safeUrl(ad.url) ? ad.url : '',safeUrl(ad.url));
+    if (ad.type !== 'TOP') addDetailContact(names.website,safeUrl(ad.url) ? ad.url : '',safeUrl(ad.url));
     addDetailContact(names.other,ad.contact,'');
+    if (ad.type === 'TOP' && safeUrl(ad.url)) { const website = element('a', (topActions[lang] || topActions.pl).website, 'button listing-detail__website'); website.href = safeUrl(ad.url); website.target = '_blank'; website.rel = 'sponsored noopener noreferrer'; detail.append(website); }
     detail.append(close);
     detail.onclose = () => trigger.focus(); detail.showModal(); close.focus();
   }
@@ -47,6 +51,12 @@
       const publicContact = [ad.publicPhone,ad.publicEmail,ad.contact].filter(Boolean).join(' · ');
       if (publicContact) item.append(element('p', publicContact, 'listing-contact'));
       item.append(more); return item;
+    }
+    if (ad.type === 'TOP') {
+      const button = element('button', '', 'listing-top-card__open'); button.type = 'button'; button.onclick = () => showDetail(ad, button);
+      if (ad.image) { const visual = element('div', '', 'listing-top-card__visual'); visual.append(window.buildAdCreative(ad)); button.append(visual); }
+      button.append(element('h3', ad.title || ad.company, 'listing-top-card__title'), element('p', ad.description, 'listing-top-card__description'), element('span', (topActions[document.documentElement.lang] || topActions.pl).details, 'listing-top-card__cta'));
+      item.append(button); return item;
     }
     const url = safeUrl(ad.url);
     const link = element(url ? 'a' : hasContact(ad) ? 'button' : 'div', '', url || hasContact(ad) ? '' : 'ad-static');
