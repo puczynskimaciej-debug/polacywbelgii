@@ -20,6 +20,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addGlobalData('buildVersion', process.env.CF_PAGES_COMMIT_SHA || process.env.COMMIT_REF || String(Date.now()));
   const markdown = require("markdown-it")({ html: false, linkify: true, typographer: true });
   eleventyConfig.addPassthroughCopy("src/style.css");
+  eleventyConfig.addPassthroughCopy("src/robots.txt");
   eleventyConfig.addPassthroughCopy("src/fonts.css");
   eleventyConfig.addPassthroughCopy("src/fonts");
   eleventyConfig.addPassthroughCopy("src/script.js");
