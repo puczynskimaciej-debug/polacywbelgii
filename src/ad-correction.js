@@ -50,8 +50,8 @@
         const original = preview.variants.find(item => item.language === block.dataset.language);
         const variant = { language: original.language, title: block.querySelector('[name=title]').value, description: block.querySelector('[name=description]').value };
         if (preview.kind === 'image') {
-          variant.image = block.querySelector('[name=image]').files[0] ? await window.PbeFitAdImage(block.querySelector('[name=image]').files[0], 1200, preview.type === 'PREMIUM' ? 200 : 720) : original.image;
-          if (preview.type === 'PREMIUM') variant.imageMobile = block.querySelector('[name=imageMobile]').files[0] ? await window.PbeFitAdImage(block.querySelector('[name=imageMobile]').files[0], 660, 300) : original.imageMobile;
+          variant.image = block.querySelector('[name=image]').files[0] ? await window.PbeFitAdImage(block.querySelector('[name=image]').files[0], 1200, preview.type === 'PREMIUM' ? 400 : 720, preview.type === 'PREMIUM') : original.image;
+          if (preview.type === 'PREMIUM') variant.imageMobile = block.querySelector('[name=imageMobile]').files[0] ? await window.PbeFitAdImage(block.querySelector('[name=imageMobile]').files[0], 900, 300, true) : original.imageMobile;
         }
         return variant;
       }));

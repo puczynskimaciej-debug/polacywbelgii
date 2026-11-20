@@ -43,7 +43,7 @@ dialog{width:min(900px,calc(100vw - 30px));padding:22px;border-radius:12px}.deta
 .ads-public-preview { display:grid; gap:8px; width:min(100%,600px); margin:14px 0; }
 .ads-public-preview[hidden],.ads-public-preview [hidden] { display:none; }
 .ads-public-preview img { display:block; width:100%; height:auto; object-fit:contain; }
-.ads-public-preview--premium img { aspect-ratio:6 / 1; }
+.ads-public-preview--premium img { aspect-ratio:3 / 1; }
 .ads-public-preview h3,.ads-public-preview p { margin:0; overflow-wrap:anywhere; }
 .ads-public-preview h3 { font-size:1.2rem; line-height:1.25; }
 .ads-public-preview p { line-height:1.45; }

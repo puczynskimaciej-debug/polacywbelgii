@@ -92,8 +92,8 @@ async function reserveBatch(db, body, ip, adminUser = null) {
         ? domain.creative({ kind: 'text', type: body.type, title: variant.title, description: variant.description || variant.text, contact: body.contact, company:body.company, publicPhone:body.publicPhone, publicEmail:body.publicEmail, url:body.url, email: body.email, customerName:body.customerName })
         : domain.creative({ kind: 'image', type: body.type, company: body.company, contact:body.contact, publicPhone:body.publicPhone, publicEmail:body.publicEmail, title: variant.title, description: variant.description, url: body.url, email: body.email, customerName: body.customerName, image: variant.image || body.image, imageMobile: body.type === 'PREMIUM' ? variant.imageMobile || body.imageMobile : '', phone: body.phone || '' });
       if (body.kind === 'image' && creative.image) {
-        domain.validateImageDimensions(creative.image, 1200, body.type === 'PREMIUM' ? 200 : 720);
-        if (body.type === 'PREMIUM' && creative.imageMobile) domain.validateImageDimensions(creative.imageMobile, 660, 300);
+        domain.validateImageDimensions(creative.image, 1200, body.type === 'PREMIUM' ? 400 : 720);
+        if (body.type === 'PREMIUM' && creative.imageMobile) domain.validateImageDimensions(creative.imageMobile, 900, 300);
       }
       const input = { language: variant.language, type: body.type, startDate: chosen[0], endDate: chosen.at(-1) };
       const price = domain.quoteSelected(current.data, { language: variant.language, type: body.type, dates: chosen }, new Date(), complimentary);
@@ -226,8 +226,8 @@ async function customerCorrect(db, body, env, mailer) {
     return { statements: current.flatMap(item => {
       const variant = body.variants.find(entry => entry.language === item.language);
       const creative = domain.creative({ ...item, ...body, ...variant, kind: item.kind, type: item.type, email: item.email, image: variant.image || item.image, imageMobile: variant.imageMobile || item.imageMobile });
-      if (creative.image) domain.validateImageDimensions(creative.image, 1200, item.type === 'PREMIUM' ? 200 : 720);
-      if (creative.imageMobile) domain.validateImageDimensions(creative.imageMobile, 660, 300);
+      if (creative.image && creative.image !== item.image) domain.validateImageDimensions(creative.image, 1200, item.type === 'PREMIUM' ? 400 : 720);
+      if (creative.imageMobile && creative.imageMobile !== item.imageMobile) domain.validateImageDimensions(creative.imageMobile, 900, 300);
       const updated = { ...item, ...creative, status: 'pending', editTokenHash: null, editTokenExpiresAt: null, moderationReason: null, version: item.version + 1, updatedAt: now };
       return [q(db, 'UPDATE ad_orders SET data=? WHERE id=?', JSON.stringify(updated), item.id), q(db, 'INSERT INTO ad_order_history(order_id,actor_id,action,previous_status,new_status,created_at) VALUES(?,?,?,?,?,?)', item.id, null, 'customer-corrected', item.status, updated.status, now)];
     }), output: { groupId: body.groupId, contactOrder: current.find(item => item.language === item.primaryLanguage) || current[0] } };
@@ -284,8 +284,8 @@ async function reviseGroup(db, body, adminUser) {
     for (const item of group) {
       const variant = variants.find(entry => entry.language === item.language);
       const creative = domain.creative({ ...item, ...body, ...variant, image: body.kind === 'image' ? variant.image || body.image || item.image : '', imageMobile: body.kind === 'image' && body.type === 'PREMIUM' ? variant.imageMobile || body.imageMobile || item.imageMobile : '' });
-      if (creative.image) domain.validateImageDimensions(creative.image, 1200, body.type === 'PREMIUM' ? 200 : 720);
-      if (creative.imageMobile) domain.validateImageDimensions(creative.imageMobile, 660, 300);
+      if (creative.image && (creative.image !== item.image || body.type !== item.type)) domain.validateImageDimensions(creative.image, 1200, body.type === 'PREMIUM' ? 400 : 720);
+      if (creative.imageMobile && creative.imageMobile !== item.imageMobile) domain.validateImageDimensions(creative.imageMobile, 900, 300);
       const previousPeriods = new Map(item.periods?.map(period => [period.date, period]) || []);
       const periods = chosen.map(date => {
         if (date >= domain.today() && (!sameDates || !previousPeriods.has(date))) return domain.periodForDate(date);

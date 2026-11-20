@@ -502,7 +502,7 @@ body.order-open { overflow:hidden; }
 
 /* Use the supplied artwork proportions in both public PREMIUM placements. */
 #listing-premium .premium-rotation,
-#listing-premium .premium-rotation--dense { position:relative; display:block; height:auto; aspect-ratio:6 / 1; min-height:0; }
+#listing-premium .premium-rotation--dense { position:relative; display:block; height:auto; aspect-ratio:3 / 1; min-height:0; }
 body[data-page="home"] #listing-premium .premium-rotation { width:min(1280px,calc(100vw - 40px)); max-width:100%; margin-inline:auto; }
 #listing-premium .premium-rotation .premium-banner__link { position:absolute; inset:0; display:block; width:100%; height:100%; min-height:0; aspect-ratio:auto; border:0; border-radius:0; }
 #listing-premium .premium-banner__link > .ad-image-creative { display:block; width:100%; height:100%; min-height:0; aspect-ratio:auto; border-radius:0; background:transparent; }
@@ -520,7 +520,7 @@ body[data-page="home"] #listing-top .top-carousel .listing-card { flex:0 0 calc(
 @media(max-width:580px) {
   #listing-premium .premium-rotation,
   #listing-premium .premium-rotation--dense,
-  #listing-premium .premium-rotation:has(.ad-placeholder--premium) { aspect-ratio:2.2 / 1; min-height:0; }
+  #listing-premium .premium-rotation:has(.ad-placeholder--premium) { aspect-ratio:3 / 1; min-height:0; }
   body[data-page="home"] #listing-premium .premium-rotation { width:calc(100vw - 30px); }
   #listing-premium .ad-placeholder--premium .ad-placeholder__content { gap:3px; padding:8px 12px; }
   #listing-premium .ad-placeholder--premium h3 { font-size:clamp(.95rem,4vw,1.25rem); }
@@ -544,3 +544,17 @@ body[data-page="home"] #listing-top .top-carousel .listing-card { flex:0 0 calc(
 .listing-detail__website { display:inline-flex; margin:8px 0 16px; text-decoration:none; }
 .order-preview .listing-card:has(.listing-top-card__title) { display:flex; flex-direction:column; gap:8px; padding:12px; }
 .order-preview .listing-card:has(.listing-top-card__title) > .ad-image-creative { width:100%; aspect-ratio:5 / 3; }
+
+/* PREMIUM artwork, placeholders and previews share one 3:1 frame at every width. */
+#listing-premium .premium-rotation,
+#listing-premium .premium-rotation--dense,
+#listing-premium .premium-rotation:has(.ad-placeholder--premium),
+.ad-image-creative--premium,
+.order-preview.is-mobile .ad-image-creative--premium,
+.order-preview.is-mobile .premium-banner__link,
+#order-dialog #order-example-premium .ad-creative--premium,
+#order-dialog #order-example-premium .ad-image-creative--premium { aspect-ratio:3 / 1; min-height:0; }
+#order-dialog #order-example-premium .ad-creative--premium { width:100%; padding:clamp(6px,1.5vw,16px); }
+.order-preview .premium-banner__link > .ad-image-creative { width:100%; aspect-ratio:3 / 1; }
+.order-preview .premium-banner__link { display:block; aspect-ratio:3 / 1; }
+.order-preview .ad-image-creative--premium .ad-creative__meta { display:none; }
