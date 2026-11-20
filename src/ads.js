@@ -54,8 +54,10 @@
     }
     if (ad.type === 'TOP') {
       const button = element('button', '', 'listing-top-card__open'); button.type = 'button'; button.onclick = () => showDetail(ad, button);
-      if (ad.image) { const visual = element('div', '', 'listing-top-card__visual'); visual.append(window.buildAdCreative(ad)); button.append(visual); }
-      button.append(element('h3', ad.title || ad.company, 'listing-top-card__title'), element('p', ad.description, 'listing-top-card__description'), element('span', (topActions[document.documentElement.lang] || topActions.pl).details, 'listing-top-card__cta'));
+      const visual = element('div', '', 'listing-top-card__visual'); visual.append(window.buildAdCreative(ad)); button.append(visual);
+      if (ad.image) button.append(element('h3', ad.title || ad.company, 'listing-top-card__title'), element('p', ad.description, 'listing-top-card__description'));
+      else button.classList.add('top-text-template');
+      button.append(element('span', (topActions[document.documentElement.lang] || topActions.pl).details, 'listing-top-card__cta'));
       item.append(button); return item;
     }
     const url = safeUrl(ad.url);

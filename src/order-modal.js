@@ -488,8 +488,12 @@
       if (type === 'TOP' || type === 'PREMIUM') {
         const artwork = languageImages[previewLanguage] || {};
         const ownImage = kind === 'image' ? artwork.image || imageData : '';
-        if (type === 'PREMIUM' || ownImage) item.append(window.buildAdCreative({type,title:titles[previewLanguage],description:descriptions[previewLanguage],company,publicPhone,publicEmail,contact,image:ownImage,imageMobile:kind === 'image' ? artwork.imageMobile || (artwork.image ? artwork.image : mobileImageData) : ''},device === 'mobile'));
-        if (type === 'TOP') item.append(node('h3',titles[previewLanguage],'listing-top-card__title'),node('p',descriptions[previewLanguage],'listing-top-card__description'),node('span',t('topDetails'),'listing-top-card__cta'));
+        if (type === 'PREMIUM' || type === 'TOP') item.append(window.buildAdCreative({type,title:titles[previewLanguage],description:descriptions[previewLanguage],company,publicPhone,publicEmail,contact,image:ownImage,imageMobile:kind === 'image' ? artwork.imageMobile || (artwork.image ? artwork.image : mobileImageData) : ''},device === 'mobile'));
+        if (type === 'TOP') {
+          if (ownImage) item.append(node('h3',titles[previewLanguage],'listing-top-card__title'),node('p',descriptions[previewLanguage],'listing-top-card__description'));
+          else item.classList.add('top-text-template');
+          item.append(node('span',t('topDetails'),'listing-top-card__cta'));
+        }
       } else item.append(node('h3',titles[previewLanguage]),node('p',descriptions[previewLanguage], 'listing-copy'),node('p',[company,publicPhone,publicEmail,contact].filter(Boolean).join(' · '),'listing-contact'));
       preview.append(item);
     }

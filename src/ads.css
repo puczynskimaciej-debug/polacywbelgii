@@ -579,3 +579,19 @@ body[data-page="ads"] #listing-top .top-carousel .listing-card { flex:0 0 min(32
 #listing-top .listing-top-card__cta { padding:6px 10px; font-size:.78rem; }
 .order-preview .listing-card:has(.listing-top-card__title) > .ad-image-creative { aspect-ratio:15 / 7; }
 .order-preview .listing-card:has(.listing-top-card__title) > .ad-image-creative img { object-fit:cover; object-position:center; }
+
+/* TOP without uploaded artwork uses the shared navy/red creative in both views. */
+#listing-top .listing-card:has(.top-text-template) { height:300px; min-height:300px; }
+#listing-top .top-text-template .listing-top-card__visual { flex:1 1 auto; min-height:0; }
+#listing-top .top-text-template .ad-creative--top,
+.order-preview .top-text-template > .ad-creative--top { height:100%; min-height:0; aspect-ratio:auto; padding:12px; }
+.top-text-template .ad-creative--top .ad-creative__copy { display:flex; flex-direction:column; gap:6px; width:88%; max-width:88%; min-height:0; overflow:hidden; }
+.top-text-template .ad-creative--top .ad-creative__title { min-height:0; font-size:1.08rem; line-height:1.2; }
+.top-text-template .ad-creative--top .ad-creative__description,
+.top-text-template .ad-creative--top.ad-creative--dense .ad-creative__description { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; font-size:1rem; line-height:1.35; }
+.top-text-template .ad-creative--top .ad-creative__meta { margin-top:auto; max-height:2.8em; overflow:hidden; font-size:.82rem; }
+.order-preview .listing-card.top-text-template { display:flex; flex-direction:column; gap:6px; width:min(320px,100%); height:300px; min-height:300px; padding:9px; }
+.order-preview .top-text-template > .ad-creative--top { flex:1 1 auto; }
+#order-dialog #order-example-top { width:min(100%,240px); }
+#order-dialog #order-example-top .ad-creative__title { min-height:0; }
+#order-dialog #order-example-top .ad-creative__description { font-size:.88rem; line-height:1.3; }
