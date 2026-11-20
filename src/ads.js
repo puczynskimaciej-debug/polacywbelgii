@@ -127,7 +127,7 @@
         list.closest('section').hidden = false;
         if (type === 'PREMIUM') setupPremium(list);
         if (type === 'TOP') setupTop(list);
-        if (type === 'STANDARD') { list.classList.add('standard-carousel'); setupScroller(list, 'STANDARD'); }
+        if (type === 'STANDARD' && document.body.dataset.page !== 'ads') { list.classList.add('standard-carousel'); setupScroller(list, 'STANDARD'); }
       }
       if (type !== 'STANDARD') list.closest('section').hidden = false;
       if (type === 'STANDARD') {

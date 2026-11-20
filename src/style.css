@@ -131,7 +131,7 @@ p { margin: 0; }
 .article-row__image { overflow: hidden; border-radius: var(--radius); box-shadow: var(--shadow); background:var(--cream); }
 .article-row__image img { width: 100%; height: 380px; object-fit: contain; transition: transform .4s; }
 .article-row__image:hover img { transform: scale(1.025); }
-.article-tags { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
+.article-tags { display:none; }
 .article-tags[hidden] { display:none; }
 .article-tags span { display:inline-block; padding:4px 10px; border-radius:999px; background:var(--cream); color:var(--navy); font-size:.8rem; }
 .article-meta { display: flex; align-items: center; gap: 14px; margin-bottom: 15px; color: var(--muted); font-size: .84rem; }
