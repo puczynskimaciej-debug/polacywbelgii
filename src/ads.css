@@ -381,6 +381,7 @@ body.order-open { overflow:hidden; }
 #order-dialog .order-info-card--translate::after { content:""; position:absolute; inset:0; z-index:1; border-radius:inherit; background:#152c4938; }
 #order-dialog .order-translation-stamp { position:absolute; left:50%; top:50%; z-index:2; transform:translate(-50%,-50%) rotate(-8deg); width:max-content; max-width:calc(100% - 24px); padding:5px 13px; border:3px solid #bd2734; border-radius:6px; background:#fff9; color:#bd2734; font-size:clamp(1.2rem,4vw,2rem); font-weight:900; letter-spacing:.1em; line-height:1.15; text-align:center; box-shadow:0 2px 8px #10284626; }
 
+
 /* Compact public placements; artwork keeps its original aspect inside the frame. */
 .ad-creative--premium::before,.ad-creative--top::before { width:19%; right:-7%; }
 .ad-creative--premium::after,.ad-creative--top::after { width:12%; right:10%; }
@@ -622,3 +623,8 @@ body[data-page="ads"] #listing-top .top-carousel .listing-card { flex:0 0 min(32
 #ogloszenia .ads-standard-list .listing-card--text .listing-contact { display:none; }
 @media(max-width:1000px) { #ogloszenia .ads-standard-list { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:650px) { #ogloszenia .ads-standard-list { grid-template-columns:minmax(0,1fr); } }
+
+@media(max-width:650px) {
+  #listing-top .top-carousel:has(> :nth-child(2)):not(:has(> :nth-child(3))) { justify-content:flex-start; }
+  #listing-top .listing-top-card__visual .ad-image-creative img { object-fit:contain; }
+}
