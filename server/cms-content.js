@@ -30,11 +30,12 @@ function validateContent(filename, content) {
     const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
     if (!match) fail('validation');
     let data; try { data = yaml.load(match[1], { schema: yaml.JSON_SCHEMA }); } catch { fail('validation'); }
-    const keys = new Set(['title', 'date', 'category', 'description', 'image', 'region', 'contentType', 'tags', 'sources', ...Object.keys(languages).flatMap(language => [`title_${language}`, `description_${language}`, `body_${language}`])]);
+    const keys = new Set(['title', 'date', 'category', 'description', 'image', 'region', 'contentType', 'tags', 'sources', ...Object.keys(languages).flatMap(language => [`title_${language}`, `description_${language}`, `body_${language}`]), ...['pl', 'nl', 'fr'].flatMap(language => [`image_${language}`, `tags_${language}`])]);
     if (!data || typeof data !== 'object' || Object.entries(data).some(([key, value]) => !keys.has(key) || typeof value !== 'string') || !data.title || !Number.isFinite(Date.parse(data.date))) fail('validation');
     if (data.region && !['all', 'flanders', 'wallonia', 'brussels'].includes(data.region)) fail('validation');
     if (data.contentType && !['article', 'event'].includes(data.contentType)) fail('validation');
     safeUrl(data.image || '');
+    for (const language of ['pl', 'nl', 'fr']) safeUrl(data[`image_${language}`] || '');
     if (data.sources) for (const url of data.sources.split(/\r?\n/).filter(Boolean)) { safeUrl(url.trim()); if (!url.trim().startsWith('https://')) fail('validation'); }
   } else {
     let data; try { data = JSON.parse(text); } catch { fail('validation'); }
