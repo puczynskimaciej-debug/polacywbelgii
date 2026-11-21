@@ -20,6 +20,9 @@ let state={conversations:[],entries:[],jobs:[],versions:[],current:null};
 let chosenVersion=null;
 
 function render() {
+  const style=state.editorialStyle||{};
+  $('#ai-style-status').textContent=style.updatedAt?`Profil stylu: ${formatDate(style.updatedAt,true)} · ${style.count} artykułów. ${style.summary||''}`:'Profil stylu nie został jeszcze zaktualizowany.';
+  $('#ai-style-history').innerHTML=style.history?.length?style.history.map(item=>`<p>${escapeHtml(formatDate(item.updatedAt,true))} · ${Number(item.count)||0} artykułów · ${escapeHtml(item.summary||'')}</p>`).join(''):'<p>Brak wcześniejszych analiz.</p>';
   $('#ai-conversations').innerHTML=state.conversations.length?state.conversations.map(row=>`<button type="button" class="ai-topic ${row.conversation_id===conversationId?'is-active':''}" data-conversation="${escapeHtml(row.conversation_id)}"><strong>${escapeHtml(row.title)}</strong><small>${escapeHtml(formatDate(row.updated_at,true))}</small></button>`).join(''):'<p class="empty-state">Nie ma jeszcze rozmów.</p>';
   const active=state.jobs.find(job=>['queued','running'].includes(job.status));
   const latest=state.jobs[0];
@@ -64,5 +67,6 @@ $('#ai-open-editor').addEventListener('click',()=>{if(state.current?.id)document
 $('#ai-automatic').addEventListener('change',async event=>{const enabled=event.target.checked;try{await cmsRequest('ai-chat',{},'POST',{action:'automatic',enabled});notice.textContent=enabled?'Automatyczne propozycje włączone.':'Automatyczne propozycje wyłączone.';}catch(error){event.target.checked=!enabled;notice.textContent=error.message;}});
 $('#ai-chat-clear').addEventListener('click',async()=>{if(!conversationId||!await confirmAction('Usunąć rozmowę?','Historia wiadomości zostanie usunięta. Istniejący artykuł pozostanie w CMS.','Usuń'))return;try{await cmsRequest('ai-chat',{},'POST',{action:'clear',conversationId});conversationId=null;sessionStorage.removeItem('ai-chat-conversation');await load();notice.textContent='Rozmowę usunięto.';}catch(error){notice.textContent=error.message;}});
 document.querySelector('[data-view="ai-editor"]').addEventListener('click',load);
+$('#ai-style-update').addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;$('#ai-style-status').textContent='Porównywanie opublikowanych artykułów…';try{const result=await cmsRequest('ai-chat',{},'POST',{action:'update-style'});state.editorialStyle=result.editorialStyle;render();}catch(error){$('#ai-style-status').textContent=`Aktualizacja nie powiodła się: ${error.message}`;}finally{button.disabled=false;}});
 document.addEventListener('cms:load-ai',load);
 setInterval(()=>{if(!document.hidden&&document.querySelector('[data-panel="ai-editor"]:not([hidden])')&&state.jobs?.some(job=>['queued','running'].includes(job.status)))load();},10000);

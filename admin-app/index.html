@@ -110,7 +110,8 @@
       </section>
 
       <section class="view admin-only" data-panel="ai-editor">
-        <div class="page-heading"><div><p class="kicker">Praca agenta</p><h1>AI Redaktor</h1></div><button class="secondary" type="button" id="ai-refresh">Odśwież</button></div>
+        <div class="page-heading"><div><p class="kicker">Praca agenta</p><h1>AI Redaktor</h1></div><div class="row-actions"><button class="secondary" type="button" id="ai-style-update">Aktualizuj</button><button class="secondary" type="button" id="ai-refresh">Odśwież</button></div></div>
+        <div class="editor-card"><p id="ai-style-status" role="status">Profil stylu: wczytywanie…</p><details><summary>Historia analiz stylu</summary><div id="ai-style-history"></div></details></div>
         <section class="editor-card ai-chat"><div class="card-heading"><div><h2>Rozmowa z agentem</h2><p><strong>Na polecenie:</strong> aktywny po wysłaniu wiadomości. <strong>Automatyczny:</strong> wyłączony.</p></div><button id="ai-chat-clear" class="secondary" type="button">Wyczyść rozmowę</button></div><div id="ai-chat-history" class="ai-chat-history" aria-live="polite"></div><form id="ai-chat-form"><label>Rodzaj wiadomości<select name="mode"><option value="chat">Pytanie do agenta</option><option value="article" selected>Zleć artykuł</option></select></label><label>Polecenie<textarea name="text" rows="3" maxlength="2500" required placeholder="Napisz pytanie lub zlecenie redakcyjne"></textarea></label><p class="muted">Podaj temat; adres oficjalnego źródła HTTPS jest opcjonalny. Agent sprawdzi stronę urzędową przed utworzeniem szkicu.</p><button class="primary" type="submit">Wyślij</button><p id="ai-chat-notice" role="status"></p></form></section>
         <p id="ai-notice" role="status"></p>
         <p id="ai-publication-status" class="editor-card" role="status"></p>

@@ -1,7 +1,7 @@
 import { currentUser } from './auth.mjs';
 import { errorResponse, fail, json, readJson } from './common.mjs';
 import { geminiRequest } from './gemini-request.mjs';
-import { editorialStyleContext } from './editorial-style.mjs';
+import { editorialStyleContext, editorialStyleStatus, updateEditorialStyle } from './editorial-style.mjs';
 
 const now = () => new Date().toISOString();
 const uuid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
@@ -39,10 +39,11 @@ export async function onRequest({ request, env }) {
         env.DB.prepare("SELECT value_json FROM ai_config WHERE key='auto_editorial'").first(),
         env.DB.prepare("SELECT c.id,c.title,c.description,c.body,c.sources_json,e.status FROM ai_chat_jobs j JOIN ai_candidates c ON c.id=j.candidate_id JOIN ai_editorial e ON e.candidate_id=c.id WHERE j.conversation_id=? AND j.candidate_id IS NOT NULL ORDER BY j.created_at DESC LIMIT 1").bind(conversationId||'').first()
       ]);
-      return json({conversationId,conversations,entries:entries.results,jobs:jobs.results,versions:versions.results,current,automaticEnabled:JSON.parse(auto?.value_json||'{"enabled":false}').enabled===true});
+      return json({conversationId,conversations,entries:entries.results,jobs:jobs.results,versions:versions.results,current,automaticEnabled:JSON.parse(auto?.value_json||'{"enabled":false}').enabled===true,editorialStyle:await editorialStyleStatus(env.DB)});
     }
     if (request.method !== 'POST') fail('method',405);
     const input = await readJson(request,4000);
+    if (input.action === 'update-style') return json({editorialStyle:await updateEditorialStyle(env)});
     if (input.action === 'automatic') {
       if (typeof input.enabled!=='boolean') fail('validation');
       await env.DB.prepare("INSERT INTO ai_config(key,value_json,updated_at) VALUES('auto_editorial',?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at").bind(JSON.stringify({enabled:input.enabled}),now()).run();

@@ -194,6 +194,10 @@ test('authenticated CMS chat stores both messages and rejects unauthenticated ac
   const env={DB,GEMINI_API_KEY:'test-key',GEMINI_FREE_TIER_CONFIRMED:'1'};
   const anonymous=await aiChatRoute({request:new Request('https://polacywbelgii.pages.dev/api/ai-chat'),env});
   assert.equal(anonymous.status,401);
+  const styleRequest=cookie=>new Request('https://polacywbelgii.pages.dev/api/ai-chat',{method:'POST',headers:{Origin:'https://polacywbelgii.pages.dev','Content-Type':'application/json',...(cookie?{Cookie:`__Host-pbe_session=${token}`}:{})},body:JSON.stringify({action:'update-style'})});
+  assert.equal((await aiChatRoute({request:styleRequest(false),env})).status,401);
+  const styleResponse=await aiChatRoute({request:styleRequest(true),env});
+  assert.equal(styleResponse.status,200);assert.equal((await styleResponse.json()).editorialStyle.count,0);
   const originalFetch=globalThis.fetch;
   let modelPrompt='';
   globalThis.fetch=async(_url,options)=>{modelPrompt=JSON.parse(options.body).contents[0].parts[0].text;return Response.json({candidates:[{content:{parts:[{text:'Trzy propozycje tematów do opracowania.'}]}}]});};

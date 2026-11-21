@@ -51,13 +51,24 @@ for(const textarea of form.querySelectorAll('textarea[name^="body"]')){
   toolbar.addEventListener('click',event=>{
     const action=event.target.closest('[data-visual-action]')?.dataset.visualAction;
     if(!action)return;
-    rich.focus();
     if(action==='link'){
-      const url=window.prompt('Adres HTTPS linku');
+      if(rich.hidden){
+        const start=textarea.selectionStart,end=textarea.selectionEnd,label=textarea.value.slice(start,end);
+        const url=window.prompt('Adres HTTPS linku');
+        if(!label||!url||!/^https:\/\/[^\s]+$/.test(url))return;
+        textarea.setRangeText(`[${label}](${url})`,start,end,'select');
+        textarea.dispatchEvent(new Event('input',{bubbles:true}));
+        return;
+      }
+      const anchor=window.getSelection()?.anchorNode;
+      const existing=(anchor?.nodeType===Node.ELEMENT_NODE?anchor:anchor?.parentElement)?.closest?.('a');
+      const url=window.prompt('Adres HTTPS linku',existing?.getAttribute('href')||'');
       if(!url||!/^https:\/\/[^\s]+$/.test(url))return;
-      document.execCommand('createLink',false,url);
-    }else if(action==='h2'||action==='h3'||action==='quote')document.execCommand('formatBlock',false,action==='quote'?'blockquote':action);
+      if(existing&&rich.contains(existing))existing.setAttribute('href',url);
+      else{rich.focus();document.execCommand('createLink',false,url);}
+    }else {rich.focus();if(action==='h2'||action==='h3'||action==='quote')document.execCommand('formatBlock',false,action==='quote'?'blockquote':action);
     else document.execCommand(({bold:'bold',italic:'italic',ul:'insertUnorderedList',ol:'insertOrderedList'})[action]);
+    }
     rich.dispatchEvent(new Event('input',{bubbles:true}));
   });
   source.addEventListener('click',()=>{const show=textarea.hidden;textarea.hidden=!show;rich.hidden=show;source.setAttribute('aria-pressed',String(show));if(!show)rich.innerHTML=renderMarkdown(textarea.value);});
