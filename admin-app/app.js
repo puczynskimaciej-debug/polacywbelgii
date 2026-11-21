@@ -1,7 +1,7 @@
 import { cmsConfig } from "./config.js";
 import { CmsAuth } from "./modules/auth.js";
 import { ContentApi } from "./modules/content-api.js";
-import { ContentRepository } from "./modules/repository.js";
+import { ContentRepository } from "./modules/repository.js?v=20261121-article-tabs2";
 import { cmsRequest } from './modules/client.js';
 import { confirmAction, renderMarkdown } from './ui.js';
 
@@ -166,11 +166,12 @@ function renderArticles() {
   const query=$('#articles-search').value.trim().toLocaleLowerCase('pl'), status=$('#articles-status').value;
   const matches=article=>(!query||`${article.title} ${article.category}`.toLocaleLowerCase('pl').includes(query))&&(!category.value||article.category===category.value)&&(!status||article.status===status);
   const articles=manual.filter(article=>matches(article) && (article.status==='published') === (articleTab==='published'));
-  const aiArticles=ai.filter(article=>matches(article) && (article.status==='published' && article.public_state==='visible' && article.approved_by && article.approved_at) === (articleTab==='published'));
+  const aiArticles=ai.filter(article=>matches(article) && Boolean(article.status==='published' && article.public_state==='visible' && article.approved_by && article.approved_at) === (articleTab==='published'));
   const manualRows=articles.map(article=>`<div class="table-row"><div><h3>${escapeHtml((state.language==='pl'?article.title:article[`title_${state.language}`])||'Brak wersji w tym języku: '+article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${formatDate(article.published_at||article.scheduled_at||article.date)} · ${escapeHtml(ui.statuses[article.status] || article.status)} · ${ui.editorial}</p></div><div class="row-actions"><button class="secondary" data-edit-article="${escapeHtml(article.slug)}">${ui.edit}</button>${publicationButtons(article,'manual')}<button class="ghost danger" data-delete-article="${escapeHtml(article.slug)}">${ui.remove}</button></div></div>`);
   const aiRows=aiArticles.map(article=>`<div class="table-row"><div><h3>${escapeHtml(article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${escapeHtml(ui.statuses[article.status]||article.status)} · AI Redaktor</p></div><div class="row-actions"><button class="secondary" data-edit-ai="${article.id}">${ui.edit}</button>${publicationButtons(article,'ai')}<button class="secondary" data-open-ai="${article.id}">${ui.open}</button></div></div>`);
-  const rows=[...articles.map((article,index)=>({html:manualRows[index],date:articleTab==='published'?article.published_at||article.date:article.updated_at||article.date})),...aiArticles.map((article,index)=>({html:aiRows[index],date:articleTab==='published'?article.published_at||article.created_at:[article.updated_at,article.editorial_updated_at].sort().at(-1)||article.created_at}))];
-  rows.sort((first,second)=>String(second.date||'').localeCompare(String(first.date||'')));
+  const dateValue=value=>value && Number.isFinite(Date.parse(value)) ? Date.parse(value) : Number.NEGATIVE_INFINITY;
+  const rows=[...articles.map((article,index)=>({html:manualRows[index],date:dateValue(articleTab==='published'?article.published_at:article.updated_at)})),...aiArticles.map((article,index)=>({html:aiRows[index],date:articleTab==='published'?dateValue(article.published_at):Math.max(dateValue(article.updated_at),dateValue(article.editorial_updated_at))}))];
+  rows.sort((first,second)=>first.date===second.date?0:first.date>second.date?-1:1);
   $("#articles-list").innerHTML = rows.map(row=>row.html).join('')||`<p class="empty-state">${ui.empty}</p>`;
 }
 $$('[data-articles-tab]').forEach(button=>button.addEventListener('click',()=>{ articleTab=button.dataset.articlesTab; sessionStorage.setItem('cms_article_tab',articleTab); $('#articles-status').value=''; renderArticles(); }));
