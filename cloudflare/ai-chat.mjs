@@ -1,19 +1,21 @@
 import { currentUser } from './auth.mjs';
 import { errorResponse, fail, json, readJson } from './common.mjs';
 import { geminiRequest } from './gemini-request.mjs';
+import { editorialStyleContext } from './editorial-style.mjs';
 
 const now = () => new Date().toISOString();
 const uuid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
 const safeText = value => typeof value === 'string' && value.trim().length >= 3 && value.length <= 2500;
 
-async function askGemini(env, prompt) {
+async function askGemini(env, prompt, styleTopic = null) {
   if (!env.GEMINI_API_KEY || env.GEMINI_FREE_TIER_CONFIRMED !== '1') fail('geminiUnavailable',503);
   const day = now().slice(0,10);
   await env.DB.prepare('INSERT OR IGNORE INTO ai_daily_budget(day,calls) VALUES(?,0)').bind(`chat:${day}`).run();
   const budget = await env.DB.prepare('UPDATE ai_daily_budget SET calls=calls+1 WHERE day=? AND calls<20').bind(`chat:${day}`).run();
   if (!budget.meta?.changes) fail('rateLimit',429);
+  const style = styleTopic ? await editorialStyleContext(env,{topic:styleTopic}).catch(()=>({guidance:''})) : {guidance:''};
   let response;
-  try { response = await geminiRequest(env,{contents:[{parts:[{text:`Jesteś młodym, ambitnym i pomocnym dziennikarzem portalu PolacywBelgii.eu. Odpowiadaj po polsku, konkretnie i przystępnie, biorąc pod uwagę wcześniejszą rozmowę. To wywołanie czatu NIE ma dostępu do wyszukiwarki, przeglądarki ani grup społecznościowych i NIE uruchamia zadania do późniejszego wykonania. Nie twierdź, że właśnie przeglądałeś strony, media, Facebooka lub źródła, ani że zweryfikowałeś bieżące informacje, jeśli w tej rozmowie nie otrzymałeś rzeczywistych wyników takiej czynności. Wcześniejsze wypowiedzi w rozmowie nie są dowodem wykonania researchu. Nie obiecuj, że zaraz sprawdzisz coś lub wrócisz z odpowiedzią. Podawaj użyteczne informacje, które potrafisz uzasadnić; nie przedstawiaj przypuszczeń jako faktów. Gdy nie możesz potwierdzić aktualnego zdarzenia, liczby lub źródła, wskaż dokładnie tę niepewność. Propozycję tematu oznacz jako pomysł redakcyjny, a nie potwierdzone wydarzenie. Nie wymyślaj źródeł ani cytatów. Nie zatwierdzaj i nie publikuj artykułów, nie zmieniaj reklam, płatności ani użytkowników. Rozmowa: ${prompt}`}]}],generationConfig:{maxOutputTokens:800,temperature:0.4}},45000); }
+  try { response = await geminiRequest(env,{contents:[{parts:[{text:`Jesteś młodym, ambitnym i pomocnym dziennikarzem portalu PolacywBelgii.eu. Odpowiadaj po polsku, konkretnie i przystępnie, biorąc pod uwagę wcześniejszą rozmowę. To wywołanie czatu NIE ma dostępu do wyszukiwarki, przeglądarki ani grup społecznościowych i NIE uruchamia zadania do późniejszego wykonania. Nie twierdź, że właśnie przeglądałeś strony, media, Facebooka lub źródła, ani że zweryfikowałeś bieżące informacje, jeśli w tej rozmowie nie otrzymałeś rzeczywistych wyników takiej czynności. Wcześniejsze wypowiedzi w rozmowie nie są dowodem wykonania researchu. Nie obiecuj, że zaraz sprawdzisz coś lub wrócisz z odpowiedzią. Podawaj użyteczne informacje, które potrafisz uzasadnić; nie przedstawiaj przypuszczeń jako faktów. Gdy nie możesz potwierdzić aktualnego zdarzenia, liczby lub źródła, wskaż dokładnie tę niepewność. Propozycję tematu oznacz jako pomysł redakcyjny, a nie potwierdzone wydarzenie. Nie wymyślaj źródeł ani cytatów. Nie zatwierdzaj i nie publikuj artykułów, nie zmieniaj reklam, płatności ani użytkowników. ${style.guidance} Rozmowa: ${prompt}`}]}],generationConfig:{maxOutputTokens:800,temperature:0.4}},45000); }
   catch { fail('geminiNetwork',503); }
   if (!response.ok) fail(`geminiHttp${response.status}`,503);
   const payload = await response.json();
@@ -92,7 +94,7 @@ export async function onRequest({ request, env }) {
     // Chat is intentionally synchronous; editorial jobs use the durable D1 worker queue.
     const context=(await env.DB.prepare('SELECT role,body FROM ai_chat_entries WHERE conversation_id=? ORDER BY created_at DESC LIMIT 8').bind(conversationId).all()).results.reverse();
     const draft=await env.DB.prepare("SELECT c.title,c.description,c.body FROM ai_chat_jobs j JOIN ai_candidates c ON c.id=j.candidate_id WHERE j.conversation_id=? AND j.candidate_id IS NOT NULL ORDER BY j.created_at DESC LIMIT 1").bind(conversationId).first();
-    const answer = await askGemini(env,`${context.map(row=>`${row.role}: ${row.body.slice(0,800)}`).join('\n')}\n${draft?`Bieżący artykuł: ${JSON.stringify({title:draft.title,description:draft.description,body:draft.body.slice(0,16000)})}.\n`:''}Administrator: ${input.text}`);
+    const answer = await askGemini(env,`${context.map(row=>`${row.role}: ${row.body.slice(0,800)}`).join('\n')}\n${draft?`Bieżący artykuł: ${JSON.stringify({title:draft.title,description:draft.description,body:draft.body.slice(0,16000)})}.\n`:''}Administrator: ${input.text}`,draft ? input.text : null);
     const replyId = crypto.randomUUID();
     await env.DB.batch([
       env.DB.prepare('INSERT INTO ai_chat_entries(id,conversation_id,actor_id,role,body,job_id,created_at) VALUES(?,?,?,?,?,?,?)').bind(entryId,conversationId,user.id,'admin',input.text,null,created),

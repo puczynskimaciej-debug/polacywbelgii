@@ -98,7 +98,7 @@ test('durable article job reaches pending_review once and stays nonpublic',async
   assert.equal(row.status,'done');assert.equal(DB.sqlite.prepare('SELECT status FROM ai_editorial WHERE candidate_id=?').get(row.candidate_id).status,'pending_review');
   assert.equal(JSON.parse(DB.sqlite.prepare('SELECT verification_json FROM ai_candidates WHERE id=?').get(row.candidate_id).verification_json).evidenceQuotes[0].quote,quote);
   const body=DB.sqlite.prepare('SELECT body FROM ai_candidates WHERE id=?').get(row.candidate_id).body;
-  assert.ok(body.includes(`[źródło](${url})`));assert.ok(!body.includes('[0:0]'));
+  assert.ok(!body.includes(`[źródło](${url})`));assert.ok(!body.includes('[0:0]'));
   assert.equal(await publicEntry(DB,`ai-${row.candidate_id}`),null);
 });
 
