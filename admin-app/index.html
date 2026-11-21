@@ -16,7 +16,7 @@
   <script type="module" src="/admin/ai-editor-redesign.js"></script>
   <script type="module" src="/admin/ai-chat.js"></script>
   <script type="module" src="/admin/events-editor.js"></script>
-  <script type="module" src="/admin/ads.js"></script>
+  <script type="module" src="/admin/ads.js?v=20261121-tabs"></script>
   <script type="module" src="/admin/retention.js"></script>
 </head>
 <body>
@@ -127,13 +127,13 @@
         <div class="page-heading"><div><p class="kicker">Reklamy portalu</p><h1>Ogłoszenia i zamówienia</h1><p class="section-description">Obsługuj zamówienia, emisję i płatności.</p></div><button type="button" class="primary" id="ads-new">Dodaj ogłoszenie</button></div>
         <p id="ads-notice" role="status" aria-live="polite"></p>
         <div class="editor-card"><div class="ads-tabs" role="tablist" aria-label="Widok ogłoszeń"><button type="button" role="tab" aria-selected="true" class="is-active" data-ads-tab="pending">Oczekujące na weryfikację</button><button type="button" role="tab" aria-selected="false" data-ads-tab="approved">Zatwierdzone</button><button type="button" role="tab" aria-selected="false" data-ads-tab="archive">Archiwum</button></div>
-          <form id="ads-filters" class="form-grid">
+          <details class="ads-settings-panel"><summary>Filtry</summary><form id="ads-filters" class="form-grid">
             <label>Szukaj<input type="search" name="query" placeholder="Firma lub tytuł"></label>
             <label>Język<select name="language"><option value="">Wszystkie</option></select></label>
             <label>Typ<select name="type"><option value="">Wszystkie</option><option>TOP</option><option>STANDARD</option><option>PREMIUM</option></select></label>
         <label>Status<select name="status"><option value="">Wszystkie</option><option value="pending">Oczekuje</option><option value="pending_payment">Czeka na płatność</option><option value="pending_approval">Czeka na akceptację</option><option value="needs_reschedule">Nowy termin lub zwrot</option><option value="payment_failed">Płatność nieudana</option><option value="refunded">Zwrócone</option><option value="approved">Zaakceptowane (wszystkie)</option><option value="scheduled">Zaplanowane</option><option value="active">Aktywne</option><option value="ended">Zakończone</option><option value="completed">Zakończone płatne</option><option value="rejected">Odrzucone</option><option value="cancelled">Wycofane</option></select></label>
             <label>Okres od<input type="date" name="from"></label><label>Okres do<input type="date" name="to"></label>
-          </form><button type="button" class="secondary" id="ads-refresh">Odśwież</button>
+          </form><button type="button" class="secondary" id="ads-refresh">Odśwież</button></details>
           <div id="ads-orders" class="table-scroll"></div>
         </div>
         <details class="editor-card ads-settings-panel"><summary>Cennik i ustawienia rynku</summary><p>Ceny w EUR. Wyłączenie zamówień nie wyłącza wcześniej zaakceptowanych reklam.</p><form id="ads-settings"><div id="ads-prices"></div><button class="primary">Zapisz ceny</button></form></details>

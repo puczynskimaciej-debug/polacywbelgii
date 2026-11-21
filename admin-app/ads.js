@@ -214,7 +214,7 @@ for (const selector of ['#ads-orders', '#ads-moderation-actions']) $(selector).a
 });
 $('#ads-filters').onchange = render;
 $('#ads-filters').addEventListener('input',render);
-document.querySelectorAll('[data-ads-tab]').forEach(button=>button.addEventListener('click',()=>{tab=button.dataset.adsTab;document.querySelectorAll('[data-ads-tab]').forEach(other=>{other.classList.toggle('is-active',other===button);other.setAttribute('aria-selected',String(other===button));});render();}));
+document.querySelectorAll('[data-ads-tab]').forEach(button=>button.addEventListener('click',()=>{tab=button.dataset.adsTab;$('#ads-filters').reset();document.querySelectorAll('[data-ads-tab]').forEach(other=>{other.classList.toggle('is-active',other===button);other.setAttribute('aria-selected',String(other===button));});render();}));
 enableTabKeyboard($('.ads-tabs'));
 $('#ads-refresh').onclick = load;
 $('[data-view="ads"]').addEventListener('click', load);
