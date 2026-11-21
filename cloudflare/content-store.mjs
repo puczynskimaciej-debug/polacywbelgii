@@ -16,22 +16,50 @@ async function contentOf(db, path) {
   return (result.results || []).map(item => item.content).join('');
 }
 function fileView(row, content) {
-  return { name: nameOf(row.path), path: row.path, sha: row.sha, type: 'file', size: Math.floor(content.length * 3 / 4), content, encoding: 'base64', download_url: row.kind === 'media' ? `/images/uploads/${nameOf(row.path)}` : null, status: row.kind === 'article' && row.status === 'draft' && row.scheduled_at ? 'scheduled' : row.status, scheduled_at: row.scheduled_at || null, published_at: row.published_at || null };
+  return { name: nameOf(row.path), path: row.path, sha: row.sha, type: 'file', size: Math.floor(content.length * 3 / 4), content, encoding: 'base64', download_url: row.kind === 'media' ? `/images/uploads/${nameOf(row.path)}` : null, status: row.kind === 'article' && row.status === 'draft' && row.scheduled_at ? 'scheduled' : row.status, scheduled_at: row.scheduled_at || null, published_at: row.published_at || null, updated_at: row.updated_at || null };
+}
+
+export async function latestArticleDraft(db, path) {
+  const entry = await db.prepare("SELECT action,sha,at,content FROM cms_content_history WHERE path=? AND action IN ('article-draft','article-draft-published') ORDER BY id DESC LIMIT 1").bind(path).first();
+  return entry?.action === 'article-draft' ? { baseSha: entry.sha, updated_at: entry.at, content: entry.content } : null;
+}
+
+export async function recordArticleDraft(db, path, content, baseSha, user) {
+  await db.prepare("INSERT INTO cms_content_history(path,sha,action,actor_id,actor_name,at,content) VALUES(?,?,'article-draft',?,?,?,?)").bind(path,baseSha,user.id,user.name,now(),content).run();
+  return { saved: true };
+}
+
+export async function savePublishedArticleDraft(db, path, content, expectedSha, user) {
+  const current = await row(db,path);
+  if (!current || current.kind !== 'article' || current.status !== 'published') fail('conflict',409);
+  if (current.sha !== expectedSha) fail('conflict',409);
+  await recordArticleDraft(db,path,content,expectedSha,user);
+  return { content: { sha: current.sha, path, status: 'published', draft: true } };
+}
+
+export async function publishArticleDraft(db, path, expectedSha, user) {
+  if (user.role !== 'admin') fail('forbidden',403);
+  const draft = await latestArticleDraft(db,path);
+  const current = await row(db,path);
+  if (!draft || !current || current.status !== 'published' || current.sha !== expectedSha || draft.baseSha !== expectedSha) fail('conflict',409);
+  return writeContent(db,path,draft.content,expectedSha,user,'published',true);
 }
 
 export async function listContent(db, path) {
   const prefix = `${path}/`;
-  const result = await db.prepare("SELECT c.path,c.sha,c.kind,c.status,p.scheduled_at,p.published_at FROM cms_content c LEFT JOIN cms_article_publication p ON p.path=c.path WHERE c.path LIKE ? AND c.status!='withdrawn' ORDER BY c.path").bind(`${prefix}%`).all();
-  return (result.results || []).filter(item => item.path.slice(prefix.length).indexOf('/') === -1).map(item => ({ name: nameOf(item.path), path: item.path, sha: item.sha, type: 'file', download_url: item.kind === 'media' ? `/images/uploads/${nameOf(item.path)}` : null, status: item.kind === 'article' && item.status === 'draft' && item.scheduled_at ? 'scheduled' : item.status, scheduled_at:item.scheduled_at, published_at:item.published_at }));
+  const result = await db.prepare("SELECT c.path,c.sha,c.kind,c.status,c.updated_at,p.scheduled_at,p.published_at FROM cms_content c LEFT JOIN cms_article_publication p ON p.path=c.path WHERE c.path LIKE ? AND c.status!='withdrawn' ORDER BY c.path").bind(`${prefix}%`).all();
+  return (result.results || []).filter(item => item.path.slice(prefix.length).indexOf('/') === -1).map(item => ({ name: nameOf(item.path), path: item.path, sha: item.sha, type: 'file', download_url: item.kind === 'media' ? `/images/uploads/${nameOf(item.path)}` : null, status: item.kind === 'article' && item.status === 'draft' && item.scheduled_at ? 'scheduled' : item.status, scheduled_at:item.scheduled_at, published_at:item.published_at, updated_at:item.updated_at }));
 }
 
-export async function readContent(db, path) {
+export async function readContent(db, path, includeDraft = false) {
   const found = await db.prepare('SELECT c.*,p.scheduled_at,p.published_at FROM cms_content c LEFT JOIN cms_article_publication p ON p.path=c.path WHERE c.path=?').bind(path).first();
   if (!found || found.status === 'withdrawn') fail('notFound', 404);
-  return fileView(found, await contentOf(db, path));
+  const file = fileView(found, await contentOf(db, path));
+  if (includeDraft && found.kind === 'article' && found.status === 'published') file.draft = await latestArticleDraft(db,path);
+  return file;
 }
 
-export async function writeContent(db, path, value, expectedSha, user, status) {
+export async function writeContent(db, path, value, expectedSha, user, status, finalizeDraft = false) {
   const previous = await row(db, path);
   if (previous && previous.sha !== expectedSha || !previous && expectedSha) fail('conflict', 409);
   const kind = kindOf(path);
@@ -49,6 +77,7 @@ export async function writeContent(db, path, value, expectedSha, user, status) {
   for (let offset = 0, position = 0; offset < value.length; offset += CHUNK, position++) statements.push(db.prepare('INSERT INTO cms_content_chunks(path,position,content) VALUES(?,?,?)').bind(path, position, value.slice(offset, offset + CHUNK)));
   if (kind === 'article' && nextStatus === 'published') statements.push(db.prepare('INSERT INTO cms_article_publication(path,scheduled_at,published_at,updated_at) VALUES(?,NULL,?,?) ON CONFLICT(path) DO UPDATE SET scheduled_at=NULL,published_at=COALESCE(cms_article_publication.published_at,excluded.published_at),updated_at=excluded.updated_at').bind(path,timestamp,timestamp));
   statements.push(db.prepare('INSERT INTO cms_content_history(path,sha,action,actor_id,actor_name,at) VALUES(?,?,?,?,?,?)').bind(path, sha, previous ? 'update' : 'create', user.id, user.name, timestamp));
+  if (finalizeDraft) statements.push(db.prepare("INSERT INTO cms_content_history(path,sha,action,actor_id,actor_name,at) VALUES(?,?,'article-draft-published',?,?,?)").bind(path,sha,user.id,user.name,timestamp));
   await db.batch(statements);
   return { content: { sha, path, status: nextStatus } };
 }

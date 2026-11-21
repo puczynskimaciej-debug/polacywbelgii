@@ -14,6 +14,7 @@ const articleUi = {
   fr:{all:'Tous',allStatuses:'Tous les statuts',editorial:'Rédaction',open:'Ouvrir',edit:'Modifier',remove:'Supprimer',empty:'Aucun article pour ces filtres.',statuses:{draft:'Brouillon',pending_review:'À valider',changes_requested:'Modifications demandées',approved:'Approuvé',scheduled:'Planifié',published:'Publié',rejected:'Rejeté',archived:'Retiré'}}
 };
 let aiSnapshot = null;
+let articleTab = sessionStorage.getItem('cms_article_tab') === 'working' ? 'working' : 'published';
 let adsSnapshot = null;
 const storedArticles = () => { const ids = new Set((aiSnapshot?.candidates || []).filter(item => item.kind === 'article').map(item => item.id)); return state.articles.filter(item => item.contentType !== 'event' && !(/^ai-[a-f0-9]{20}$/.test(item.slug) && ids.has(item.slug.slice(3)))); };
 const $ = (selector, parent = document) => parent.querySelector(selector);
@@ -150,11 +151,12 @@ function publicationButtons(article,kind) {
   if (article.status==='draft') return kind==='manual' ? button('publish-now','Opublikuj teraz')+button('schedule','Zaplanuj') : '';
   if (article.status==='approved') return button('publish-now','Opublikuj teraz')+button('schedule','Zaplanuj');
   if (article.status==='scheduled') return button('publish-now','Opublikuj teraz')+button('schedule','Zmień termin')+button('unschedule','Anuluj planowanie');
-  if (article.status==='published') return button('withdraw','Wycofaj');
+  if (article.status==='published') return (article.draft || article.editorial_draft ? button('publish-draft','Opublikuj zmiany') : '')+button('withdraw','Wycofaj');
   return '';
 }
 function renderArticles() {
   const ui=articleUi[state.language] || articleUi.pl;
+  $$('[data-articles-tab]').forEach(button=>{ const selected=button.dataset.articlesTab===articleTab; button.classList.toggle('is-active',selected); button.setAttribute('aria-selected',String(selected)); button.textContent=button.dataset.articlesTab==='published' ? ({pl:'Opublikowane',nl:'Gepubliceerd',fr:'Publiés',en:'Published'}[state.language] || 'Opublikowane') : ({pl:'Robocze / oczekujące',nl:'Concepten / in afwachting',fr:'Brouillons / en attente',en:'Drafts / pending'}[state.language] || 'Robocze / oczekujące'); });
   const category=$('#articles-category'), previous=category.value;
   const ai=(aiSnapshot?.candidates||[]).filter(item=>item.kind==='article');
   const manual=storedArticles();
@@ -163,11 +165,15 @@ function renderArticles() {
   for(const option of $('#articles-status').options) option.textContent=option.value ? ui.statuses[option.value] : ui.allStatuses;
   const query=$('#articles-search').value.trim().toLocaleLowerCase('pl'), status=$('#articles-status').value;
   const matches=article=>(!query||`${article.title} ${article.category}`.toLocaleLowerCase('pl').includes(query))&&(!category.value||article.category===category.value)&&(!status||article.status===status);
-  const articles=manual.filter(matches), aiArticles=ai.filter(matches);
+  const articles=manual.filter(article=>matches(article) && (article.status==='published') === (articleTab==='published'));
+  const aiArticles=ai.filter(article=>matches(article) && (article.status==='published' && article.public_state==='visible' && article.approved_by && article.approved_at) === (articleTab==='published'));
   const manualRows=articles.map(article=>`<div class="table-row"><div><h3>${escapeHtml((state.language==='pl'?article.title:article[`title_${state.language}`])||'Brak wersji w tym języku: '+article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${formatDate(article.published_at||article.scheduled_at||article.date)} · ${escapeHtml(ui.statuses[article.status] || article.status)} · ${ui.editorial}</p></div><div class="row-actions"><button class="secondary" data-edit-article="${escapeHtml(article.slug)}">${ui.edit}</button>${publicationButtons(article,'manual')}<button class="ghost danger" data-delete-article="${escapeHtml(article.slug)}">${ui.remove}</button></div></div>`);
   const aiRows=aiArticles.map(article=>`<div class="table-row"><div><h3>${escapeHtml(article.title)}</h3><p>${escapeHtml(article.category||'Bez kategorii')} · ${escapeHtml(ui.statuses[article.status]||article.status)} · AI Redaktor</p></div><div class="row-actions"><button class="secondary" data-edit-ai="${article.id}">${ui.edit}</button>${publicationButtons(article,'ai')}<button class="secondary" data-open-ai="${article.id}">${ui.open}</button></div></div>`);
-  $("#articles-list").innerHTML = [...aiRows,...manualRows].join('')||`<p class="empty-state">${ui.empty}</p>`;
+  const rows=[...articles.map((article,index)=>({html:manualRows[index],date:articleTab==='published'?article.published_at||article.date:article.updated_at||article.date})),...aiArticles.map((article,index)=>({html:aiRows[index],date:articleTab==='published'?article.published_at||article.created_at:[article.updated_at,article.editorial_updated_at].sort().at(-1)||article.created_at}))];
+  rows.sort((first,second)=>String(second.date||'').localeCompare(String(first.date||'')));
+  $("#articles-list").innerHTML = rows.map(row=>row.html).join('')||`<p class="empty-state">${ui.empty}</p>`;
 }
+$$('[data-articles-tab]').forEach(button=>button.addEventListener('click',()=>{ articleTab=button.dataset.articlesTab; sessionStorage.setItem('cms_article_tab',articleTab); $('#articles-status').value=''; renderArticles(); }));
 $('#articles-search').addEventListener('input',renderArticles);
 $('#articles-category').addEventListener('change',renderArticles);
 $('#articles-status').addEventListener('change',renderArticles);
@@ -207,7 +213,7 @@ function formData(form) { return Object.fromEntries(new FormData(form).entries()
 
 function openArticle(article = null) {
   const form = $("#article-form"); form.reset(); state.editingAiId = article?.aiId || null; $("#article-dialog-title").textContent = article ? "Edytuj artykuł" : "Nowy artykuł";
-  const values = article || { date: new Date().toISOString() }; Object.entries(values).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = key === "date" ? brusselsDateTime(value) : value || ""; });
+  const values = article ? { ...article,...(article.draft || {}) } : { date: new Date().toISOString() }; Object.entries(values).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = key === "date" ? brusselsDateTime(value) : value || ""; });
   populateArticleMedia();
   ['pl','nl','fr'].forEach(refreshArticleLanguageMedia);
   form.elements.status.value = ['draft','scheduled','published'].includes(article?.status) ? article.status : 'draft';
@@ -215,6 +221,7 @@ function openArticle(article = null) {
   form.elements.status.querySelector('[value="published"]').disabled = !state.isAdmin;
   $('#article-ai-note').hidden = !state.editingAiId;
   $('#article-editor-publication').innerHTML=article ? publicationButtons(article,article.aiId?'ai':'manual') : '';
+  $('#article-publish-draft').hidden = !article || article.status !== 'published' || !state.isAdmin;
   form.slug.value = article?.slug || ""; document.dispatchEvent(new Event('cms:article-editor-open')); $("#article-dialog").showModal(); document.querySelector(`[data-language-tab="${state.language}"]`).click();
 }
 function brusselsDateTime(value) {
@@ -233,7 +240,9 @@ function aiArticle(row) {
   let fields={},sources=[];
   try { fields=JSON.parse(row.article_fields_json || '{}'); } catch { /* Legacy candidate */ }
   try { sources=JSON.parse(row.sources_json || '[]'); } catch { /* Legacy candidate */ }
-  return { aiId:row.id, title:row.title, description:row.description, body:row.body, date:row.scheduled_at || row.proposed_publish_at || row.created_at, category:row.category || 'Życie w Belgii', region:row.region || 'all', sources:sources.map(source=>source.url).filter(Boolean).join('\n'), ...fields, status:row.status };
+  let draft=null;
+  try { const value=JSON.parse(row.editorial_draft?.content || 'null'); if(value) draft={...value,...value.articleFields,sources:value.sources.map(source=>source.url).join('\n')}; } catch { /* Invalid draft remains unavailable for editing. */ }
+  return { aiId:row.id, title:row.title, description:row.description, body:row.body, date:row.published_at || row.scheduled_at || row.proposed_publish_at || row.created_at, category:row.category || 'Życie w Belgii', region:row.region || 'all', sources:sources.map(source=>source.url).filter(Boolean).join('\n'), ...fields, status:row.status, editorial_draft:row.editorial_draft, draft };
 }
 async function uploadImage(target = null) { state.uploadTarget = target; $("#media-input").click(); }
 function articleImage(form, language) { return form.elements[`image_${language}`]?.value.trim() || form.elements.image.value.trim(); }
@@ -314,16 +323,21 @@ $("#site-form").addEventListener("submit", async (event) => {
 $("#article-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button=event.submitter; setBusy(button,true); const values=formData(event.target); values.contentType='article'; const original=state.articles.find((article)=>article.slug===values.slug); values.status=original?.status || 'draft';
   try {
+    const publishChanges=button.id==='article-publish-draft';
+    if (publishChanges && !await confirmAction('Opublikować zmiany?','Nowa wersja zastąpi aktualnie widoczną treść artykułu.')) return;
     if (!values.body?.trim()) throw new Error('Treść artykułu nie może być pusta.');
     if (state.editingAiId) {
       const row=(aiSnapshot?.candidates||[]).find(item=>item.id===state.editingAiId);
       if (!row) throw new Error('Nie znaleziono artykułu AI. Odśwież kolejkę.');
       await cmsRequest('ai-editor',{},'POST',{action:'edit',id:row.id,title:values.title.trim(),description:values.description.trim(),body:values.body.trim(),category:values.category,region:values.region,sources:values.sources.split(/\r?\n/).map(url=>url.trim()).filter(Boolean).map(url=>({url})),articleFields:Object.fromEntries(['title_nl','description_nl','body_nl','title_fr','description_fr','body_fr','image','tags','image_pl','image_nl','image_fr','tags_pl','tags_nl','tags_fr'].map(key=>[key,values[key] || '']))});
+      if (publishChanges) await cmsRequest('ai-editor',{},'POST',{action:'publish-draft',id:row.id});
       document.dispatchEvent(new Event('cms:load-ai'));
-      notify('Poprawki AI zapisane. Przed publikacją ponownie zweryfikuj treść i źródła.');
+      notify(publishChanges ? 'Zmiany artykułu opublikowane.' : row.status==='published' ? 'Wersja robocza zmian zapisana. Opublikowany artykuł pozostaje widoczny.' : 'Poprawki AI zapisane. Przed publikacją ponownie zweryfikuj treść i źródła.');
     } else {
       values.date = brusselsLocalToUtc(values.date);
-      await state.repository.saveArticle(values,original); state.articles=await state.repository.articles(); renderAll(); notify(values.status === 'published' ? "Artykuł opublikowany w D1." : "Szkic zapisany w D1.");
+      await state.repository.saveArticle(values,original);
+      if (publishChanges) await state.repository.publishDraft(original);
+      state.articles=await state.repository.articles(); renderAll(); notify(publishChanges ? 'Zmiany artykułu opublikowane.' : original?.status==='published' ? 'Wersja robocza zmian zapisana. Opublikowany artykuł pozostaje widoczny.' : 'Szkic zapisany w D1.');
     }
     $("#article-dialog").close();
   } catch(error){notify(error.message,true);} finally{setBusy(button,false);}
@@ -338,13 +352,15 @@ async function publicationAction(kind,id,action,scheduledAt=null,fold='earlier')
   if (kind==='manual') {
     const article=state.articles.find(item=>item.slug===id);
     if (!article) throw new Error('Artykuł nie istnieje. Odśwież listę.');
-    await state.repository.publication(article,action,scheduledAt);
+    if (action==='publish-draft') await state.repository.publishDraft(article);
+    else await state.repository.publication(article,action,scheduledAt);
     state.articles=await state.repository.articles();
     renderAll();
   } else {
     const row=(aiSnapshot?.candidates||[]).find(item=>item.id===id);
     if (!row) throw new Error('Materiał AI nie istnieje. Odśwież kolejkę.');
-    if (action==='publish-now') await cmsRequest('ai-editor',{},'POST',{action:'publish-now',id});
+    if (action==='publish-draft') await cmsRequest('ai-editor',{},'POST',{action:'publish-draft',id});
+    else if (action==='publish-now') await cmsRequest('ai-editor',{},'POST',{action:'publish-now',id});
     else if (action==='schedule') await cmsRequest('ai-editor',{},'POST',{action:'status',id,status:'scheduled',localTime:brusselsDateTime(scheduledAt),fold});
     else await cmsRequest('ai-editor',{},'POST',{action:'status',id,status:action==='withdraw'?'archived':'draft'});
     document.dispatchEvent(new Event('cms:load-ai'));
@@ -357,7 +373,7 @@ document.addEventListener('cms:article-publication',event=>{
 });
 document.addEventListener('cms:publication-request',async event=>{
   const {kind,id,action}=event.detail || {};
-  if (!['manual','ai'].includes(kind) || !['publish-now','schedule','unschedule','withdraw'].includes(action)) return;
+  if (!['manual','ai'].includes(kind) || !['publish-now','schedule','unschedule','withdraw','publish-draft'].includes(action)) return;
   if (action==='schedule') {
     scheduleTarget={kind,id};
     const article=kind==='manual'?state.articles.find(item=>item.slug===id):(aiSnapshot?.candidates||[]).find(item=>item.id===id);
@@ -368,9 +384,9 @@ document.addEventListener('cms:publication-request',async event=>{
     $('#article-schedule-dialog').showModal();
     return;
   }
-  const labels={'publish-now':['Opublikować teraz?','Artykuł będzie od razu widoczny publicznie.'],'unschedule':['Anulować planowanie?','Artykuł wróci do szkiców.'],'withdraw':['Wycofać publikację?','Artykuł zniknie z publicznych list.']};
+  const labels={'publish-now':['Opublikować teraz?','Artykuł będzie od razu widoczny publicznie.'],'publish-draft':['Opublikować zmiany?','Nowa wersja zastąpi aktualnie widoczną treść artykułu.'],'unschedule':['Anulować planowanie?','Artykuł wróci do szkiców.'],'withdraw':['Wycofać publikację?','Artykuł zniknie z publicznych list.']};
   if (!await confirmAction(...labels[action])) return;
-  try { await publicationAction(kind,id,action); notify(action==='publish-now'?'Artykuł opublikowany.':action==='withdraw'?'Artykuł wycofany.':'Planowanie anulowane.'); }
+  try { await publicationAction(kind,id,action); notify(action==='publish-now'?'Artykuł opublikowany.':action==='publish-draft'?'Zmiany artykułu opublikowane.':action==='withdraw'?'Artykuł wycofany.':'Planowanie anulowane.'); }
   catch(error){notify(`Nie udało się zmienić publikacji: ${error.message}`,true);}
 });
 $('#article-schedule-form').addEventListener('submit',async event=>{

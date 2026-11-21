@@ -26,7 +26,8 @@ export class ContentRepository {
     const articles = await Promise.all(markdownFiles.map(async (entry) => {
       const file = await this.api.read(entry.path);
       const parsed = parseMarkdown(file.text);
-      return { slug: entry.name.replace(/\.md$/, ""), path: entry.path, sha: entry.sha, ...parsed.data, body: parsed.body, status: file.status || 'published', scheduled_at:file.scheduled_at || null, published_at:file.published_at || null };
+      const draft = file.draft?.content ? parseMarkdown(new TextDecoder().decode(Uint8Array.from(atob(file.draft.content), char => char.charCodeAt(0)))) : null;
+      return { slug: entry.name.replace(/\.md$/, ""), path: entry.path, sha: entry.sha, ...parsed.data, body: parsed.body, status: file.status || 'published', scheduled_at:file.scheduled_at || null, published_at:file.published_at || null, updated_at:file.updated_at || null, draft: draft ? { ...draft.data, body:draft.body, updated_at:file.draft.updated_at } : null };
     }));
     return articles.sort((first, second) => String(second.date).localeCompare(String(first.date)));
   }
@@ -40,6 +41,7 @@ export class ContentRepository {
   }
 
   publication(article, action, scheduledAt) { return this.api.publication(article.path,article.sha,action,scheduledAt); }
+  publishDraft(article) { return this.api.publication(article.path,article.sha,'publish-draft'); }
 
   deleteArticle(article) {
     return this.api.remove(article.path, article.sha, `CMS: usunięcie artykułu „${article.title}”`);
