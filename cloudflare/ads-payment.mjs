@@ -2,7 +2,7 @@ import domain from '../server/ads-domain.js';
 import { errorResponse, fail, json, readJson } from './common.mjs';
 import { orders, withWrite } from './ads.mjs';
 import { createCheckoutSession, stripeMode, verifyStripeWebhook } from './stripe.mjs';
-import { adMailReady, adMessage, sendAdEmail } from './ad-mail.mjs';
+import { adMailReady, adMessage, adminOrderMessage, sendAdEmail } from './ad-mail.mjs';
 
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
 const uuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || '');
@@ -89,7 +89,11 @@ async function webhook(request, env, mailer) {
     const updated = (await orders(env.DB)).filter(item => item.groupId === groupId);
     const contactOrder = updated.find(item => item.language === item.primaryLanguage) || updated[0];
     if (contactOrder?.paymentStatus === 'paid') {
-      try { await mailer(env, adMessage('paid', contactOrder)); emailSent = true; }
+      try {
+        await mailer(env, adMessage('paid', contactOrder));
+        await mailer(env, adminOrderMessage(updated, new URL(request.url).origin));
+        emailSent = true;
+      }
       catch { /* Payment confirmation remains authoritative even if mail fails. */ }
     }
   }

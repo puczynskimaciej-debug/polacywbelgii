@@ -6,7 +6,7 @@ const paymentNames = { paid:'Opłacone',pending:'Oczekuje',pending_payment:'Czek
 const eventNames = { 'checkout.session.completed':'Płatność potwierdzona','checkout.session.expired':'Sesja płatności wygasła','payment_intent.payment_failed':'Płatność nieudana','charge.refunded':'Zwrot środków','refund.created':'Zlecono zwrot','refund.updated':'Aktualizacja zwrotu' };
 const errors = { unavailable: 'API reklam jest niedostępne. Sprawdź połączenie z bazą.', unauthorized: 'Brak uprawnień. Zaloguj się ponownie.', dates: 'Niepoprawny zakres dat.', settings: 'Wprowadź poprawne ceny. Włączony rynek wymaga cen większych od zera.', validation: 'Sprawdź dane formularza.', image: 'Wymagany poprawny PNG/JPEG/WebP do 500 KB.', conflict: 'Ktoś zmienił dane. Odśwież listę przed ponowną edycją.', full: 'Brak miejsc:', immutableMarket: 'Nie można zmienić języka ani typu istniejącego zamówienia.', immutableSchedule: 'Zmiana terminu opłaconej grupy wymaga nowej rezerwacji.', useGroupModeration: 'Zmień status całego zamówienia.', useRefundAction: 'Opłacone zamówienie odrzuć przez przycisk zwrotu.', refundUnavailable: 'Stripe nie przyjął zlecenia zwrotu. Sprawdź uprawnienie Refunds: Write i spróbuj ponownie.', mailConfiguration: 'Wysyłka e-mail nie jest skonfigurowana.', paymentRequired: 'Najpierw potwierdź płatność za całe zamówienie.', needsReschedule: 'Planowany start minął. Ustal nowy termin lub zwrot.', market: 'Niepoprawny rynek.', capacityBelowBooked: 'Nie można zmniejszyć limitu poniżej już zajętych miejsc.' };
 let configuration, orders = [], editing = null;
-let tab = 'orders';
+let tab = 'pending', reviewOpened = false;
 const isShowcase = order => order?.demoSet === 'showcase-2026-09-29' && order.source === 'manual' && order.paymentStatus === 'not_required';
 const money = value => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(value / 100);
 const paymentLabel = order => order.source === 'manual' && order.paymentStatus === 'not_required' ? 'Dodane bezpłatnie przez administratora' : paymentNames[order.paymentStatus] || 'Brak płatności';
@@ -71,13 +71,24 @@ async function load() {
     if (previousCapacityLanguage) capacityLanguage.value = previousCapacityLanguage;
     for (const key of ['startDate', 'endDate']) if (!capacityForm.elements[key].value) capacityForm.elements[key].value = settings.today;
     applyLanguage(); render(); $('#ads-notice').textContent = '';
+    const reviewId = new URLSearchParams(location.search).get('reviewAd');
+    if (reviewId && !reviewOpened) {
+      reviewOpened = true;
+      history.replaceState(null, '', location.pathname + location.hash);
+      $('.nav-item[data-view="ads"]')?.click();
+      const selected = orders.find(order => order.id === reviewId);
+      if (selected) await open(selected);
+      else $('#ads-notice').textContent = 'Nie znaleziono zamówienia z wiadomości e-mail.';
+    }
     document.dispatchEvent(new CustomEvent('cms:ads-data',{detail:{orders,configuration}}));
   } catch (error) { $('#ads-notice').textContent = errorText(error); }
 }
 function render() {
   const filter = Object.fromEntries(new FormData($('#ads-filters')));
   const query=(filter.query||'').trim().toLocaleLowerCase('pl');
-  const filtered = orders.filter(order => (!query || `${order.title} ${order.company} ${order.email}`.toLocaleLowerCase('pl').includes(query)) && (!filter.language || filter.language === order.language) && (!filter.type || filter.type === order.type) && (!filter.status || (filter.status === 'approved' ? order.status === 'approved' : filter.status === order.effectiveStatus)) && (!filter.from || isShowcase(order) || order.endDate >= filter.from) && (!filter.to || order.startDate <= filter.to) && (tab === 'orders' || tab === 'payments' && order.paymentStatus && order.paymentStatus !== 'not_required' || order.effectiveStatus === tab || tab === 'ended' && ['ended','completed'].includes(order.effectiveStatus)));
+  const section = order => tab === 'pending' ? ['pending','pending_payment','pending_approval','needs_reschedule','changes_requested','refund_pending','refund_review'].includes(order.effectiveStatus) : tab === 'approved' ? ['approved','active','scheduled','paused'].includes(order.effectiveStatus) : ['ended','completed','rejected','cancelled','refunded','payment_failed'].includes(order.effectiveStatus);
+  const sortDate = order => tab === 'pending' ? order.createdAt : tab === 'approved' ? order.actualStartAt || order.plannedStartAt || order.startDate : ['ended','completed'].includes(order.effectiveStatus) ? order.actualEndAt || order.plannedEndAt || order.updatedAt : order.updatedAt || order.createdAt;
+  const filtered = orders.filter(order => (!query || `${order.title} ${order.company} ${order.email}`.toLocaleLowerCase('pl').includes(query)) && (!filter.language || filter.language === order.language) && (!filter.type || filter.type === order.type) && (!filter.status || (filter.status === 'approved' ? order.status === 'approved' : filter.status === order.effectiveStatus)) && (!filter.from || isShowcase(order) || order.endDate >= filter.from) && (!filter.to || order.startDate <= filter.to) && section(order)).sort((left, right) => tab === 'archive' ? String(sortDate(right) || '').localeCompare(String(sortDate(left) || '')) : String(sortDate(left) || '').localeCompare(String(sortDate(right) || '')));
   $('#ads-orders').innerHTML = filtered.length ? `<table class="data-table"><thead><tr><th>Ogłoszenie</th><th>Status</th><th>Okres</th><th>Pakiet</th><th>${tab==='payments'?'Płatność':'Kwota'}</th><th>Akcje</th></tr></thead><tbody>${filtered.map(order => `<tr><td data-label="Ogłoszenie"><strong>${escape(order.title)}</strong><span class="table-subtitle">${escape(order.company)} · ${escape(order.language.toUpperCase())}</span></td><td data-label="Status"><span class="status-badge status-${escape(order.effectiveStatus)}">${labels[order.effectiveStatus]||escape(order.effectiveStatus)}</span></td><td data-label="Okres">${order.periods?.length ? escape(order.periods.map(period => period.date).join(', ')) : `${escape(order.startDate)} – ${isShowcase(order)?'bezterminowo':escape(order.endDate)}`}</td><td data-label="Pakiet">${escape(order.type)}</td><td data-label="${tab==='payments'?'Płatność':'Kwota'}">${tab==='payments'?escape(paymentNames[order.paymentStatus]||'Brak płatności'):money(order.totalPrice)}</td><td data-label="Akcje"><div class="row-actions"><button class="secondary" type="button" data-ad-edit="${escape(order.id)}">Szczegóły</button>${sharedEditButton(order)}${moderationButtons(order)}</div></td></tr>`).join('')}</tbody></table>` : '<p class="empty-state">Brak ogłoszeń spełniających kryteria.</p>';
   $('#ads-orders').querySelectorAll('tbody tr').forEach((row, index) => {
     if (filtered[index].source !== 'manual' || filtered[index].paymentStatus !== 'not_required') return;

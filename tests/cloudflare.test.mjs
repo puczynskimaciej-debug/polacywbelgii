@@ -9,6 +9,7 @@ import { hashPassword, login, currentUser, logout } from '../cloudflare/auth.mjs
 import { sha256 } from '../cloudflare/common.mjs';
 import { onRequest as aiEditorRoute } from '../cloudflare/ai-editor.mjs';
 import { handleAdsPayment } from '../cloudflare/ads-payment.mjs';
+import { adminOrderMessage } from '../cloudflare/ad-mail.mjs';
 import { publishDue } from '../cloudflare/publication.mjs';
 import { publicEntry, publicEntries } from '../cloudflare/public-pages.mjs';
 
@@ -173,18 +174,27 @@ test('multilingual reservation charges half of the primary price and holds all l
   const settings = domain.defaults();
   for (const language of ['fr', 'pl']) { settings.markets[language].enabled = true; settings.markets[language].prices.STANDARD = language === 'fr' ? 400 : 800; }
   DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
-  const env = { DB };
+  const env = { DB, AD_SMTP_HOST: 'smtp.example.invalid', AD_SMTP_USER: 'kontakt@polacywbelgii.eu', AD_SMTP_PASSWORD: 'local-test' };
+  const notices = [];
+  const mailer = async (_env, message) => { notices.push(message); };
   const day = new Date(Date.parse(domain.today()) + 86400000).toISOString().slice(0, 10);
   const next = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10);
   const body = { requestId: randomUUID(), type: 'STANDARD', kind: 'text', primaryLanguage: 'fr', dates: [day, next], variants: [{ language: 'fr', text: 'Annonce française' }, { language: 'pl', text: 'Ogłoszenie polskie' }], contact: 'Test', email: 'test@example.org', consent: true, termsAccepted: true, termsVersion: 'draft-2026-11-11', earlyServiceRequest: false, expectedTotalPrice: 1200 };
-  const response = await adsRoute({ request: request('/api/ads?action=order-batch', 'POST', body), env });
+  const response = await adsRoute({ request: request('/api/ads?action=order-batch', 'POST', body), env }, { mailer });
   assert.equal(response.status, 201, await response.text());
   const rows = DB.sqlite.prepare('SELECT data FROM ad_orders').all().map(row => JSON.parse(row.data));
   assert.equal(rows.length, 2);
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].to, env.AD_SMTP_USER);
+  assert.match(notices[0].html, /Zatwierdź i opublikuj/);
+  assert.match(notices[0].body, /Oczekuje na płatność/);
+  assert.match(notices[0].body, /\/admin\/\?reviewAd=/);
+  assert.match(adminOrderMessage(rows, 'https://www.polacywbelgii.eu').body, /12,00 EUR/);
   assert.equal(new Set(rows.map(row => row.groupId)).size, 1);
   assert.deepEqual(rows.map(row => row.totalPrice).sort((a, b) => a - b), [400, 800]);
   assert.ok(rows.every(row => row.groupTotalPrice === 1200 && row.plannedStartAt && row.plannedEndAt));
-  assert.equal((await adsRoute({ request: request('/api/ads?action=order-batch', 'POST', body), env })).status, 201);
+  assert.equal((await adsRoute({ request: request('/api/ads?action=order-batch', 'POST', body), env }, { mailer })).status, 201);
+  assert.equal(notices.length, 1);
   assert.equal(DB.sqlite.prepare('SELECT COUNT(*) AS n FROM ad_orders').get().n, 2);
   const adminId = randomUUID(), token = 'M'.repeat(43);
   DB.sqlite.prepare('INSERT INTO cms_users(id,email,name,password_hash,role,active,must_change_password) VALUES(?,?,?,?,?,1,0)').run(adminId, 'ads-admin@example.org', 'Admin', 'unused', 'admin');
@@ -512,7 +522,9 @@ test('Stripe test Checkout, signed webhook, moderation, refund and duplicate del
   settings.markets.pl.enabled = true;
   settings.markets.pl.prices = { STANDARD: 400, TOP: 1000, PREMIUM: 2500 };
   DB.sqlite.prepare('INSERT INTO ads_settings(id,data,version) VALUES(1,?,1)').run(JSON.stringify(settings));
-  const env = { DB, STRIPE_TEST_MODE: '1', STRIPE_SECRET_KEY: 'sk_test_local', STRIPE_WEBHOOK_SECRET: 'whsec_local' };
+  const env = { DB, STRIPE_TEST_MODE: '1', STRIPE_SECRET_KEY: 'sk_test_local', STRIPE_WEBHOOK_SECRET: 'whsec_local', AD_SMTP_HOST: 'smtp.example.invalid', AD_SMTP_USER: 'kontakt@polacywbelgii.eu', AD_SMTP_PASSWORD: 'local-test' };
+  const paymentNotices = [];
+  const mailer = async (_env, message) => { paymentNotices.push(message); };
   const day = domain.today();
   const requestId = randomUUID();
   const body = { requestId, type: 'STANDARD', kind: 'text', primaryLanguage: 'pl', dates: [day], variants: [{ language: 'pl', text: 'Testowe ogłoszenie' }], contact: 'test', email: 'test@example.com', consent: true, termsAccepted:true,termsVersion:'draft-2026-11-11',earlyServiceRequest:false, expectedTotalPrice: 400 };
@@ -544,9 +556,11 @@ test('Stripe test Checkout, signed webhook, moderation, refund and duplicate del
     return new Request('https://polacywbelgii.pages.dev/api/ads-payment?action=webhook', { method: 'POST', headers: { 'stripe-signature': `t=${timestamp},v1=${signatureValid ? hex : '0'.repeat(64)}` }, body: raw });
   };
   const paid = { id: 'evt_paid1', type: 'checkout.session.completed', livemode: false, created: Math.floor(Date.now() / 1000), data: { object: { id: 'cs_test_session', livemode: false, client_reference_id: groupId, amount_total: 400, currency: 'eur', payment_status: 'paid', payment_intent: 'pi_test_1' } } };
-  assert.equal((await handleAdsPayment({ request: await signed(paid, false), env })).status, 400);
-  assert.equal((await handleAdsPayment({ request: await signed(paid), env })).status, 200);
-  assert.equal((await handleAdsPayment({ request: await signed(paid), env })).status, 200);
+  assert.equal((await handleAdsPayment({ request: await signed(paid, false), env }, { mailer })).status, 400);
+  assert.equal((await handleAdsPayment({ request: await signed(paid), env }, { mailer })).status, 200);
+  assert.equal((await handleAdsPayment({ request: await signed(paid), env }, { mailer })).status, 200);
+  assert.equal(paymentNotices.length, 2);
+  assert.equal(paymentNotices.find(message => message.to === env.AD_SMTP_USER)?.body.includes('Opłacone'), true);
   assert.equal(DB.sqlite.prepare('SELECT COUNT(*) AS n FROM ad_payment_events').get().n, 1);
   const row = DB.sqlite.prepare('SELECT id,data FROM ad_orders').get();
   assert.equal(JSON.parse(row.data).paymentStatus, 'paid');

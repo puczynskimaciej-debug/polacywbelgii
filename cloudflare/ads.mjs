@@ -3,7 +3,7 @@ import { currentUser } from './auth.mjs';
 import { errorResponse, fail, json, readJson, sha256 } from './common.mjs';
 import { translateAd } from './ad-translation.mjs';
 import { createFullRefund, stripeReady } from './stripe.mjs';
-import { adMailReady, adMessage, sendAdEmail } from './ad-mail.mjs';
+import { adMailReady, adMessage, adminOrderMessage, sendAdEmail } from './ad-mail.mjs';
 
 const languages = domain.languages;
 const q = (db, sql, ...params) => db.prepare(sql).bind(...params);
@@ -78,7 +78,7 @@ async function reserveBatch(db, body, ip, adminUser = null) {
     const existing = all.filter(item => item.batchRequestId === body.requestId);
     if (existing.length) {
       if (existing[0].fingerprint !== fingerprint) domain.fail('conflict', 409);
-      return { statements: [], output: { id: existing[0].groupId, totalPrice: existing.reduce((sum, item) => sum + item.totalPrice, 0), currency: 'EUR', status: 'pending' } };
+      return { statements: [], output: { id: existing[0].groupId, totalPrice: existing.reduce((sum, item) => sum + item.totalPrice, 0), currency: 'EUR', status: 'pending', created: false } };
     }
     const statements = adminUser ? [] : await limitStatements(db, all, ip);
     const groupId = crypto.randomUUID();
@@ -113,7 +113,7 @@ async function reserveBatch(db, body, ip, adminUser = null) {
       statements.push(q(db, 'INSERT INTO ad_orders(id,data,created_at) VALUES(?,?,?)', item.id, JSON.stringify(item), item.createdAt));
       if (complimentary) statements.push(q(db, 'INSERT INTO ad_order_history(order_id,actor_id,action,previous_status,new_status,created_at) VALUES(?,?,?,?,?,?)', item.id, adminUser.id, 'admin-complimentary-create', null, item.status, item.createdAt));
     }
-    return { statements, output: { id: groupId, totalPrice, currency: 'EUR', status: 'pending' } };
+    return { statements, output: { id: groupId, totalPrice, currency: 'EUR', status: 'pending', created: true } };
   });
 }
 async function moderateGroup(db, body, adminUser) {
@@ -462,7 +462,14 @@ export async function handleAds({ request, env }, { fetcher = fetch, mailer = se
       });
       return json(output);
     }
-    if (action === 'order-batch' && request.method === 'POST') return json(await reserveBatch(env.DB, body, request.headers.get('cf-connecting-ip')), 201);
+    if (action === 'order-batch' && request.method === 'POST') {
+      const result = await reserveBatch(env.DB, body, request.headers.get('cf-connecting-ip'));
+      if (result.created && adMailReady(env)) {
+        const group = (await orders(env.DB)).filter(item => item.groupId === result.id);
+        if (group.length) await mailer(env, adminOrderMessage(group, new URL(request.url).origin)).catch(() => {});
+      }
+      return json({ id: result.id, totalPrice: result.totalPrice, currency: result.currency, status: result.status }, 201);
+    }
     if (action === 'admin-order-batch' && request.method === 'POST') {
       if (request.headers.get('origin') !== new URL(request.url).origin) fail('origin', 403);
       return json(await reserveBatch(env.DB, body, request.headers.get('cf-connecting-ip'), adminUser), 201);

@@ -38,6 +38,26 @@ const lines = {
 };
 const subjects = { paid: 'Płatność za ogłoszenie', approved: 'Ogłoszenie zatwierdzone', changes_requested: 'Prośba o poprawienie ogłoszenia', rejected: 'Ogłoszenie odrzucone', refund_requested: 'Zwrot za ogłoszenie', corrected: 'Poprawione ogłoszenie otrzymane' };
 const b64 = value => btoa(String.fromCharCode(...new TextEncoder().encode(value)));
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
+
+export function adminOrderMessage(group, origin) {
+  const order = group.find(item => item.language === item.primaryLanguage) || group[0];
+  const reviewUrl = `${origin}/admin/?reviewAd=${encodeURIComponent(order.id)}`;
+  const details = [
+    ['Pakiet', order.type],
+    ['Treść ogłoszenia', group.map(item => `${item.language.toUpperCase()}: ${item.title}\n${item.description || ''}`).join('\n\n')],
+    ['Grafika', group.some(item => item.image || item.imageMobile || item.hasImage || item.hasMobileImage) ? `Podgląd w CMS: ${reviewUrl}` : 'Brak'],
+    ['Reklamodawca', order.company || order.customerName || '—'],
+    ['Kontakt publiczny', [order.publicPhone, order.publicEmail, order.contact].filter(Boolean).join(' · ') || '—'],
+    ['Kontakt zamawiającego', [order.email, order.phone].filter(Boolean).join(' · ') || '—'],
+    ['Okres emisji', `${order.startDate} – ${order.endDate}`],
+    ['Kwota', `${new Intl.NumberFormat('pl-PL', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(group.reduce((sum, item) => sum + item.totalPrice, 0) / 100)} EUR`],
+    ['Płatność', order.paymentStatus === 'paid' ? 'Opłacone' : 'Oczekuje na płatność']
+  ];
+  const body = `Nowe zamówienie reklamowe\n\n${details.map(([label, value]) => `${label}: ${value}`).join('\n\n')}\n\nZatwierdź i opublikuj (wymaga zalogowania i potwierdzenia w CMS): ${reviewUrl}`;
+  const html = `<h1>Nowe zamówienie reklamowe</h1>${details.map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong><br>${escapeHtml(value).replace(/\n/g, '<br>')}</p>`).join('')}<p><a href="${escapeHtml(reviewUrl)}" style="display:inline-block;padding:12px 18px;background:#b92835;color:#fff;text-decoration:none;border-radius:6px">Zatwierdź i opublikuj</a></p><p>Link otwiera szczegóły w CMS. Zatwierdzenie wymaga zalogowania i osobnego potwierdzenia. Nieopłaconego zamówienia nie można opublikować.</p>`;
+  return { to: sender, subject: `PolacywBelgii.eu — nowe zamówienie ${order.type}`, body, html };
+}
 
 export function adMessage(kind, order, { reason = '', editUrl = '' } = {}) {
   const language = lines[order.primaryLanguage || order.language] ? order.primaryLanguage || order.language : 'pl';
@@ -90,11 +110,15 @@ export async function sendAdEmail(env, message) {
     await send(`RCPT TO:<${message.to}>`, 250);
     await send('DATA', 354);
     const encodedBody = b64(message.body).match(/.{1,76}/g).join('\r\n');
+    const boundary = `pbe-${crypto.randomUUID()}`;
+    const encodedHtml = message.html ? b64(message.html).match(/.{1,76}/g).join('\r\n') : '';
     const mime = [
       `From: PolacywBelgii.eu <${env.AD_SMTP_USER}>`, `To: <${message.to}>`,
       `Subject: =?UTF-8?B?${b64(message.subject)}?=`, 'MIME-Version: 1.0',
-      'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64',
-      `Message-ID: <${crypto.randomUUID()}@polacywbelgii.eu>`, '', encodedBody, '.'
+      `Content-Type: ${message.html ? `multipart/alternative; boundary="${boundary}"` : 'text/plain; charset=UTF-8'}`,
+      ...(message.html ? [] : ['Content-Transfer-Encoding: base64']),
+      `Message-ID: <${crypto.randomUUID()}@polacywbelgii.eu>`, '',
+      ...(message.html ? [`--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', encodedBody, `--${boundary}`, 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', encodedHtml, `--${boundary}--`] : [encodedBody]), '.'
     ].join('\r\n');
     await send(mime, 250);
     await send('QUIT', 221);
