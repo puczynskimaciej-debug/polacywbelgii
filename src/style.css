@@ -365,7 +365,11 @@ body.event-dialog-open { overflow: hidden; }
 .event-calendar-day { display: grid; place-items: center; min-width: 0; min-height: 54px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--navy); font: 700 1rem "DM Sans",sans-serif; cursor: pointer; }
 .event-calendar-day.has-events { border-color: #9acbaa; background: #edf8f0; color: #145132; }
 .event-calendar-day { position: relative; }
-.event-calendar-day.has-events::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #238a50; position: absolute; bottom: 5px; left: calc(50% - 3.5px); }
+.event-day-dots { position: absolute; bottom: 5px; left: 50%; display: flex; gap: 3px; transform: translateX(-50%); }
+.event-day-dot { display: inline-block; flex: none; width: 7px; height: 7px; border-radius: 50%; background: #238a50; }
+.event-day-dot--ongoing { background: #b8c1c8; }
+.event-calendar-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin-top: 12px; color: var(--muted); font-size: .78rem; }
+.event-calendar-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .event-calendar-day.is-holiday { color: #b52932; }
 .event-calendar-day.is-today { border: 2px solid #111; }
 .event-holidays { padding: 10px 13px; border-radius: 10px; background: #fff3f1; }
@@ -382,6 +386,7 @@ body[data-page="home"] .home-events-grid { display: grid; grid-template-columns:
 .home-mini-calendar .event-calendar-grid { gap: 3px; }
 .home-mini-calendar .event-weekday { padding-block: 4px; }
 .home-mini-calendar .event-calendar-day { min-height: 50px; font-size: .9rem; }
+.home-mini-name-days { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
 .home-mini-full { margin-top: 8px; padding: 4px 0; border: 0; background: transparent; color: var(--blue); font: 700 .9rem "DM Sans",sans-serif; cursor: pointer; text-decoration: underline; }
 .footer-name-credit { margin-top: 0; padding-bottom: 20px; color: #b9c7d8; font-size: .72rem; line-height: 1.5; }
 .footer-name-credit a { color: inherit; text-decoration: underline; }

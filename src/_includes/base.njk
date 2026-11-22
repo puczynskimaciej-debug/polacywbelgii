@@ -63,6 +63,7 @@
     <div class="event-dialog-head"><div><span class="eyebrow" data-i18n="events.label">Wydarzenia</span><h2 id="event-calendar-title" data-i18n="events.calendar">Kalendarz wydarzeń</h2></div><button type="button" class="event-dialog-close" data-event-close aria-label="Zamknij kalendarz" data-i18n-aria="events.close">×</button></div>
     <div class="event-month-controls"><button type="button" data-event-month="prev" aria-label="Poprzedni miesiąc">←</button><h3 id="event-month-title"></h3><button type="button" data-event-month="next" aria-label="Następny miesiąc">→</button></div>
     <div id="event-calendar-grid" class="event-calendar-grid" role="group" aria-label="Dni miesiąca"></div>
+    <div class="event-calendar-legend"><span><i class="event-day-dot" aria-hidden="true"></i><span data-event-legend="start">Nowe wydarzenie</span></span><span><i class="event-day-dot event-day-dot--ongoing" aria-hidden="true"></i><span data-event-legend="ongoing">Wydarzenie w trakcie</span></span></div>
     <div id="event-day-details" class="event-day-details" aria-live="polite"></div>
   </dialog>
   {% endif %}
@@ -101,7 +102,7 @@
       <span>© 2026 Polacy w Belgii</span>
       <a href="/admin/" data-i18n="footer.admin">Panel redakcji</a>
     </div>
-    <p class="container footer-name-credit" lang="pl">Dane imienin: autorzy polskiej Wikipedii; opracowanie i normalizacja: <a href="https://imiennie.pl/o-danych/">imiennie.pl</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Zbiór z 18.10.2026, wykorzystany bez dalszych zmian w danych.</p>
+    <p class="container footer-name-credit" lang="pl">Dane imienin: autorzy polskiej Wikipedii; opracowanie i normalizacja: <a href="https://imiennie.pl/o-danych/">imiennie.pl</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Zbiór z 18.10.2026; skrócono do dwóch imion na dzień według częstości pierwszych imion w <a href="https://dane.gov.pl/dataset/1667">rejestrze PESEL</a> (20.01.2026).</p>
   </footer>
 </body>
 </html>

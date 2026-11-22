@@ -8,10 +8,10 @@
   const mini = document.querySelector('#home-mini-grid');
   const calendarInfo = window.PbeCalendar;
   const copy = {
-    pl:{locale:'pl-PL',days:['Pon','Wt','Śr','Czw','Pt','Sob','Niedz'],time:'Termin',place:'Miejsce',organizer:'Organizator',source:'Strona organizatora →',empty:'Brak nadchodzących wydarzeń tego dnia.',show:'Pokaż w kalendarzu →',unavailable:'Kalendarz jest chwilowo niedostępny.',fallback:'Treść wydarzenia jest dostępna po polsku.',count:'wydarzeń'},
-    en:{locale:'en-GB',days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],time:'Date',place:'Place',organizer:'Organiser',source:'Organiser website →',empty:'No upcoming events on this day.',show:'Show in calendar →',unavailable:'The calendar is temporarily unavailable.',fallback:'Event details are available in Polish.',count:'events'},
-    nl:{locale:'nl-BE',days:['ma','di','wo','do','vr','za','zo'],time:'Datum',place:'Plaats',organizer:'Organisator',source:'Website van organisator →',empty:'Geen komende evenementen op deze dag.',show:'Toon in kalender →',unavailable:'De kalender is tijdelijk niet beschikbaar.',fallback:'De evenementinformatie is beschikbaar in het Pools.',count:'evenementen'},
-    fr:{locale:'fr-BE',days:['lun','mar','mer','jeu','ven','sam','dim'],time:'Date',place:'Lieu',organizer:'Organisateur',source:'Site de l’organisateur →',empty:'Aucun événement à venir ce jour-là.',show:'Voir dans le calendrier →',unavailable:'Le calendrier est temporairement indisponible.',fallback:'Les détails de l’événement sont disponibles en polonais.',count:'événements'}
+    pl:{locale:'pl-PL',days:['Pon','Wt','Śr','Czw','Pt','Sob','Niedz'],time:'Termin',place:'Miejsce',organizer:'Organizator',source:'Strona organizatora →',empty:'Brak wydarzeń tego dnia.',show:'Pokaż w kalendarzu →',unavailable:'Kalendarz jest chwilowo niedostępny.',fallback:'Treść wydarzenia jest dostępna po polsku.',count:'wydarzeń'},
+    en:{locale:'en-GB',days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],time:'Date',place:'Place',organizer:'Organiser',source:'Organiser website →',empty:'No events on this day.',show:'Show in calendar →',unavailable:'The calendar is temporarily unavailable.',fallback:'Event details are available in Polish.',count:'events'},
+    nl:{locale:'nl-BE',days:['ma','di','wo','do','vr','za','zo'],time:'Datum',place:'Plaats',organizer:'Organisator',source:'Website van organisator →',empty:'Geen evenementen op deze dag.',show:'Toon in kalender →',unavailable:'De kalender is tijdelijk niet beschikbaar.',fallback:'De evenementinformatie is beschikbaar in het Pools.',count:'evenementen'},
+    fr:{locale:'fr-BE',days:['lun','mar','mer','jeu','ven','sam','dim'],time:'Date',place:'Lieu',organizer:'Organisateur',source:'Site de l’organisateur →',empty:'Aucun événement ce jour-là.',show:'Voir dans le calendrier →',unavailable:'Le calendrier est temporairement indisponible.',fallback:'Les détails de l’événement sont disponibles en polonais.',count:'événements'}
   };
   Object.assign(copy.pl,{homeEmpty:'Brak nadchodzących wydarzeń. Sprawdź pełny kalendarz.',show:'Zobacz szczegóły',unknownTime:'Godzina nieustalona',untitled:'Wydarzenie bez tytułu',regions:{flanders:'Flandria',wallonia:'Walonia',brussels:'Bruksela'}});
   Object.assign(copy.en,{homeEmpty:'No upcoming events. Explore the full calendar.',show:'See details',unknownTime:'Time to be confirmed',untitled:'Untitled event',regions:{flanders:'Flanders',wallonia:'Wallonia',brussels:'Brussels'}});
@@ -46,7 +46,16 @@
   const sourceLabel = {pl:'Źródło',en:'Source',nl:'Bron',fr:'Source'};
   const moreLabel = {pl:'Zobacz więcej wydarzeń',en:'See more events',nl:'Meer evenementen bekijken',fr:'Voir plus d’événements'};
   const fullLabel = {pl:'Otwórz pełny kalendarz',en:'Open full calendar',nl:'Volledige kalender openen',fr:'Ouvrir le calendrier complet'};
-  const dateEvents = date => events.filter(event => !event.isHoliday && visible(event) && upcoming(event) && onDay(event,date));
+  const legendText = {pl:['Nowe wydarzenie','Wydarzenie w trakcie'],en:['Event starts','Ongoing event'],nl:['Nieuw evenement','Lopend evenement'],fr:['Nouvel événement','Événement en cours']};
+  const dateEvents = date => events.filter(event => !event.isHoliday && visible(event) && onDay(event,date));
+  const dayMarkers = date => { const matches = dateEvents(date); return { starts: matches.some(event => startsOn(event,date)), ongoing: matches.some(event => !startsOn(event,date)), count: matches.length }; };
+  function appendDayDots(button, markers) {
+    if (!markers.starts && !markers.ongoing) return;
+    const dots = node('span',undefined,'event-day-dots'); dots.setAttribute('aria-hidden','true');
+    if (markers.starts) dots.append(node('span',undefined,'event-day-dot'));
+    if (markers.ongoing) dots.append(node('span',undefined,'event-day-dot event-day-dot--ongoing'));
+    button.append(dots);
+  }
   const manualHolidayOn = date => events.some(event => event.isHoliday && visible(event) && onDay(event,date));
   function appendHolidayInfo(container, date) {
     const holidays = calendarInfo?.holidays(date,region) || [];
@@ -71,7 +80,7 @@
 
   function appendNameDays(container, date) {
     if (document.documentElement.lang !== 'pl' || !nameDays) return;
-    const names = nameDays.days?.[date.slice(5)]?.names || [];
+    const names = nameDays.days?.[date.slice(5)] || [];
     if (names.length) container.append(node('p',`Imieniny obchodzą: ${names.join(', ')}`,'event-name-days'));
   }
 
@@ -95,6 +104,7 @@
   function renderMonth() {
     const first = new Date(`${month}-01T12:00:00Z`);
     title.textContent = new Intl.DateTimeFormat(t().locale,{month:'long',year:'numeric',timeZone:'UTC'}).format(first);
+    dialog.querySelectorAll('[data-event-legend]').forEach((label,index) => { label.textContent = (legendText[document.documentElement.lang] || legendText.pl)[index]; });
     grid.replaceChildren();
     for (const label of t().days) grid.append(node('span',label,'event-weekday'));
     const offset = (first.getUTCDay()+6)%7;
@@ -102,10 +112,11 @@
     const count = new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
     for (let number=1;number<=count;number++) {
       const date = `${month}-${String(number).padStart(2,'0')}`;
-      const matchCount = dateEvents(date).filter(event => startsOn(event,date)).length;
+      const markers = dayMarkers(date);
       const isHoliday = (calendarInfo?.holidays(date,region).length || 0) > 0 || calendarInfo?.sunday(date) || manualHolidayOn(date);
-      const button = node('button',String(number),`event-calendar-day${matchCount ? ' has-events' : ''}${isHoliday ? ' is-holiday' : ''}${date === today ? ' is-today' : ''}${date === selected ? ' is-selected' : ''}`);
-      button.type = 'button'; button.dataset.date = date; button.setAttribute('aria-label',`${number} ${title.textContent}${matchCount ? `, ${matchCount} ${t().count}` : ''}`); button.setAttribute('aria-pressed',String(date === selected));
+      const button = node('button',String(number),`event-calendar-day${markers.starts ? ' has-events' : ''}${isHoliday ? ' is-holiday' : ''}${date === today ? ' is-today' : ''}${date === selected ? ' is-selected' : ''}`);
+      appendDayDots(button,markers);
+      button.type = 'button'; button.dataset.date = date; button.setAttribute('aria-label',`${number} ${title.textContent}${markers.count ? `, ${markers.count} ${t().count}` : ''}`); button.setAttribute('aria-pressed',String(date === selected));
       button.addEventListener('click',() => { selected = date; renderMonth(); renderDay(); grid.querySelector(`[data-date="${date}"]`)?.focus(); });
       grid.append(button);
     }
@@ -123,13 +134,18 @@
     const count = new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
     for (let number=1;number<=count;number++) {
       const date = `${miniMonth}-${String(number).padStart(2,'0')}`;
-      const hasEvents = dateEvents(date).some(event => startsOn(event,date));
+      const markers = dayMarkers(date);
       const isHoliday = (calendarInfo?.holidays(date).length || 0) > 0 || calendarInfo?.sunday(date) || manualHolidayOn(date);
-      const button = node('button',String(number),`event-calendar-day${hasEvents ? ' has-events' : ''}${isHoliday ? ' is-holiday' : ''}${date === today ? ' is-today' : ''}`);
-      button.type='button'; button.dataset.date=date; button.setAttribute('aria-label',date);
+      const button = node('button',String(number),`event-calendar-day${markers.starts ? ' has-events' : ''}${isHoliday ? ' is-holiday' : ''}${date === today ? ' is-today' : ''}`);
+      appendDayDots(button,markers);
+      const dayNames = document.documentElement.lang === 'pl' ? nameDays?.days?.[date.slice(5)] : null;
+      if (dayNames?.length) button.title = `Imieniny obchodzą: ${dayNames.join(', ')}`;
+      button.type='button'; button.dataset.date=date; button.setAttribute('aria-label',`${date}${dayNames?.length ? `, imieniny: ${dayNames.join(', ')}` : ''}`);
       button.addEventListener('click',() => { region='all'; selected=date; month=miniMonth; open(button); });
       mini.append(button);
     }
+    const miniNames = document.querySelector('#home-mini-name-days');
+    if (miniNames) { const names = document.documentElement.lang === 'pl' && miniMonth === today.slice(0,7) ? nameDays?.days?.[today.slice(5)] : null; miniNames.textContent = names?.length ? `Dziś imieniny obchodzą: ${names.join(', ')}` : ''; miniNames.hidden = !names?.length; }
   }
 
   function renderHome() {
@@ -157,7 +173,10 @@
     opener = trigger;
     document.body.classList.add('event-dialog-open');
     regionButtons(); renderMonth(); dialog.showModal(); dialog.querySelector('[data-event-close]').focus();
-    if (document.documentElement.lang === 'pl' && !nameDays) fetch('/name-days-pl.json').then(response => response.ok ? response.json() : null).then(data => { nameDays=data; if (dialog.open) renderDay(); }).catch(() => {});
+  }
+  function loadNameDays() {
+    if (document.documentElement.lang !== 'pl' || nameDays) return;
+    fetch('/name-days-short-pl.json').then(response => response.ok ? response.json() : null).then(data => { nameDays = data; renderMini(); if (dialog.open) renderDay(); }).catch(() => {});
   }
   dialog.addEventListener('close',() => { document.body.classList.remove('event-dialog-open'); opener?.focus(); opener = null; });
   dialog.querySelector('[data-event-close]').addEventListener('click',() => dialog.close());
@@ -167,6 +186,7 @@
   document.querySelectorAll('[data-mini-month]').forEach(button => button.addEventListener('click',() => { const date = new Date(`${miniMonth}-01T12:00:00Z`); date.setUTCMonth(date.getUTCMonth()+(button.dataset.miniMonth === 'next' ? 1 : -1)); miniMonth=date.toISOString().slice(0,7); renderMini(); }));
   document.querySelectorAll('[data-event-open]').forEach(button => button.addEventListener('click',() => { region = 'all'; open(button); }));
   if (document.body.dataset.page === 'events') open(document.querySelector('[data-event-open]'));
-  document.addEventListener('languagechange',() => { renderHome(); regionButtons(); if (dialog.open) renderMonth(); });
+  document.addEventListener('languagechange',() => { loadNameDays(); renderHome(); regionButtons(); if (dialog.open) renderMonth(); });
+  loadNameDays();
   fetch('/api/public-events',{cache:'no-store'}).then(response => { if (!response.ok) throw new Error('unavailable'); return response.json(); }).then(data => { events = Array.isArray(data.events) ? data.events : []; renderHome(); if (dialog.open) renderMonth(); }).catch(() => { if (home) home.append(node('p',t().unavailable)); details.replaceChildren(node('p',t().unavailable)); });
 })();

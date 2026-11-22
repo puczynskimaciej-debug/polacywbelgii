@@ -28,6 +28,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/events.js");
   eleventyConfig.addPassthroughCopy("src/calendar-days.js");
   eleventyConfig.addPassthroughCopy("src/name-days-pl.json");
+  eleventyConfig.addPassthroughCopy("src/name-days-short-pl.json");
   eleventyConfig.addPassthroughCopy("src/ad-creative.js");
   eleventyConfig.addPassthroughCopy({ "src/ads.js": "listings.js" });
   eleventyConfig.addPassthroughCopy("src/order-modal.js");
