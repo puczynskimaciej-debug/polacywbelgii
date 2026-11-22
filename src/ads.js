@@ -89,7 +89,7 @@
   function placeholderCard(type) {
     const language = document.documentElement.lang;
     const copy = type === 'PREMIUM' ? displaySettings.PREMIUM.placeholder.locales[language] || displaySettings.PREMIUM.placeholder.locales.pl || placeholderCopy[language] || placeholderCopy.pl : placeholderCopy[language] || placeholderCopy.pl;
-    const item = element(type === 'PREMIUM' ? 'div' : 'article', '', type === 'PREMIUM' ? 'premium-banner__link ad-placeholder ad-placeholder--premium' : `listing-card ad-placeholder ad-placeholder--${type.toLowerCase()}`);
+    const item = element(type === 'PREMIUM' ? 'div' : 'article', '', type === 'PREMIUM' ? 'premium-banner__link premium-fallback' : `listing-card ad-placeholder ad-placeholder--${type.toLowerCase()}`);
     const content = element('div', '', 'ad-placeholder__content');
     const action = element('a', copy.action || placeholderCopy[language]?.action || placeholderCopy.pl.action, 'ad-placeholder__action');
     action.href = '/zamow-ogloszenie/';
