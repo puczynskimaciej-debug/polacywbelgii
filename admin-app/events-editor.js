@@ -1,8 +1,14 @@
 import { cmsRequest } from './modules/client.js';
 import { escapeHtml, confirmAction } from './ui.js';
 import { applyEventLanguage, eventText } from './cms-event-i18n.js';
+import { setupTranslations } from './cms-translation.js';
 
 const $ = selector => document.querySelector(selector);
+const eventTranslations = setupTranslations($('#event-editor-form'), 'event');
+document.querySelectorAll('[data-event-language-tab]').forEach(button => button.addEventListener('click', () => {
+  document.querySelectorAll('[data-event-language-tab]').forEach(tab => tab.classList.toggle('is-active', tab === button));
+  document.querySelectorAll('[data-event-language-pane]').forEach(pane => pane.classList.toggle('is-active', pane.dataset.eventLanguagePane === button.dataset.eventLanguageTab));
+}));
 let rows = [], selected = null;
 let calendarMonth = new Date(); calendarMonth.setDate(1);
 const notice = message => { $('#events-editor-notice').textContent = message; };
@@ -86,6 +92,10 @@ function open(row = null, initialDate = '') {
   const form = $('#event-editor-form'); form.reset(); form.dataset.dirty = 'false'; $('#event-editor-error').textContent = '';
   const event = row ? JSON.parse(row.event_json || '{}') : {};
   for (const key of ['title','description','body']) form.elements[key].value = row?.[key] || '';
+  const localized = row ? JSON.parse(row.article_fields_json || '{}') : {};
+  for (const language of ['nl','fr']) for (const key of ['title','description','body']) form.elements[`${key}_${language}`].value = localized[`${key}_${language}`] || '';
+  eventTranslations.reset();
+  document.querySelector('[data-event-language-tab="pl"]').click();
   for (const key of ['category','region','city','venue','address','organizer','sourceUrl','image']) form.elements[key].value = event[key] || '';
   if (!form.elements.category.value) form.elements.category.value = 'Inne';
   form.elements.eventStatus.value = event.status || 'scheduled';
@@ -152,7 +162,8 @@ $('#event-editor-form').addEventListener('submit',async event => {
   event.preventDefault(); const form = event.currentTarget;
   try {
     const details = eventFromForm(form);
-    const data = { title:form.elements.title.value.trim(), description:form.elements.description.value.trim(), body:form.elements.body.value.trim(), category:details.category, region:details.region, event:details, sources:details.sourceUrl ? [{url:details.sourceUrl}] : [] };
+    const articleFields = Object.fromEntries(['nl','fr'].flatMap(language => ['title','description','body'].map(key => [`${key}_${language}`, form.elements[`${key}_${language}`].value])));
+    const data = { title:form.elements.title.value.trim(), description:form.elements.description.value.trim(), body:form.elements.body.value.trim(), articleFields, category:details.category, region:details.region, event:details, sources:details.sourceUrl ? [{url:details.sourceUrl}] : [] };
     await cmsRequest('ai-editor',{},'POST',selected ? { action:'edit',id:selected.id,...data } : { action:'manual-event',id:crypto.randomUUID().replaceAll('-','').slice(0,20),...data });
     await load(); $('#event-editor-dialog').close(); notice(label('saved','Wydarzenie zapisane. Potwierdź dane przed publikacją.'));
   } catch (error) { $('#event-editor-error').textContent = error.message; }

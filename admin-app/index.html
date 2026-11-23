@@ -11,11 +11,11 @@
   <link rel="stylesheet" href="/admin/redesign.css">
   <script src="/calendar-days.js" defer></script>
   <script type="module" src="/admin/ui.js"></script>
-  <script type="module" src="/admin/app.js?v=20261121-article-tabs2"></script>
+  <script type="module" src="/admin/app.js?v=20261123-translations"></script>
   <script type="module" src="/admin/visual-editor.js"></script>
   <script type="module" src="/admin/ai-editor-redesign.js"></script>
   <script type="module" src="/admin/ai-chat.js"></script>
-  <script type="module" src="/admin/events-editor.js"></script>
+  <script type="module" src="/admin/events-editor.js?v=20261123-translations"></script>
   <script type="module" src="/admin/ads.js?v=20261121-tabs"></script>
   <script type="module" src="/admin/retention.js"></script>
 </head>
@@ -208,10 +208,15 @@
     <form id="event-editor-form">
       <div class="dialog-heading"><h2>Wydarzenie</h2><button type="button" class="icon-button" id="event-editor-close" aria-label="Zamknij">×</button></div>
       <p id="event-editor-error" role="alert"></p>
+      <div class="language-tabs"><button type="button" class="is-active" data-event-language-tab="pl">Polski</button><button type="button" data-event-language-tab="nl">Nederlands</button><button type="button" data-event-language-tab="fr">Français</button></div>
+      <div class="language-pane is-active" data-event-language-pane="pl">
+        <label>Tytuł<input name="title" maxlength="180"></label>
+        <label>Krótki opis<textarea name="description" maxlength="500" rows="3"></textarea></label>
+        <div class="event-body-field"><label for="event-body">Pełny opis wydarzenia (Markdown)</label><div class="event-markdown-toolbar" role="toolbar" aria-label="Formatowanie opisu"><button type="button" data-event-format="bold" aria-label="Pogrubienie"><strong>B</strong></button><button type="button" data-event-format="italic" aria-label="Kursywa"><em>I</em></button><button type="button" data-event-format="bullets" aria-label="Lista punktowana">• Lista</button><button type="button" data-event-format="numbers" aria-label="Lista numerowana">1. Lista</button><button type="button" data-event-format="paragraph" aria-label="Nowy akapit">¶</button></div><textarea id="event-body" name="body" rows="10"></textarea><small>Pogrubienia, kursywa, listy i akapity będą widoczne na stronie wydarzenia.</small></div>
+      </div>
+      <div class="language-pane" data-event-language-pane="nl"><label>Tytuł NL<input name="title_nl" maxlength="180"></label><label>Krótki opis NL<textarea name="description_nl" maxlength="500" rows="3"></textarea></label><label>Pełny opis NL (Markdown)<textarea name="body_nl" rows="10"></textarea></label></div>
+      <div class="language-pane" data-event-language-pane="fr"><label>Tytuł FR<input name="title_fr" maxlength="180"></label><label>Krótki opis FR<textarea name="description_fr" maxlength="500" rows="3"></textarea></label><label>Pełny opis FR (Markdown)<textarea name="body_fr" rows="10"></textarea></label></div>
       <div class="form-grid">
-        <label class="wide">Tytuł<input name="title" maxlength="180"></label>
-        <label class="wide">Krótki opis<textarea name="description" maxlength="500" rows="3"></textarea></label>
-        <div class="wide event-body-field"><label for="event-body">Pełny opis wydarzenia (Markdown)</label><div class="event-markdown-toolbar" role="toolbar" aria-label="Formatowanie opisu"><button type="button" data-event-format="bold" aria-label="Pogrubienie"><strong>B</strong></button><button type="button" data-event-format="italic" aria-label="Kursywa"><em>I</em></button><button type="button" data-event-format="bullets" aria-label="Lista punktowana">• Lista</button><button type="button" data-event-format="numbers" aria-label="Lista numerowana">1. Lista</button><button type="button" data-event-format="paragraph" aria-label="Nowy akapit">¶</button></div><textarea id="event-body" name="body" rows="10"></textarea><small>Pogrubienia, kursywa, listy i akapity będą widoczne na stronie wydarzenia.</small></div>
         <label>Kategoria<select name="category"><option value="Kultura">Kultura</option><option value="Koncert">Koncert</option><option value="Rodzina">Rodzina</option><option value="Sport">Sport</option><option value="Edukacja">Edukacja</option><option value="Spotkanie">Spotkanie</option><option value="Inne">Inne</option></select></label>
         <label>Region<select name="region"><option value="">Nieokreślony</option><option value="all">Cała Belgia</option><option value="brussels">Bruksela</option><option value="flanders">Flandria</option><option value="wallonia">Walonia</option></select></label>
         <label class="wide event-check"><input name="isHoliday" type="checkbox"><span>Święto lub dzień wolny — cały dzień (bez godziny)</span></label>

@@ -1,4 +1,9 @@
 const messages = {
+  translationLimit: 'Dzisiejszy limit tłumaczeń został wykorzystany. Spróbuj ponownie jutro.',
+  geminiInvalid: 'Gemini nie zwrócił poprawnego tłumaczenia lub zmienił link. Spróbuj ponownie.',
+  geminiHttp400: 'Gemini odrzucił żądanie tłumaczenia.',
+  geminiHttp403: 'Klucz Gemini nie ma dostępu do tłumaczenia.',
+  geminiHttp429: 'Limit Gemini został wykorzystany. Spróbuj później.',
   geminiUnavailable: 'Pytania do agenta wymagają osobnej konfiguracji Gemini. Aby przygotować artykuł, wybierz „Zleć artykuł”.',
   geminiNetwork: 'Gemini nie odpowiedział. Spróbuj ponownie później.',
   queueFull: 'Kolejka artykułów jest pełna. Spróbuj ponownie po zakończeniu bieżących zadań.',

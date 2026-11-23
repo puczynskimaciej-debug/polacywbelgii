@@ -68,7 +68,7 @@ export async function onRequest({ request, env }) {
       const kind = input.action === 'manual-event' ? 'event' : input.kind;
       const manual = input.action === 'manual-event';
       if (manual) normalizeManual(input);
-      if (!['article','event'].includes(kind) || !validContent(input,manual) || kind === 'event' && (!validateEvent(input.event,{ manual }) || !manual && !input.sources.some(source => source.url === input.event.sourceUrl))) fail('validation');
+      if (!['article','event'].includes(kind) || !validContent(input,manual) || input.articleFields !== undefined && !validArticleFields(input.articleFields) || kind === 'event' && (!validateEvent(input.event,{ manual }) || !manual && !input.sources.some(source => source.url === input.event.sourceUrl))) fail('validation');
       const configRow = await env.DB.prepare("SELECT value_json FROM ai_config WHERE key='editorial'").first();
       const config = validateEditorialConfig(JSON.parse(configRow.value_json));
       const pending = await env.DB.prepare("SELECT count(*) AS n FROM ai_editorial WHERE status='pending_review'").first();
@@ -78,7 +78,7 @@ export async function onRequest({ request, env }) {
       const now = new Date().toISOString();
       const status = input.action === 'manual-event' ? 'pending_review' : 'draft';
       await env.DB.batch([
-        env.DB.prepare('INSERT INTO ai_candidates(id,kind,status,title,description,body,category,region,sources_json,verification_json,event_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(input.id,kind,status,input.title,input.description,input.body,input.category || null,kind === 'event' ? input.event.region || null : input.region || 'all',JSON.stringify(input.sources),JSON.stringify(input.verification || { status: 'needs_review', checkedAt: now }),kind === 'event' ? JSON.stringify(input.event) : null,now,now),
+        env.DB.prepare('INSERT INTO ai_candidates(id,kind,status,title,description,body,category,region,sources_json,verification_json,event_json,article_fields_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(input.id,kind,status,input.title,input.description,input.body,input.category || null,kind === 'event' ? input.event.region || null : input.region || 'all',JSON.stringify(input.sources),JSON.stringify(input.verification || { status: 'needs_review', checkedAt: now }),kind === 'event' ? JSON.stringify(input.event) : null,JSON.stringify(input.articleFields || {}),now,now),
         env.DB.prepare('INSERT INTO ai_editorial(candidate_id,status,owner_kind,owner_id,proposed_publish_at,updated_at) VALUES(?,?,?,?,?,?)').bind(input.id,status,actor.kind,actor.id,proposed,now),
         env.DB.prepare('INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,?,?,?,?,?)').bind(input.id,null,status,actor.id,now,'created')
       ]);
@@ -168,13 +168,13 @@ export async function onRequest({ request, env }) {
       if (manual) normalizeManual(input);
       if (!validContent(input,manual)) fail('validation');
       if (current.kind === 'event' && (!validateEvent(input.event,{ manual }) || !manual && !input.sources.some(source => source.url === input.event.sourceUrl))) fail('validation');
-      if (current.kind === 'article' && input.articleFields !== undefined && !validArticleFields(input.articleFields)) fail('validation');
+      if (input.articleFields !== undefined && !validArticleFields(input.articleFields)) fail('validation');
       if (current.kind === 'article' && current.editorial_status === 'published') {
         if (actor.kind !== 'admin') fail('forbidden',403);
         await recordArticleDraft(env.DB,`ai/${input.id}`,JSON.stringify({ title:input.title,description:input.description,body:input.body,category:input.category || null,region:input.region || 'all',sources:input.sources,articleFields:input.articleFields ?? JSON.parse(current.article_fields_json || '{}') }),current.updated_at,{ id:actor.id,name:'Administrator' });
         return json({ id:input.id,status:'published',draft:true });
       }
-      const update = await env.DB.prepare('UPDATE ai_candidates SET title=?,description=?,body=?,category=?,region=?,sources_json=?,event_json=?,article_fields_json=?,verification_json=?,updated_at=? WHERE id=? AND updated_at=?').bind(input.title,input.description,input.body,input.category || null,current.kind === 'event' ? input.event.region || null : input.region || 'all',JSON.stringify(input.sources),current.kind === 'event' ? JSON.stringify(input.event) : null,current.kind === 'article' ? JSON.stringify(input.articleFields ?? JSON.parse(current.article_fields_json || '{}')) : '{}',JSON.stringify({ status:'needs_review',checkedAt:now,issues:[current.kind === 'event' ? 'Event changed; verify source again' : 'Article changed; verify claims and sources again'] }),now,input.id,current.updated_at).run();
+      const update = await env.DB.prepare('UPDATE ai_candidates SET title=?,description=?,body=?,category=?,region=?,sources_json=?,event_json=?,article_fields_json=?,verification_json=?,updated_at=? WHERE id=? AND updated_at=?').bind(input.title,input.description,input.body,input.category || null,current.kind === 'event' ? input.event.region || null : input.region || 'all',JSON.stringify(input.sources),current.kind === 'event' ? JSON.stringify(input.event) : null,JSON.stringify(input.articleFields ?? JSON.parse(current.article_fields_json || '{}')),JSON.stringify({ status:'needs_review',checkedAt:now,issues:[current.kind === 'event' ? 'Event changed; verify source again' : 'Article changed; verify claims and sources again'] }),now,input.id,current.updated_at).run();
       if (!update.meta?.changes) fail('conflict', 409);
       await env.DB.prepare("UPDATE ai_editorial SET status='pending_review',public_state='hidden',scheduled_at=NULL,approved_by=NULL,approved_at=NULL,revision=revision+1,updated_at=? WHERE candidate_id=?").bind(now,input.id).run();
       await env.DB.prepare('INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,?,?,?,?,?)').bind(input.id,current.editorial_status,'pending_review',actor.id,now,'edited').run();

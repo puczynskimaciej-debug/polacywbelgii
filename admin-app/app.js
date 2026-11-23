@@ -4,9 +4,11 @@ import { ContentApi } from "./modules/content-api.js";
 import { ContentRepository } from "./modules/repository.js?v=20261121-article-tabs2";
 import { cmsRequest } from './modules/client.js';
 import { confirmAction, renderMarkdown } from './ui.js';
+import { setupTranslations } from './cms-translation.js';
 
 const state = { api: null, repository: null, user: null, isAdmin: false, home: null, homeSha: null, site: null, siteSha: null, articles: [], media: [], history: [], users: [], editingUser: null, editingAiId: null, uploadTarget: null, previewLanguage: "pl", language: "pl", homeAll: null, siteAll: null };
 const auth = new CmsAuth();
+const articleTranslations = setupTranslations(document.querySelector('#article-form'), 'article');
 const articleUi = {
   pl:{all:'Wszystkie',allStatuses:'Wszystkie statusy',editorial:'Redakcja',open:'Otwórz',edit:'Edytuj',remove:'Usuń',empty:'Brak artykułów pasujących do filtrów.',statuses:{draft:'Szkic',pending_review:'Do zatwierdzenia',changes_requested:'Wymaga poprawek',approved:'Zaakceptowany',scheduled:'Zaplanowany',published:'Opublikowany',rejected:'Odrzucony',archived:'Wycofany'}},
   en:{all:'All',allStatuses:'All statuses',editorial:'Editorial',open:'Open',edit:'Edit',remove:'Delete',empty:'No articles match these filters.',statuses:{draft:'Draft',pending_review:'Awaiting approval',changes_requested:'Changes requested',approved:'Approved',scheduled:'Scheduled',published:'Published',rejected:'Rejected',archived:'Withdrawn'}},
@@ -215,6 +217,7 @@ function formData(form) { return Object.fromEntries(new FormData(form).entries()
 function openArticle(article = null) {
   const form = $("#article-form"); form.reset(); state.editingAiId = article?.aiId || null; $("#article-dialog-title").textContent = article ? "Edytuj artykuł" : "Nowy artykuł";
   const values = article ? { ...article,...(article.draft || {}) } : { date: new Date().toISOString() }; Object.entries(values).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = key === "date" ? brusselsDateTime(value) : value || ""; });
+  articleTranslations.reset();
   populateArticleMedia();
   ['pl','nl','fr'].forEach(refreshArticleLanguageMedia);
   form.elements.status.value = ['draft','scheduled','published'].includes(article?.status) ? article.status : 'draft';
