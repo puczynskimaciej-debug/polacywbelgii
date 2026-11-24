@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { localD1Path } from '../agent/local-db.mjs';
 import { hashPassword } from '../cloudflare/auth.mjs';
+import { publishDue } from '../cloudflare/publication.mjs';
 import { chromium } from 'playwright-core';
 
 const origin = 'http://127.0.0.1:8080';
@@ -73,6 +74,12 @@ try {
   await request({action:'approve-publish-event',id:multi.id});
   assert.equal(JSON.parse(record(multi.id).event_json).endDate,'2026-11-27');
   assert.equal(JSON.parse(record(multi.id).event_json).end,null);
+  const overdue = await make('2026-11-20');
+  db.prepare("UPDATE ai_editorial SET status='scheduled',public_state='hidden',approved_by=?,approved_at=?,scheduled_at=? WHERE candidate_id=?").run(adminId,'2026-11-20T10:00:00Z','2026-11-20T10:01:00Z',overdue.id);
+  db.prepare('UPDATE ai_candidates SET verification_json=? WHERE id=?').run(JSON.stringify({status:'verified'}),overdue.id);
+  const adapter = {prepare(sql) { let values=[]; return {bind(...params) {values=params;return this;},async all() {return {results:db.prepare(sql).all(...values)};},async run() {return {meta:{changes:db.prepare(sql).run(...values).changes}};}};}};
+  assert.deepEqual((await publishDue(adapter,new Date(),new Set([overdue.id]))).published,[overdue.id]);
+  assert.equal(record(overdue.id).status,'published');
   const publicEvents = await (await fetch(`${origin}/api/public-events`)).json();
   assert.equal(publicEvents.events.some(event => event.url.endsWith(`${multi.id}/`) && event.endDate === '2026-11-27' && event.title_nl === 'Testevenement'),true);
   console.log('Past publication, one-step approval, published edit, future edit, multi-day date and public translations: OK');
