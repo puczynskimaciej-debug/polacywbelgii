@@ -256,7 +256,7 @@ function applyLanguage(language, remember = false) {
   const description = document.querySelector('meta[name="description"]');
   if (description && pageDescriptions[selected]?.[document.body.dataset.page]) description.content = pageDescriptions[selected][document.body.dataset.page];
   else if (description && originalMetaDescription) description.content = originalMetaDescription;
-  document.querySelector(".language-picker__button img").src = languageData[selected].flag;
+  document.querySelector(".language-picker__button").dataset.activeLanguage = selected;
   document.querySelector(".language-picker__code").textContent = languageData[selected].code;
   document.querySelectorAll("[data-lang]").forEach((button) =>
     button.classList.toggle("is-active", button.dataset.lang === selected)

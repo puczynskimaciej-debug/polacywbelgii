@@ -30,6 +30,8 @@ try {
     assert.equal(meta(html,'og:url'),`https://www.polacywbelgii.eu${path}${suffix}`);
     const image=language==='nl'&&row.kind==='article'?'/images/social-home.png':'/images/hero.jpg';
     assert.equal(meta(html,'og:image'),`https://www.polacywbelgii.eu${image}`);
+    assert.ok(!/<img[^>]+src="\/images\/flags\//.test(html));
+    assert.match(html,/<img[^>]+src="\/images\/hero\.jpg"/);
     assert.ok(!html.includes('%%OG_'));
   }
   console.log('OG artykułów i wydarzeń PL/NL/FR bez JavaScriptu: OK');

@@ -58,15 +58,15 @@
         <a href="/ogloszenia/" {% if pageKey == "ads" %}aria-current="page"{% endif %} data-i18n="nav.ads">Ogłoszenia</a>
         <a href="/kontakt/" {% if pageKey == "contact" %}aria-current="page"{% endif %} data-i18n="nav.contact">Kontakt</a>
         <div class="language-picker">
-          <button class="language-picker__button" type="button" aria-expanded="false" aria-controls="language-menu">
-            <img src="/images/flags/pl.svg" alt="">
+          <button class="language-picker__button" type="button" aria-expanded="false" aria-controls="language-menu" data-active-language="pl">
+            <span class="language-flag" aria-hidden="true"></span>
             <span class="language-picker__code">PL</span>
             <span aria-hidden="true">⌄</span>
             <span class="sr-only" data-i18n="lang.choose">Wybierz język</span>
           </button>
           <div class="language-menu" id="language-menu">
             {% for key, language in languages %}{% if key != 'en' %}
-            <button type="button" data-lang="{{ key }}"><img src="{{ language.flag }}" alt=""> <span>{{ language.name }}</span></button>
+            <button type="button" data-lang="{{ key }}"><span class="language-flag" aria-hidden="true"></span> <span>{{ language.name }}</span></button>
             {% endif %}{% endfor %}
           </div>
         </div>

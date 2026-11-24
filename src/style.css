@@ -44,7 +44,11 @@ p { margin: 0; }
 .nav-toggle > span:not(.sr-only) { display: block; width: 25px; height: 2px; margin: 5px; background: var(--navy); transition: .2s; }
 .language-picker { position: relative; margin-left: 6px; }
 .language-picker__button { display: flex; align-items: center; gap: 7px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; color: var(--navy); background: #fff; font: 700 .78rem "DM Sans"; cursor: pointer; }
-.language-picker__button img, .language-menu img { width: 24px; height: 16px; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgba(20,45,76,.12); }
+.language-flag { display: inline-block; flex: 0 0 24px; width: 24px; height: 16px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(20,45,76,.12); background-size: cover; background-position: center; }
+.language-picker__button[data-active-language="pl"] .language-flag, .language-menu [data-lang="pl"] .language-flag { background-image: url('/images/flags/pl.svg'); }
+.language-picker__button[data-active-language="nl"] .language-flag, .language-menu [data-lang="nl"] .language-flag { background-image: url('/images/flags/be.svg'); }
+.language-picker__button[data-active-language="fr"] .language-flag, .language-menu [data-lang="fr"] .language-flag { background-image: url('/images/flags/fr.svg'); }
+.language-picker__button[data-active-language="en"] .language-flag, .language-menu [data-lang="en"] .language-flag { background-image: url('/images/flags/en.svg'); }
 .language-menu { position: absolute; top: calc(100% + 10px); right: 0; display: none; min-width: 180px; padding: 7px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
 .language-picker.is-open .language-menu { display: block; }
 .language-menu button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px; border: 0; border-radius: 7px; color: var(--ink); background: transparent; font: 600 .9rem "DM Sans"; text-align: left; cursor: pointer; }
