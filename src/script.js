@@ -261,7 +261,14 @@ function applyLanguage(language, remember = false) {
   document.querySelectorAll("[data-lang]").forEach((button) =>
     button.classList.toggle("is-active", button.dataset.lang === selected)
   );
-  if (remember) sessionStorage.setItem("siteLanguage", selected);
+  if (remember) {
+    sessionStorage.setItem("siteLanguage", selected);
+    if (document.body.dataset.page !== 'legal') {
+      const sharedUrl = new URL(location.href);
+      if (selected === 'pl') sharedUrl.searchParams.delete('lang'); else sharedUrl.searchParams.set('lang',selected);
+      history.replaceState(history.state,'',sharedUrl);
+    }
+  }
   if (document.body.dataset.page==='legal') {
     const parts=location.pathname.split('/').filter(Boolean),slug=parts.at(-1);
     if (legalSlugs.includes(slug)) { const target=selected==='pl'?`/${slug}/`:`/${selected}/${slug}/`; if(location.pathname!==target) { location.replace(target); return; } }
@@ -333,5 +340,6 @@ if (languagePicker && languageButton) {
 const previousLanguage = localStorage.getItem('siteLanguage');
 if (previousLanguage) localStorage.removeItem('siteLanguage');
 const legalPathLanguage = document.body.dataset.page === 'legal' ? (languageData[location.pathname.split('/')[1]] ? location.pathname.split('/')[1] : 'pl') : null;
+const requestedLanguage = new URLSearchParams(location.search).get('lang');
 const rememberedLanguage = sessionStorage.getItem('siteLanguage') || previousLanguage;
-applyLanguage(legalPathLanguage || (rememberedLanguage === 'en' ? 'pl' : rememberedLanguage) || document.documentElement.lang || 'pl');
+applyLanguage(legalPathLanguage || (['pl','nl','fr'].includes(requestedLanguage) ? requestedLanguage : null) || (rememberedLanguage === 'en' ? 'pl' : rememberedLanguage) || document.documentElement.lang || 'pl');

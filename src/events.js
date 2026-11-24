@@ -32,13 +32,16 @@
     dialog.querySelectorAll('[data-event-region]').forEach(button => { button.textContent = (labels[document.documentElement.lang] || labels.pl)[regions.indexOf(button.dataset.eventRegion)]; button.classList.toggle('is-active',button.dataset.eventRegion === region); button.setAttribute('aria-pressed',String(button.dataset.eventRegion === region)); });
   }
   const eventDate = event => event.date || event.start && localDay(event.start);
-  const upcoming = event => !eventDate(event) || (event.end ? Date.parse(event.end) >= Date.now() : (event.endDate || eventDate(event)) >= today);
+  const startsTodayOrLater = event => eventDate(event) && eventDate(event) >= today;
   const onDay = (event, date) => eventDate(event) && eventDate(event) <= date && (event.endDate || event.end && localDay(event.end) || eventDate(event)) >= date;
   const startsOn = (event, date) => eventDate(event) === date;
   const eventTime = event => event.start ? localDateTime(event.start) : displayDate(eventDate(event));
   const eventImage = event => event.image || `/images/event-placeholders/${({Rodzina:'rodzina',Spotkanie:'spotkanie',Kultura:'kultura',Edukacja:'edukacja',Sport:'sport',Koncert:'koncert',Inne:'inne',History:'inne',Music:'inne'})[event.category] || 'wydarzenie'}.svg`;
   const dateLabel = event => displayDate(eventDate(event));
-  const dateRange = event => `${dateLabel(event)}${event.endDate && event.endDate !== eventDate(event) ? ` – ${displayDate(event.endDate)}` : ''}`;
+  const dateRange = event => {
+    const endDay = event.endDate || event.end && localDay(event.end);
+    return `${dateLabel(event)}${endDay && endDay !== eventDate(event) ? ` – ${displayDate(endDay)}` : ''}`;
+  };
   const localized = (event, field) => event[`${field}_${document.documentElement.lang}`] || event[field];
   const timeLabel = event => event.start ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start)) : '';
   const node = (tag, text, className) => { const item = document.createElement(tag); if (text !== undefined) item.textContent = text; if (className) item.className = className; return item; };
@@ -49,6 +52,7 @@
   const moreLabel = {pl:'Zobacz więcej wydarzeń',en:'See more events',nl:'Meer evenementen bekijken',fr:'Voir plus d’événements'};
   const fullLabel = {pl:'Otwórz pełny kalendarz',en:'Open full calendar',nl:'Volledige kalender openen',fr:'Ouvrir le calendrier complet'};
   const legendText = {pl:['Nowe wydarzenie','Wydarzenie w trakcie'],en:['Event starts','Ongoing event'],nl:['Nieuw evenement','Lopend evenement'],fr:['Nouvel événement','Événement en cours']};
+  const groupHeadings = {pl:['Nowe wydarzenia','Wydarzenia w trakcie'],en:['New events','Ongoing events'],nl:['Nieuwe evenementen','Lopende evenementen'],fr:['Nouveaux événements','Événements en cours']};
   const dateEvents = date => events.filter(event => !event.isHoliday && visible(event) && onDay(event,date));
   const dayMarkers = date => { const matches = dateEvents(date); return { starts: matches.some(event => startsOn(event,date)), ongoing: matches.some(event => !startsOn(event,date)), count: matches.length }; };
   function appendDayDots(button, markers) {
@@ -92,14 +96,25 @@
     details.replaceChildren(heading);
     appendNameDays(details,selected);
     appendHolidayInfo(details,selected);
-    const matches = dateEvents(selected).filter(event => !event.isHoliday).sort((a,b) => String(a.start || a.date).localeCompare(String(b.start || b.date)));
+    const matches = dateEvents(selected).filter(event => !event.isHoliday);
     if (!matches.length) { details.append(node('p',t().empty)); return; }
-    for (const event of matches) {
-      const item = node('article',undefined,'event-day-item');
-      const link = node('a',localized(event,'title') || t().untitled,'event-day-event'); link.href = event.url; link.dataset.eventUrl = event.url;
-      const meta = node('span',`${eventTime(event)}${event.city ? ` · ${event.city}` : ''}`,'event-day-event-meta');
-      const action = node('span',t().show,'event-day-event-action');
-      link.append(meta,action); item.append(link); details.append(item);
+    const labels = groupHeadings[document.documentElement.lang] || groupHeadings.pl;
+    for (const [index,group] of [matches.filter(event => startsOn(event,selected)),matches.filter(event => !startsOn(event,selected))].entries()) {
+      if (!group.length) continue;
+      group.sort((a,b) => String(a.start || `${eventDate(a)}T00:00:00Z`).localeCompare(String(b.start || `${eventDate(b)}T00:00:00Z`)));
+      const section = node('section',undefined,'event-day-group');
+      const heading = node('h4',undefined,'event-day-group-heading');
+      heading.append(node('i',undefined,`event-day-dot${index ? ' event-day-dot--ongoing' : ''}`),node('span',labels[index]));
+      section.append(heading);
+      for (const event of group) {
+        const item = node('article',undefined,'event-day-item');
+        const link = node('a',localized(event,'title') || t().untitled,'event-day-event'); link.href = event.url; link.dataset.eventUrl = event.url;
+        const when = index ? `${dateRange(event)}${timeLabel(event) ? `, ${timeLabel(event)}` : ''}` : eventTime(event);
+        const meta = node('span',`${when}${event.city ? ` · ${event.city}` : ''}`,'event-day-event-meta');
+        const action = node('span',t().show,'event-day-event-action');
+        link.append(meta,action); item.append(link); section.append(item);
+      }
+      details.append(section);
     }
   }
 
@@ -152,9 +167,9 @@
 
   function renderHome() {
     if (!home) return;
-    const upcomingEvents = [...new Map(events.filter(event => eventDate(event) && upcoming(event) && !event.isHoliday).map(event => [event.url,event])).values()].sort((a,b) => String(a.start || a.date).localeCompare(String(b.start || b.date))).slice(0,2);
+    const upcomingEvents = [...new Map(events.filter(event => startsTodayOrLater(event) && !event.isHoliday).map(event => [event.url,event])).values()].sort((a,b) => eventDate(a).localeCompare(eventDate(b)) || String(a.start || '').localeCompare(String(b.start || ''))).slice(0,2);
     home.replaceChildren();
-    if (!upcomingEvents.length) { const empty = node('p',t().homeEmpty,'home-events-empty'); home.append(empty); renderMini(); return; }
+    if (!upcomingEvents.length) home.append(node('p',t().homeEmpty,'home-events-empty'));
     for (const event of upcomingEvents) {
       const card = node('a',undefined,'event-card'); card.href=event.url;
       const image=node('img',undefined,'event-card__image'); image.src=eventImage(event); image.alt=''; image.loading='lazy'; card.append(image);
