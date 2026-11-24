@@ -33,8 +33,8 @@ function eventFromForm(form) {
   const isHoliday = form.elements.isHoliday.checked;
   if (isHoliday && !date) throw new Error('Wybierz datę święta.');
   if (isHoliday && !form.elements.region.value) throw new Error('Wybierz obszar obowiązywania święta.');
-  if (startTime && !date || endTime && !endDate || endDate && !date) throw new Error('Godzina wymaga daty, a data zakończenia wymaga daty rozpoczęcia.');
-  const start = date && startTime ? toUtc(`${date}T${startTime}`) : null, end = endDate && endTime ? toUtc(`${endDate}T${endTime}`) : null;
+  if (startTime && !date || endTime && !date || endDate && !date) throw new Error('Godzina wymaga daty, a data zakończenia wymaga daty rozpoczęcia.');
+  const start = date && startTime ? toUtc(`${date}T${startTime}`) : null, end = endTime ? toUtc(`${endDate || date}T${endTime}`) : null;
   if (endDate && endDate < date || end && start && Date.parse(end) < Date.parse(start)) throw new Error(label('endBeforeStart','Zakończenie nie może być wcześniejsze od rozpoczęcia.'));
   const sourceUrl = form.elements.sourceUrl.value.trim();
   if (sourceUrl && !/^https:\/\/[^\s]+$/.test(sourceUrl)) throw new Error(label('invalidSource','Oficjalne źródło musi być poprawnym adresem HTTPS.'));
@@ -54,8 +54,8 @@ function render() {
   $('#events-editor-list').innerHTML = visible.length ? `<table class="data-table"><thead><tr><th>${label('colEvent','Wydarzenie')}</th><th>${label('colDate','Termin')}</th><th>${label('colRegion','Region')}</th><th>${label('colSource','Źródło')}</th><th>${label('colStatus','Status')}</th><th>${label('colVerification','Weryfikacja')}</th><th>${label('colActions','Akcje')}</th></tr></thead><tbody>${visible.map(row => {
     const event = JSON.parse(row.event_json || '{}'), verification = JSON.parse(row.verification_json || '{}');
     const actions = [`<button type="button" class="secondary" data-event-edit="${row.id}">${label('open','Otwórz')}</button>`];
-    if (row.status === 'pending_review' && (row.owner_kind === 'admin' || verification.status === 'verified')) actions.push(`<button type="button" class="secondary" data-event-action="approved" data-id="${row.id}">${label('accept','Akceptuj')}</button>`);
-    if (['approved','scheduled'].includes(row.status)) actions.push(`<input type="datetime-local" data-event-slot="${row.id}" aria-label="${label('scheduleAt','Termin publikacji')}" value="${escapeHtml(local(row.scheduled_at || row.proposed_publish_at))}"><button type="button" class="secondary" data-event-action="scheduled" data-id="${row.id}">${label('scheduleAction','Zaplanuj')}</button>${row.owner_kind === 'admin' || verification.status === 'verified' ? `<button type="button" class="primary" data-event-action="publish-event" data-id="${row.id}">${label('publishNow','Opublikuj teraz')}</button>` : ''}`);
+    if (['pending_review','changes_requested','approved','scheduled'].includes(row.status) && (row.owner_kind === 'admin' || verification.status === 'verified')) actions.push(`<button type="button" class="primary" data-event-action="approve-publish-event" data-id="${row.id}">Akceptuj i opublikuj</button>`);
+    if (['approved','scheduled'].includes(row.status)) actions.push(`<input type="datetime-local" data-event-slot="${row.id}" aria-label="${label('scheduleAt','Termin publikacji')}" value="${escapeHtml(local(row.scheduled_at || row.proposed_publish_at))}"><button type="button" class="secondary" data-event-action="scheduled" data-id="${row.id}">${label('scheduleAction','Zaplanuj')}</button>`);
     if (['draft','pending_review','approved','scheduled'].includes(row.status)) actions.push(`<button type="button" class="ghost danger" data-event-action="rejected" data-id="${row.id}">${label('reject','Odrzuć')}</button>`);
     if (row.status === 'published') actions.push(`<button type="button" class="ghost danger" data-event-action="archived" data-id="${row.id}">${label('withdraw','Wycofaj')}</button>`);
     actions.push(`<button type="button" class="ghost danger" data-event-action="delete-event" data-id="${row.id}">${label('deleteEvent','Usuń wydarzenie')}</button>`);
@@ -100,7 +100,7 @@ function open(row = null, initialDate = '') {
   if (!form.elements.category.value) form.elements.category.value = 'Inne';
   form.elements.eventStatus.value = event.status || 'scheduled';
   form.elements.imageRightsConfirmed.checked = event.imageRightsConfirmed === true;
-  for (const key of ['start','end']) { const value = local(event[key]); form.elements[`${key}Date`].value = event[key === 'start' ? 'date' : 'endDate'] || value.slice(0,10); form.elements[`${key}Time`].value = value.slice(11,16); }
+  for (const key of ['start','end']) { const value = local(event[key]); const savedDate = event[key === 'start' ? 'date' : 'endDate']; form.elements[`${key}Date`].value = key === 'start' ? savedDate || value.slice(0,10) : savedDate || (value.slice(0,10) !== (event.date || local(event.start).slice(0,10)) ? value.slice(0,10) : ''); form.elements[`${key}Time`].value = value.slice(11,16); }
   if (!row) form.elements.startDate.value = initialDate;
   form.elements.isHoliday.checked = event.isHoliday === true;
   syncHolidayTime(form);
@@ -110,12 +110,13 @@ function open(row = null, initialDate = '') {
   const actions = [];
   if (row) {
     const verification = JSON.parse(row.verification_json || '{}');
-    if (row.status === 'pending_review' && (row.owner_kind === 'admin' || verification.status === 'verified')) actions.push(`<button type="button" class="secondary" data-event-action="approved" data-id="${row.id}">${label('accept','Akceptuj')}</button>`);
-    if (['approved','scheduled'].includes(row.status)) actions.push(`<input type="datetime-local" data-event-slot="${row.id}" aria-label="${label('scheduleAt','Termin publikacji')}" value="${escapeHtml(local(row.scheduled_at || row.proposed_publish_at))}"><button type="button" class="secondary" data-event-action="scheduled" data-id="${row.id}">${label('scheduleAction','Zaplanuj')}</button>${row.owner_kind === 'admin' || verification.status === 'verified' ? `<button type="button" class="primary" data-event-action="publish-event" data-id="${row.id}">${label('publishNow','Opublikuj teraz')}</button>` : ''}`);
+    if (['pending_review','changes_requested','approved','scheduled'].includes(row.status) && (row.owner_kind === 'admin' || verification.status === 'verified')) actions.push(`<button type="button" class="primary" data-event-action="approve-publish-event" data-id="${row.id}">Akceptuj i opublikuj</button>`);
+    if (['approved','scheduled'].includes(row.status)) actions.push(`<input type="datetime-local" data-event-slot="${row.id}" aria-label="${label('scheduleAt','Termin publikacji')}" value="${escapeHtml(local(row.scheduled_at || row.proposed_publish_at))}"><button type="button" class="secondary" data-event-action="scheduled" data-id="${row.id}">${label('scheduleAction','Zaplanuj')}</button>`);
     if (row.status === 'published') actions.push(`<button type="button" class="ghost danger" data-event-action="archived" data-id="${row.id}">${label('withdraw','Wycofaj')}</button>`);
     actions.push(`<button type="button" class="ghost danger" data-event-action="delete-event" data-id="${row.id}">${label('deleteEvent','Usuń wydarzenie')}</button>`);
   }
   $('#event-editor-actions').innerHTML = actions.join('');
+  form.querySelector('[type="submit"]').textContent = row?.status === 'published' ? 'Zapisz zmiany' : 'Zapisz';
   $('#event-editor-dialog').showModal();
 }
 $('#event-new').addEventListener('click',() => open());
@@ -164,8 +165,9 @@ $('#event-editor-form').addEventListener('submit',async event => {
     const details = eventFromForm(form);
     const articleFields = Object.fromEntries(['nl','fr'].flatMap(language => ['title','description','body'].map(key => [`${key}_${language}`, form.elements[`${key}_${language}`].value])));
     const data = { title:form.elements.title.value.trim(), description:form.elements.description.value.trim(), body:form.elements.body.value.trim(), articleFields, category:details.category, region:details.region, event:details, sources:details.sourceUrl ? [{url:details.sourceUrl}] : [] };
-    await cmsRequest('ai-editor',{},'POST',selected ? { action:'edit',id:selected.id,...data } : { action:'manual-event',id:crypto.randomUUID().replaceAll('-','').slice(0,20),...data });
-    await load(); $('#event-editor-dialog').close(); notice(label('saved','Wydarzenie zapisane. Potwierdź dane przed publikacją.'));
+    if (selected?.status === 'published' && !await confirmAction('Zapisać zmiany w opublikowanym wydarzeniu?', 'Sprawdź daty, treść i oficjalne źródło. Zmiany będą od razu widoczne na stronie.')) return;
+    await cmsRequest('ai-editor',{},'POST',selected ? { action:'edit',id:selected.id,...data,confirmed:selected.status === 'published' } : { action:'manual-event',id:crypto.randomUUID().replaceAll('-','').slice(0,20),...data });
+    await load(); $('#event-editor-dialog').close(); notice(selected?.status === 'published' ? 'Zmiany w opublikowanym wydarzeniu zapisano.' : label('saved','Wydarzenie zapisane. Potwierdź dane przed publikacją.'));
   } catch (error) { $('#event-editor-error').textContent = error.message; }
 });
 $('#event-editor-verify').addEventListener('click',async () => {
@@ -186,7 +188,8 @@ async function performAction(button, scope) {
     if (['rejected','archived','archive-event'].includes(status) && !await confirmAction(status === 'rejected' ? label('confirmReject','Odrzucić wydarzenie?') : label('confirmWithdraw','Wycofać wydarzenie?'), label('confirmDetail','Decyzja zostanie zapisana w historii.'))) return;
     const localTime = status === 'scheduled' ? scope.querySelector(`[data-event-slot="${id}"]`).value : null;
     if (status === 'scheduled') toUtc(localTime);
-    await cmsRequest('ai-editor',{},'POST',status === 'archive-event' || status === 'publish-event' || status === 'delete-event' ? { action:status,id } : { action:'status',id,status,...(localTime ? { localTime } : {}) });
+    if (status === 'approve-publish-event' && !await confirmAction('Akceptować i opublikować wydarzenie?', 'Wydarzenie będzie od razu widoczne publicznie. Sprawdź wcześniej treść, daty i źródło.')) return;
+    await cmsRequest('ai-editor',{},'POST',['archive-event','publish-event','approve-publish-event','delete-event'].includes(status) ? { action:status,id } : { action:'status',id,status,...(localTime ? { localTime } : {}) });
     await load(); if (scope.id === 'event-editor-actions') $('#event-editor-dialog').close(); notice(label('decisionSaved','Decyzja została zapisana.'));
   } catch (error) { if (scope.id === 'event-editor-actions') $('#event-editor-error').textContent = error.message; else notice(error.message); }
 }

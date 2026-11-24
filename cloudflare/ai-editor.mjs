@@ -120,15 +120,14 @@ export async function onRequest({ request, env }) {
       await env.DB.prepare('INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,?,?,?,?,?)').bind(input.id,current.editorial_status,'published',actor.id,now,'administrator published article now').run();
       return json({ id:input.id,status:'published' });
     }
-    if (input.action === 'publish-event') {
-      if (actor.kind !== 'admin' || current.kind !== 'event' || !['approved','scheduled'].includes(current.editorial_status)) fail('forbidden',403);
+    if (input.action === 'approve-publish-event' || input.action === 'publish-event') {
+      if (actor.kind !== 'admin' || current.kind !== 'event' || !['pending_review','changes_requested','approved','scheduled'].includes(current.editorial_status)) fail('forbidden',403);
       const event = JSON.parse(current.event_json || '{}');
       if (current.owner_kind !== 'admin' && JSON.parse(current.verification_json || '{}').status !== 'verified' || !validateEvent(event,{ manual: current.owner_kind === 'admin',allowPast:true }) || event.status !== 'scheduled') fail('eventVerification',409);
+      const updated = await env.DB.prepare("UPDATE ai_editorial SET status='published',public_state='visible',published_at=COALESCE(published_at,?),scheduled_at=NULL,approved_by=COALESCE(approved_by,?),approved_at=COALESCE(approved_at,?),revision=revision+1,updated_at=? WHERE candidate_id=? AND status=? AND revision=?").bind(now,actor.id,now,now,input.id,current.editorial_status,current.revision).run();
+      if (!updated.meta?.changes) fail('conflict',409);
       if (current.owner_kind === 'admin') await env.DB.prepare('UPDATE ai_candidates SET verification_json=?,updated_at=? WHERE id=?').bind(JSON.stringify({status:'verified',checkedAt:now,actorId:actor.id,method:'admin_publication'}),now,input.id).run();
-      await env.DB.prepare("UPDATE ai_editorial SET status='scheduled',scheduled_at=?,approved_by=COALESCE(approved_by,?),approved_at=COALESCE(approved_at,?),revision=revision+1,updated_at=? WHERE candidate_id=? AND status=?").bind(now,actor.id,now,now,input.id,current.editorial_status).run();
-      const published = await publishDue(env.DB,new Date(),new Set([input.id]));
-      if (!published.published.includes(input.id)) fail('publicationBlocked',409);
-      await env.DB.prepare('INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,?,?,?,?,?)').bind(input.id,current.editorial_status,'published',actor.id,now,'administrator published event now').run();
+      await env.DB.prepare('INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,?,?,?,?,?)').bind(input.id,current.editorial_status,'published',actor.id,now,'administrator approved and published event').run();
       return json({ id:input.id,status:'published' });
     }
     if (input.action === 'archive-event') {
@@ -153,7 +152,7 @@ export async function onRequest({ request, env }) {
       if (actor.kind !== 'admin' || current.kind !== 'event' || !['draft','pending_review','changes_requested','approved','scheduled'].includes(current.editorial_status)) fail('forbidden',403);
       const manual = current.owner_kind === 'admin';
       if (manual) input.event = { status:'scheduled',...(input.event || {}) };
-      if (input.confirmed !== true || !validateEvent(input.event,{ manual }) || !manual && !JSON.parse(current.sources_json).some(source => source.url === input.event.sourceUrl)) fail('validation');
+      if (input.confirmed !== true || !validateEvent(input.event,{ manual,allowPast:true }) || !manual && !JSON.parse(current.sources_json).some(source => source.url === input.event.sourceUrl)) fail('validation');
       const verification = { status: 'verified', checkedAt: now, sourceUrl: input.event.sourceUrl || null, actorId: actor.id, method: manual ? 'admin_confirmation' : 'official_source' };
       await env.DB.batch([
         env.DB.prepare('UPDATE ai_candidates SET event_json=?,region=?,verification_json=?,updated_at=? WHERE id=?').bind(JSON.stringify(input.event),input.event.region || null,JSON.stringify(verification),now,input.id),
@@ -167,12 +166,20 @@ export async function onRequest({ request, env }) {
       const manual = current.kind === 'event' && current.owner_kind === 'admin';
       if (manual) normalizeManual(input);
       if (!validContent(input,manual)) fail('validation');
-      if (current.kind === 'event' && (!validateEvent(input.event,{ manual }) || !manual && !input.sources.some(source => source.url === input.event.sourceUrl))) fail('validation');
+      if (current.kind === 'event' && (!validateEvent(input.event,{ manual,allowPast:true }) || !manual && !input.sources.some(source => source.url === input.event.sourceUrl))) fail('validation');
       if (input.articleFields !== undefined && !validArticleFields(input.articleFields)) fail('validation');
       if (current.kind === 'article' && current.editorial_status === 'published') {
         if (actor.kind !== 'admin') fail('forbidden',403);
         await recordArticleDraft(env.DB,`ai/${input.id}`,JSON.stringify({ title:input.title,description:input.description,body:input.body,category:input.category || null,region:input.region || 'all',sources:input.sources,articleFields:input.articleFields ?? JSON.parse(current.article_fields_json || '{}') }),current.updated_at,{ id:actor.id,name:'Administrator' });
         return json({ id:input.id,status:'published',draft:true });
+      }
+      if (current.kind === 'event' && current.editorial_status === 'published') {
+        if (actor.kind !== 'admin' || input.confirmed !== true) fail('forbidden',403);
+        const revised = await env.DB.prepare('UPDATE ai_candidates SET title=?,description=?,body=?,category=?,region=?,sources_json=?,event_json=?,article_fields_json=?,verification_json=?,updated_at=? WHERE id=? AND updated_at=?').bind(input.title,input.description,input.body,input.category || null,input.event.region || null,JSON.stringify(input.sources),JSON.stringify(input.event),JSON.stringify(input.articleFields ?? JSON.parse(current.article_fields_json || '{}')),JSON.stringify({status:'verified',checkedAt:now,actorId:actor.id,method:'admin_revision',sourceUrl:input.event.sourceUrl || null}),now,input.id,current.updated_at).run();
+        if (!revised.meta?.changes) fail('conflict',409);
+        await env.DB.prepare('UPDATE ai_editorial SET revision=revision+1,updated_at=? WHERE candidate_id=?').bind(now,input.id).run();
+        await env.DB.prepare('INSERT INTO ai_candidate_history(candidate_id,previous_status,new_status,actor_id,at,note) VALUES(?,?,?,?,?,?)').bind(input.id,'published','published',actor.id,now,'administrator updated published event').run();
+        return json({id:input.id,status:'published'});
       }
       const update = await env.DB.prepare('UPDATE ai_candidates SET title=?,description=?,body=?,category=?,region=?,sources_json=?,event_json=?,article_fields_json=?,verification_json=?,updated_at=? WHERE id=? AND updated_at=?').bind(input.title,input.description,input.body,input.category || null,current.kind === 'event' ? input.event.region || null : input.region || 'all',JSON.stringify(input.sources),current.kind === 'event' ? JSON.stringify(input.event) : null,JSON.stringify(input.articleFields ?? JSON.parse(current.article_fields_json || '{}')),JSON.stringify({ status:'needs_review',checkedAt:now,issues:[current.kind === 'event' ? 'Event changed; verify source again' : 'Article changed; verify claims and sources again'] }),now,input.id,current.updated_at).run();
       if (!update.meta?.changes) fail('conflict', 409);

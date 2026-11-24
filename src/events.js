@@ -38,6 +38,8 @@
   const eventTime = event => event.start ? localDateTime(event.start) : displayDate(eventDate(event));
   const eventImage = event => event.image || `/images/event-placeholders/${({Rodzina:'rodzina',Spotkanie:'spotkanie',Kultura:'kultura',Edukacja:'edukacja',Sport:'sport',Koncert:'koncert',Inne:'inne',History:'inne',Music:'inne'})[event.category] || 'wydarzenie'}.svg`;
   const dateLabel = event => displayDate(eventDate(event));
+  const dateRange = event => `${dateLabel(event)}${event.endDate && event.endDate !== eventDate(event) ? ` – ${displayDate(event.endDate)}` : ''}`;
+  const localized = (event, field) => event[`${field}_${document.documentElement.lang}`] || event[field];
   const timeLabel = event => event.start ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Brussels',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start)) : '';
   const node = (tag, text, className) => { const item = document.createElement(tag); if (text !== undefined) item.textContent = text; if (className) item.className = className; return item; };
   const safeLink = value => { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : null; } catch { return null; } };
@@ -70,7 +72,7 @@
         const link = node('a',sourceLabel[document.documentElement.lang] || sourceLabel.pl); link.href = holiday.source; link.target='_blank'; link.rel='noopener noreferrer'; item.append(' · ',link); section.append(item);
       }
       for (const event of manual) {
-        const item = node('p',event.title || t().untitled); if (event.description) item.append(node('small',event.description));
+        const item = node('p',localized(event,'title') || t().untitled); if (localized(event,'description')) item.append(node('small',localized(event,'description')));
         const link = safeLink(event.sourceUrl); if (link) { const source = node('a',sourceLabel[document.documentElement.lang] || sourceLabel.pl); source.href=link; source.target='_blank'; source.rel='noopener noreferrer'; item.append(' · ',source); }
         section.append(item);
       }
@@ -94,7 +96,7 @@
     if (!matches.length) { details.append(node('p',t().empty)); return; }
     for (const event of matches) {
       const item = node('article',undefined,'event-day-item');
-      const link = node('a',event.title || t().untitled,'event-day-event'); link.href = event.url; link.dataset.eventUrl = event.url;
+      const link = node('a',localized(event,'title') || t().untitled,'event-day-event'); link.href = event.url; link.dataset.eventUrl = event.url;
       const meta = node('span',`${eventTime(event)}${event.city ? ` · ${event.city}` : ''}`,'event-day-event-meta');
       const action = node('span',t().show,'event-day-event-action');
       link.append(meta,action); item.append(link); details.append(item);
@@ -156,11 +158,11 @@
     for (const event of upcomingEvents) {
       const card = node('a',undefined,'event-card'); card.href=event.url;
       const image=node('img',undefined,'event-card__image'); image.src=eventImage(event); image.alt=''; image.loading='lazy'; card.append(image);
-      const info = node('div',undefined,'event-card__content'); info.append(node('h3',event.title || t().untitled));
-      info.append(node('p',`${dateLabel(event)}${timeLabel(event) ? `, ${timeLabel(event)}` : ''}`,'event-card__date'));
+      const info = node('div',undefined,'event-card__content'); info.append(node('h3',localized(event,'title') || t().untitled));
+      info.append(node('p',`${dateRange(event)}${timeLabel(event) ? `, ${timeLabel(event)}` : ''}`,'event-card__date'));
       const place = event.city || t().regions[event.region]; if (place) info.append(node('p',place,'event-card__place'));
-      if (event.description) info.append(node('p',event.description,'event-card__description'));
-      if (document.documentElement.lang !== 'pl') info.append(node('small',t().fallback,'language-fallback'));
+      if (localized(event,'description')) info.append(node('p',localized(event,'description'),'event-card__description'));
+      if (document.documentElement.lang !== 'pl' && !event[`title_${document.documentElement.lang}`]) info.append(node('small',t().fallback,'language-fallback'));
       const button = node('span',t().show,'event-card__button');
       info.append(button); card.append(info); home.append(card);
     }
