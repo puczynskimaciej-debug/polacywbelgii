@@ -85,7 +85,7 @@ export async function onRequest({ request, env }) {
       return json({ id: input.id, status, proposedPublishAt: proposed }, 201);
     }
     validId(input.id);
-    const current = await env.DB.prepare('SELECT c.*,e.status AS editorial_status,e.owner_kind,e.owner_id,e.revision,e.approved_by,e.approved_at,e.scheduled_at FROM ai_candidates c JOIN ai_editorial e ON e.candidate_id=c.id WHERE c.id=?').bind(input.id).first();
+    const current = await env.DB.prepare('SELECT c.*,e.status AS editorial_status,e.owner_kind,e.owner_id,e.revision,e.approved_by,e.approved_at,e.scheduled_at,e.public_state FROM ai_candidates c JOIN ai_editorial e ON e.candidate_id=c.id WHERE c.id=?').bind(input.id).first();
     if (!current) fail('notFound', 404);
     if (actor.kind === 'agent' && (current.owner_kind !== 'agent' || current.owner_id !== actor.id)) fail('forbidden', 403);
     const now = new Date().toISOString();
@@ -146,6 +146,19 @@ export async function onRequest({ request, env }) {
         env.DB.prepare('DELETE FROM ai_candidate_history WHERE candidate_id=?').bind(input.id),
         env.DB.prepare("DELETE FROM ai_candidates WHERE id=? AND kind='event'").bind(input.id)
       ]);
+      return json({ id:input.id,deleted:true });
+    }
+    if (input.action === 'delete-article') {
+      if (actor.kind !== 'admin' || current.kind !== 'article') fail('forbidden',403);
+      if (current.public_state === 'visible') fail('conflict',409);
+      const results = await env.DB.batch([
+        env.DB.prepare('UPDATE ai_chat_jobs SET candidate_id=NULL WHERE candidate_id=?').bind(input.id),
+        env.DB.prepare('UPDATE ai_discovery_jobs SET candidate_id=NULL WHERE candidate_id=?').bind(input.id),
+        env.DB.prepare('DELETE FROM ai_chat_versions WHERE candidate_id=?').bind(input.id),
+        env.DB.prepare('DELETE FROM ai_candidate_history WHERE candidate_id=?').bind(input.id),
+        env.DB.prepare("DELETE FROM ai_candidates WHERE id=? AND kind='article' AND EXISTS (SELECT 1 FROM ai_editorial WHERE candidate_id=? AND public_state!='visible')").bind(input.id,input.id)
+      ]);
+      if (!results[4].meta?.changes) fail('conflict',409);
       return json({ id:input.id,deleted:true });
     }
     if (input.action === 'verify-event') {
